@@ -26,27 +26,14 @@ const io = new Server(httpServer, {
 // Middleware
 app.use(express.json());
 
-// Serve static files with base path
-if (BASE_PATH) {
-  app.use(BASE_PATH, express.static(join(__dirname, 'public')));
-} else {
-  app.use(express.static(join(__dirname, 'public')));
-}
-
-// API Routes
-if (BASE_PATH) {
-  app.use(`${BASE_PATH}/api`, apiRoutes);
-} else {
-  app.use('/api', apiRoutes);
-}
-
-// Root route - inject BASE_PATH into HTML
+// Root route - inject BASE_PATH into HTML (MUST BE BEFORE static files)
 const indexPath = join(__dirname, 'public', 'index.html');
 app.get(BASE_PATH || '/', (req, res) => {
   try {
     let html = readFileSync(indexPath, 'utf8');
-    // Inject BASE_PATH into HTML
-    html = html.replace(/\{\{BASE_PATH\}\}/g, BASE_PATH || '');
+    // Inject BASE_PATH into HTML (always include leading slash, empty string if no BASE_PATH)
+    const basePathForHtml = BASE_PATH || '';
+    html = html.replace(/\{\{BASE_PATH\}\}/g, basePathForHtml);
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   } catch (error) {
@@ -60,6 +47,20 @@ if (BASE_PATH) {
   app.get('/', (req, res) => {
     res.redirect(BASE_PATH);
   });
+}
+
+// Serve static files with base path (EXCLUDE index.html - it's handled above)
+if (BASE_PATH) {
+  app.use(BASE_PATH, express.static(join(__dirname, 'public'), { index: false }));
+}
+// Always serve static files from root as well (for backwards compatibility, exclude index.html)
+app.use(express.static(join(__dirname, 'public'), { index: false }));
+
+// API Routes
+if (BASE_PATH) {
+  app.use(`${BASE_PATH}/api`, apiRoutes);
+} else {
+  app.use('/api', apiRoutes);
 }
 
 // WebSocket connection
