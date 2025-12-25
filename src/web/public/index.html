@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lovable Referral Tester - Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <h1>🚀 Lovable Referral Tester</h1>
+        <div class="header-status">
+          <span class="status-indicator" id="connectionStatus">
+            <span class="status-dot status-connecting"></span>
+            Conectando...
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats Overview -->
+    <section class="stats-overview">
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-content">
+          <div class="stat-label">Total de Filas</div>
+          <div class="stat-value" id="totalQueues">0</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">▶️</div>
+        <div class="stat-content">
+          <div class="stat-label">Filas Ativas</div>
+          <div class="stat-value" id="runningQueues">0</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+          <div class="stat-label">Sucessos</div>
+          <div class="stat-value" id="totalSuccess">0</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-content">
+          <div class="stat-label">Créditos Gerados</div>
+          <div class="stat-value" id="totalCredits">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Left Panel - Queues -->
+      <section class="panel panel-queues">
+        <div class="panel-header">
+          <h2>📋 Filas de Execução</h2>
+          <button class="btn btn-primary" onclick="app.showCreateQueueModal()">
+            + Nova Fila
+          </button>
+        </div>
+        
+        <div class="queues-list" id="queuesList">
+          <div class="empty-state">
+            <p>Nenhuma fila criada ainda</p>
+            <button class="btn btn-secondary" onclick="app.showCreateQueueModal()">
+              Criar primeira fila
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- History Panel -->
+      <section class="panel panel-history">
+        <div class="panel-header">
+          <h2>📚 Histórico de Execuções</h2>
+          <button class="btn btn-small btn-secondary" onclick="app.clearHistory()">
+            Limpar
+          </button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="loading">Carregando histórico...</div>
+        </div>
+      </section>
+
+      <!-- Right Panel - Domains & Executions -->
+      <aside class="sidebar">
+        <!-- Logs Panel Toggle -->
+        <section class="panel panel-logs-toggle">
+          <button class="btn btn-secondary w-full" onclick="app.toggleLogs()">
+            📜 Mostrar/Ocultar Logs
+          </button>
+        </section>
+
+        <!-- Active Executions -->
+        <section class="panel panel-executions">
+          <div class="panel-header">
+            <h3>⚡ Execuções Ativas</h3>
+            <span class="badge" id="activeExecutionsCount">0</span>
+          </div>
+          
+          <div class="executions-list" id="executionsList">
+            <div class="empty-state-small">
+              Nenhuma execução ativa
+            </div>
+          </div>
+        </section>
+
+        <!-- Domains -->
+        <section class="panel panel-domains">
+          <div class="panel-header">
+            <h3>📧 Domínios de Email</h3>
+            <button class="btn btn-small" onclick="app.showDomainsModal()">
+              ⚙️
+            </button>
+          </div>
+          
+          <div class="domains-list" id="domainsList">
+            <div class="loading">Carregando...</div>
+          </div>
+          
+          <div class="domain-info">
+            <p class="info-text">
+              <strong>Atual:</strong> <span id="currentDomain">-</span>
+            </p>
+            <p class="info-text">
+              <strong>Total:</strong> <span id="totalDomains">0</span>
+            </p>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <!-- Logs Panel (Hidden by default) -->
+    <div id="logsPanel" class="logs-panel hidden">
+      <div class="logs-header">
+        <h3>📜 Logs do Sistema</h3>
+        <div class="logs-actions">
+          <button class="btn btn-small" onclick="app.clearLogs()">Limpar</button>
+          <button class="btn btn-small" onclick="app.toggleLogs()">Fechar</button>
+        </div>
+      </div>
+      <div class="logs-content" id="systemLogs">
+        <!-- Logs serão inseridos aqui -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert Container -->
+  <div id="alertContainer" class="alert-container"></div>
+
+  <!-- Modal: Create Queue -->
+  <div class="modal" id="createQueueModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🚀 Nova Fila de Execução</h2>
+        <button class="modal-close" onclick="app.hideCreateQueueModal()">×</button>
+      </div>
+      
+      <form onsubmit="app.createQueue(event)">
+        <div class="form-group">
+          <label for="queueReferralLink">🔗 Link de Indicação</label>
+          <input 
+            type="url" 
+            id="queueReferralLink" 
+            placeholder="https://lovable.dev/invite/XXXXXXX"
+            required
+          >
+          <small>O link de indicação da Lovable (obrigatório)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="queueName">Nome da Fila</label>
+          <input 
+            type="text" 
+            id="queueName" 
+            placeholder="Ex: Teste 10 indicações"
+            required
+          >
+        </div>
+        
+        <div class="form-group">
+          <label for="queueUsers">Número de Usuários (Indicações)</label>
+          <input 
+            type="number" 
+            id="queueUsers" 
+            min="1" 
+            max="1000" 
+            value="3"
+            required
+          >
+          <small>Cada usuário gera 10 créditos</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="queueParallel">Execuções Paralelas</label>
+          <input 
+            type="number" 
+            id="queueParallel" 
+            min="1" 
+            max="10" 
+            value="1"
+            required
+          >
+          <small>Máximo: 10 sessões simultâneas (cada uma com fingerprint único)</small>
+        </div>
+
+        <div class="form-group">
+          <label>Domínios para esta Fila</label>
+          <small style="margin-bottom: 8px;">Selecione quais domínios usar. Se nenhum for marcado, usa rotação global.</small>
+          <div style="margin-bottom: 8px; display: flex; gap: 8px;">
+            <button type="button" class="btn btn-small btn-secondary" onclick="app.selectAllDomains()">
+              ✓ Todos
+            </button>
+            <button type="button" class="btn btn-small btn-secondary" onclick="app.clearDomainSelection()">
+              ✗ Nenhum
+            </button>
+          </div>
+          <div id="queueDomainSelection" class="domain-selection-list">
+            <!-- Checkboxes serão inseridos via JS -->
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="app.hideCreateQueueModal()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Criar Fila
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Domains -->
+  <div class="modal" id="domainsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>📧 Gerenciar Domínios de Email</h2>
+        <button class="modal-close" onclick="app.hideDomainsModal()">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="info-text">
+          Os domínios serão alternados de forma global. Se você tiver 2 domínios, 
+          o primeiro usuário usará domínio1, o segundo domínio2, o terceiro domínio1, etc.
+        </p>
+        
+        <div class="form-group">
+          <label>Domínios Atuais</label>
+          <div id="domainsEditor"></div>
+        </div>
+        
+        <div class="form-group">
+          <label for="newDomain">Adicionar Novo Domínio</label>
+          <div class="input-group">
+            <input 
+              type="text" 
+              id="newDomain" 
+              placeholder="exemplo.com"
+            >
+            <button type="button" class="btn btn-primary" onclick="app.addDomain()">
+              Adicionar
+            </button>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="app.resetDomainIndex()">
+            🔄 Resetar Alternância
+          </button>
+          <button type="button" class="btn btn-primary" onclick="app.hideDomainsModal()">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+

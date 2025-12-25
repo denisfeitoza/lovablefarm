@@ -1,0 +1,27 @@
+# Lista de Proxies - Exemplo
+# Formato: protocol://[username:password@]host:port
+# Um proxy por linha
+
+# Proxies HTTP simples
+http://proxy1.example.com:8080
+http://proxy2.example.com:8080
+http://proxy3.example.com:8080
+
+# Proxies com autenticação
+http://user:pass@proxy4.example.com:8080
+http://user:pass@proxy5.example.com:8080
+
+# Proxies HTTPS
+https://proxy6.example.com:443
+https://user:pass@proxy7.example.com:443
+
+# Proxies SOCKS5 (se suportado)
+socks5://proxy8.example.com:1080
+socks5://user:pass@proxy9.example.com:1080
+
+# Dicas:
+# - Use proxies residenciais para melhor taxa de sucesso
+# - Evite proxies gratuitos (geralmente bloqueados)
+# - Teste os proxies antes de usar em produção
+# - Recomendado: 10-50 proxies para 100+ usuários
+
