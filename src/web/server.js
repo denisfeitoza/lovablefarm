@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { readFileSync } from 'fs';
 import apiRoutes from './api/routes.js';
 import { queueManager } from './queue/QueueManager.js';
 import { domainManager } from './queue/DomainManager.js';
@@ -13,21 +14,53 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer);
 
 const PORT = process.env.WEB_PORT || 3000;
+const BASE_PATH = (process.env.BASE_PATH || '').replace(/\/$/, ''); // Remove trailing slash
+
+// Configure Socket.IO with base path
+const io = new Server(httpServer, {
+  path: BASE_PATH ? `${BASE_PATH}/socket.io/` : '/socket.io/'
+});
 
 // Middleware
 app.use(express.json());
-app.use(express.static(join(__dirname, 'public')));
+
+// Serve static files with base path
+if (BASE_PATH) {
+  app.use(BASE_PATH, express.static(join(__dirname, 'public')));
+} else {
+  app.use(express.static(join(__dirname, 'public')));
+}
 
 // API Routes
-app.use('/api', apiRoutes);
+if (BASE_PATH) {
+  app.use(`${BASE_PATH}/api`, apiRoutes);
+} else {
+  app.use('/api', apiRoutes);
+}
 
-// Root route
-app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'public', 'index.html'));
+// Root route - inject BASE_PATH into HTML
+const indexPath = join(__dirname, 'public', 'index.html');
+app.get(BASE_PATH || '/', (req, res) => {
+  try {
+    let html = readFileSync(indexPath, 'utf8');
+    // Inject BASE_PATH into HTML
+    html = html.replace(/\{\{BASE_PATH\}\}/g, BASE_PATH || '');
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (error) {
+    logger.error('Erro ao servir index.html', error);
+    res.status(500).send('Erro ao carregar página');
+  }
 });
+
+// Redirect root to base path if BASE_PATH is set
+if (BASE_PATH) {
+  app.get('/', (req, res) => {
+    res.redirect(BASE_PATH);
+  });
+}
 
 // WebSocket connection
 io.on('connection', (socket) => {
@@ -87,8 +120,15 @@ httpServer.listen(PORT, () => {
   console.log('  🚀 LOVABLE REFERRAL TESTER - INTERFACE WEB');
   console.log('═══════════════════════════════════════════════════════');
   console.log(`  🌐 Servidor rodando em: http://localhost:${PORT}`);
-  console.log(`  📊 Dashboard: http://localhost:${PORT}`);
+  if (BASE_PATH) {
+    console.log(`  📊 Dashboard: http://localhost:${PORT}${BASE_PATH}`);
+  } else {
+    console.log(`  📊 Dashboard: http://localhost:${PORT}`);
+  }
   console.log(`  🔌 WebSocket habilitado para monitoramento em tempo real`);
+  if (BASE_PATH) {
+    console.log(`  📍 BASE_PATH: ${BASE_PATH}`);
+  }
   console.log('═══════════════════════════════════════════════════════');
   console.log('\n');
   

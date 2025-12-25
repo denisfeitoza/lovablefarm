@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - WEB_PORT=3000
+      - BASE_PATH=/main
+      # Adicione outras variáveis de ambiente conforme necessário
+      # - INBOUND_NEW_API_KEY=your_key_here
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    restart: unless-stopped
+

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lovable Referral Tester - Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
 </head>
 <body>
   <div class="container">
@@ -286,8 +286,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js"></script>
+  <script>
+    // Define BASE_PATH
+    window.BASE_PATH = '{{BASE_PATH}}' || '';
+  </script>
+  <script src="{{BASE_PATH}}/socket.io/socket.io.js"></script>
+  <script src="{{BASE_PATH}}/app.js"></script>
 </body>
 </html>
 

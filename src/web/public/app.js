@@ -10,11 +10,19 @@ class App {
     this.stats = {};
     this.activeTimers = new Map(); // { executionId: interval }
     this.history = [];
+    this.basePath = window.BASE_PATH || '';
     this.init();
+  }
+
+  // Helper para construir URLs com BASE_PATH
+  apiUrl(path) {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${this.basePath}${cleanPath}`;
   }
 
   init() {
     console.log('🚀 Inicializando Dashboard...');
+    console.log('📍 BASE_PATH:', this.basePath || '(raiz)');
     this.connectWebSocket();
     this.fetchDomains(); // Buscar domínios logo no início
     this.fetchHistory();
@@ -25,7 +33,7 @@ class App {
   // Fetch inicial de domínios
   async fetchDomains() {
     try {
-      const response = await fetch('/api/domains');
+      const response = await fetch(this.apiUrl('/api/domains'));
       const data = await response.json();
       if (data.success) {
         this.domains = data;
@@ -39,7 +47,10 @@ class App {
 
   // WebSocket Connection
   connectWebSocket() {
-    this.socket = io();
+    const socketPath = this.basePath ? `${this.basePath}/socket.io/` : '/socket.io/';
+    this.socket = io({
+      path: socketPath
+    });
 
     this.socket.on('connect', () => {
       console.log('✅ WebSocket conectado');
@@ -116,7 +127,7 @@ class App {
   // History Management
   async fetchHistory() {
     try {
-      const response = await fetch('/api/history');
+      const response = await fetch(this.apiUrl('/api/history'));
       const data = await response.json();
       if (data.success) {
         this.history = data.history;
@@ -131,7 +142,7 @@ class App {
     if (!confirm('Tem certeza que deseja limpar o histórico?')) return;
     
     try {
-      await fetch('/api/history', { method: 'DELETE' });
+      await fetch(this.apiUrl('/api/history'), { method: 'DELETE' });
       this.fetchHistory();
     } catch (error) {
       console.error('Erro ao limpar histórico:', error);
@@ -465,7 +476,7 @@ class App {
     }
 
     try {
-      const response = await fetch('/api/queues', {
+      const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains })
@@ -495,7 +506,7 @@ class App {
 
   async startQueue(queueId) {
     try {
-      const response = await fetch(`/api/queues/${queueId}/start`, {
+      const response = await fetch(this.apiUrl(`/api/queues/${queueId}/start`), {
         method: 'POST'
       });
 
@@ -517,7 +528,7 @@ class App {
     if (!confirm('Tem certeza que deseja parar esta fila?')) return;
 
     try {
-      const response = await fetch(`/api/queues/${queueId}/stop`, {
+      const response = await fetch(this.apiUrl(`/api/queues/${queueId}/stop`), {
         method: 'POST'
       });
 
@@ -543,7 +554,7 @@ class App {
     if (!domain) return;
 
     try {
-      const response = await fetch('/api/domains', {
+      const response = await fetch(this.apiUrl('/api/domains'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain })
@@ -568,7 +579,7 @@ class App {
     if (!confirm(`Remover domínio ${domain}?`)) return;
 
     try {
-      const response = await fetch(`/api/domains/${encodeURIComponent(domain)}`, {
+      const response = await fetch(this.apiUrl(`/api/domains/${encodeURIComponent(domain)}`), {
         method: 'DELETE'
       });
 
@@ -588,7 +599,7 @@ class App {
 
   async resetDomainIndex() {
     try {
-      const response = await fetch('/api/domains/reset', {
+      const response = await fetch(this.apiUrl('/api/domains/reset'), {
         method: 'POST'
       });
 
