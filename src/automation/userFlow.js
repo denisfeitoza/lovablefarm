@@ -122,7 +122,8 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       ]
     });
 
-    // Criar contexto com configurações de proxy e fingerprint único TOTALMENTE ALEATÓRIO
+    // IMPORTANTE: Com --incognito, criar contexto SIMPLES para não sobrescrever
+    // O modo incógnito JÁ está ativo no browser, só precisamos do contexto básico
     const contextOptions = {
       viewport: generateRandomViewport(),
       userAgent: generateRandomUserAgent(),
@@ -134,24 +135,19 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       deviceScaleFactor: Math.random() > 0.5 ? 1 : 2,
       isMobile: false,
       hasTouch: Math.random() > 0.7,
-      // Aceitar cookies e linguagem
       acceptDownloads: false,
       ignoreHTTPSErrors: true
+      // NÃO passar storageState, clearCookies, etc - deixar o --incognito trabalhar
     };
 
     if (proxyConfig) {
       contextOptions.proxy = proxyConfig;
     }
 
-    // IMPORTANTE: Criar contexto TOTALMENTE ISOLADO e ANÔNIMO
-    context = await browser.newContext({
-      ...contextOptions,
-      // Forçar modo privado/incognito
-      storageState: undefined, // Sem estado compartilhado
-      // Cada contexto começa limpo
-      clearCookies: true,
-      clearPermissions: true
-    });
+    // Criar contexto SIMPLES - o --incognito já cuida do isolamento
+    context = await browser.newContext(contextOptions);
+    
+    logger.info('✅ Contexto criado em modo incógnito (via --incognito flag)');
     
     // Limpar TUDO no contexto antes de usar
     await context.clearCookies();

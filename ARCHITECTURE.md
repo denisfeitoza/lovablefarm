@@ -66,7 +66,7 @@ lovable-referral-tester/
 │                    │                                     │
 │  ┌─────────────────▼───────────────────────────┐        │
 │  │ 3.2 Configurar Navegador                    │        │
-│  │  • Playwright + Chromium                    │        │
+│  │  • Playwright + um                    │        │
 │  │  • Proxy (se habilitado)                    │        │
 │  │  • User-Agent aleatório                     │        │
 │  │  • Geolocalização brasileira                │        │
