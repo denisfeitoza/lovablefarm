@@ -380,7 +380,11 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       logger.error('🚨 ERRO DETECTADO - NAVEGADOR MANTIDO ABERTO INDEFINIDAMENTE');
       logger.warning('⚠️ Navegador NÃO será fechado automaticamente');
       logger.warning('⚠️ Feche manualmente quando terminar de debugar');
-      logger.info(`📍 URL atual: ${page ? await page.url().catch(() => 'indisponível') : 'indisponível'}`);
+      try {
+        logger.info(`📍 URL atual: ${page ? page.url() : 'indisponível'}`);
+      } catch (e) {
+        logger.info('📍 URL atual: indisponível');
+      }
       logger.info(`📁 Diretório temporário mantido: ${tempDir}`);
       // NÃO fechar automaticamente - deixar aberto para sempre
     }

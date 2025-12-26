@@ -373,21 +373,39 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     
     logger.success('✅ Tamanho selecionado');
 
-    // 5. Aguardar mensagem de confirmação de créditos
-    logger.info('5️⃣ Aguardando confirmação de créditos...');
-    await page.waitForSelector('text="+10 credits", text="10 credits"', { timeout: 15000 });
-    logger.success('✅ Mensagem de créditos encontrada!');
-
-    await page.waitForTimeout(1500);
-
-    // 6. Clicar em Continue
-    logger.info('6️⃣ Clicando em Continue...');
-    const continueButton = page.locator('button:has-text("Continue")').first();
-    await continueButton.click();
-    logger.success('✅ Quiz completado!');
-
-    // Aguardar dashboard carregar
-    await page.waitForTimeout(4000);
+    // 5. Verificar se já pulou para o dashboard OU aguardar mensagem de créditos
+    logger.info('5️⃣ Verificando se quiz foi completado...');
+    
+    const currentUrl = page.url();
+    if (currentUrl.includes('/dashboard') || currentUrl === 'https://lovable.dev/') {
+      logger.success('✅ Quiz completado automaticamente! Já está no dashboard');
+    } else {
+      // Aguardar mensagem de confirmação de créditos
+      logger.info('⏳ Aguardando confirmação de créditos...');
+      try {
+        await page.waitForSelector('text="+10 credits", text="10 credits"', { timeout: 8000 });
+        logger.success('✅ Mensagem de créditos encontrada!');
+        
+        await page.waitForTimeout(1500);
+        
+        // Clicar em Continue
+        logger.info('6️⃣ Clicando em Continue...');
+        const continueButton = page.locator('button:has-text("Continue")').first();
+        await continueButton.click();
+        logger.success('✅ Quiz completado!');
+        
+        // Aguardar dashboard carregar
+        await page.waitForTimeout(4000);
+      } catch (e) {
+        // Se não encontrou a mensagem, verificar se já está no dashboard
+        if (page.url().includes('/dashboard') || page.url() === 'https://lovable.dev/') {
+          logger.success('✅ Já estava no dashboard! Quiz pulado');
+        } else {
+          logger.warning('⚠️ Mensagem de créditos não encontrada, mas continuando...');
+          await page.waitForTimeout(2000);
+        }
+      }
+    }
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Onboarding completado em ${executionTime}ms`);
