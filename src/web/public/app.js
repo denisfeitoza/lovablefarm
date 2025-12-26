@@ -72,8 +72,14 @@ class App {
       this.updateConnectionStatus('connected');
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('❌ WebSocket desconectado');
+    this.socket.on('connect_error', (error) => {
+      console.error('❌ Erro ao conectar WebSocket:', error);
+      console.error('Path usado:', socketPath);
+      this.updateConnectionStatus('error');
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ WebSocket desconectado:', reason);
       this.updateConnectionStatus('disconnected');
     });
 
