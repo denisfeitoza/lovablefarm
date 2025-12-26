@@ -86,7 +86,9 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
         // ANTI-DETECÇÃO ULTRA AGRESSIVA
         // ============================================
         '--disable-blink-features=AutomationControlled',
-        '--exclude-switches=enable-automation'
+        '--exclude-switches=enable-automation',
+        '--no-first-run',
+        '--no-default-browser-check'
       ]
     };
 
