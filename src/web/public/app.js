@@ -23,6 +23,12 @@ class App {
   init() {
     console.log('🚀 Inicializando Dashboard...');
     console.log('📍 BASE_PATH:', this.basePath || '(raiz)');
+    console.log('📍 window.BASE_PATH:', window.BASE_PATH || '(não definido)');
+    // Garantir que basePath está definido corretamente
+    if (!this.basePath && window.BASE_PATH) {
+      this.basePath = window.BASE_PATH;
+      console.log('✅ BASE_PATH atualizado do window:', this.basePath);
+    }
     this.connectWebSocket();
     this.fetchDomains(); // Buscar domínios logo no início
     this.fetchHistory();
@@ -47,7 +53,16 @@ class App {
 
   // WebSocket Connection
   connectWebSocket() {
-    const socketPath = this.basePath ? `${this.basePath}/socket.io/` : '/socket.io/';
+    // Socket.IO path deve começar com / e terminar com /socket.io/
+    let socketPath = '/socket.io/';
+    if (this.basePath) {
+      // Garantir que basePath comece com / e não termine com /
+      const cleanPath = this.basePath.startsWith('/') ? this.basePath : `/${this.basePath}`;
+      socketPath = `${cleanPath}/socket.io/`;
+    }
+    
+    console.log('🔌 Conectando Socket.IO com path:', socketPath, '| BASE_PATH:', this.basePath);
+    
     this.socket = io({
       path: socketPath
     });

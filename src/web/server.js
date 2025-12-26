@@ -31,9 +31,11 @@ const indexPath = join(__dirname, 'public', 'index.html');
 app.get(BASE_PATH || '/', (req, res) => {
   try {
     let html = readFileSync(indexPath, 'utf8');
-    // Inject BASE_PATH into HTML (always include leading slash, empty string if no BASE_PATH)
+    // Inject BASE_PATH into HTML (ensure proper format)
     const basePathForHtml = BASE_PATH || '';
+    // Replace all instances of {{BASE_PATH}} with the actual base path
     html = html.replace(/\{\{BASE_PATH\}\}/g, basePathForHtml);
+    logger.info(`Serving index.html with BASE_PATH: "${basePathForHtml}"`);
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   } catch (error) {
