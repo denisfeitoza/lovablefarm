@@ -95,43 +95,39 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await createButton.click();
     logger.success('✅ Clicou em Create');
 
-    // 🔥 VERIFICAR se o cadastro foi processado (mudou de página ou apareceu erro)
-    logger.info('⏳ Aguardando resposta do servidor...');
-    await page.waitForTimeout(3000);
+    // 🔥 VERIFICAR se apareceu mensagem de verificação de email
+    logger.info('⏳ Aguardando mensagem de verificação...');
+    await page.waitForTimeout(2000);
     
-    // Verificar se apareceu algum erro/notificação
-    const errorDetected = await page.evaluate(() => {
-      // Procurar por mensagens de erro ou notificações
+    // Verificar se avançou para a tela de verificação
+    const verificationCheck = await page.evaluate(() => {
       const body = document.body.innerText.toLowerCase();
-      const hasConnectionError = body.includes('connection') || 
-                                 body.includes('network') || 
-                                 body.includes('erro') ||
-                                 body.includes('error');
       
-      // Verificar se ainda está na mesma página (não avançou)
-      const stillOnSignup = document.querySelector('input[type="password"]') !== null;
+      // Verificar se apareceu mensagem de verificação
+      const hasVerification = body.includes('verify') || 
+                             body.includes('verif') || 
+                             body.includes('check your email') ||
+                             body.includes('verifique seu email') ||
+                             body.includes('confirme seu email');
+      
+      // Verificar se ainda tem o botão de criar conta (sinal de que não avançou)
+      const hasCreateButton = document.querySelector('button:has-text("Create")') !== null ||
+                             document.querySelector('button:has-text("Criar")') !== null;
       
       return {
-        hasError: hasConnectionError,
-        stillOnPage: stillOnSignup,
-        bodyText: body.substring(0, 500)
+        hasVerification,
+        hasCreateButton,
+        bodyText: body.substring(0, 600)
       };
     });
     
-    if (errorDetected.stillOnPage) {
-      logger.error('❌ CADASTRO BLOQUEADO! Ainda está na página de signup');
-      logger.error(`📝 Texto da página: ${errorDetected.bodyText}`);
-      throw new Error('Cadastro bloqueado - possível detecção de automação');
+    if (verificationCheck.hasCreateButton && !verificationCheck.hasVerification) {
+      logger.error('❌ CADASTRO BLOQUEADO! Ainda mostra botão Criar');
+      logger.error(`📝 Texto da página: ${verificationCheck.bodyText}`);
+      throw new Error('Cadastro bloqueado - não avançou para verificação');
     }
     
-    if (errorDetected.hasError) {
-      logger.warning('⚠️ Possível erro detectado na página');
-      logger.warning(`📝 Texto: ${errorDetected.bodyText}`);
-    }
-    
-    logger.success('✅ Cadastro parece ter sido aceito');
-
-    await page.waitForTimeout(1000);
+    logger.success('✅ Cadastro aceito! Mensagem de verificação detectada');
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Cadastro concluído em ${executionTime}ms`);
