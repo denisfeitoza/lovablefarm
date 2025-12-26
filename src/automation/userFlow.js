@@ -53,12 +53,14 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       finalProxyString = proxyService.getRandomProxy();
     }
     const proxyConfig = finalProxyString ? proxyService.getProxyConfig(finalProxyString) : null;
+    const usingProxy = !!proxyConfig;
     
     if (proxyConfig) {
       logger.info('🌐 Usando proxy', { 
         proxy: proxyConfig.server,
         hasAuth: !!(proxyConfig.username && proxyConfig.password)
       });
+      logger.info('⏱️ Timeouts aumentados para navegação com proxy');
     } else {
       logger.info('🌐 Usando IP local (sem proxy)');
     }
@@ -111,7 +113,7 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       password: password
     };
     
-    const signupResult = await signupOnLovable(page, emailData.email, password, userId, referralLink);
+    const signupResult = await signupOnLovable(page, emailData.email, password, userId, referralLink, usingProxy);
     result.steps.signup = signupResult.executionTime;
 
     // 5. Aguardar email de verificação
@@ -126,22 +128,22 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
     
     // 6. Clicar no link de verificação NA MESMA SESSÃO
     logger.info('\n✅ Etapa 3: Clicando em Link de Verificação (mesma sessão)');
-    const verifyResult = await verifyEmailInSameSession(page, verificationLink, userId);
+    const verifyResult = await verifyEmailInSameSession(page, verificationLink, userId, usingProxy);
     result.steps.emailVerification = verifyResult.executionTime;
 
     // 7. Completar quiz de onboarding
     logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding');
-    const quizResult = await completeOnboardingQuiz(page, userId, emailData.email);
+    const quizResult = await completeOnboardingQuiz(page, userId, emailData.email, usingProxy);
     result.steps.onboardingQuiz = quizResult.executionTime;
 
     // 8. Selecionar template
     logger.info('\n🎨 Etapa 5: Selecionando Template');
-    const templateResult = await selectTemplate(page, userId);
+    const templateResult = await selectTemplate(page, userId, usingProxy);
     result.steps.selectTemplate = templateResult.executionTime;
 
     // 9. Usar template e publicar
     logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
-    const publishResult = await useTemplateAndPublish(page, userId);
+    const publishResult = await useTemplateAndPublish(page, userId, usingProxy);
     result.steps.useTemplateAndPublish = publishResult.executionTime;
 
     // 10. Sucesso!

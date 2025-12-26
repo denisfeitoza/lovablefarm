@@ -3,6 +3,7 @@ import { queueManager } from '../queue/QueueManager.js';
 import { domainManager } from '../queue/DomainManager.js';
 import { historyManager } from '../queue/HistoryManager.js';
 import { proxyService } from '../../services/proxyService.js';
+import { normalizeReferralLink } from '../../utils/referralLink.js';
 import { logger } from '../../utils/logger.js';
 
 const router = express.Router();
@@ -166,11 +167,23 @@ router.post('/queues', (req, res) => {
       });
     }
     
+    // Normalizar link de indicação para formato padrão
+    let normalizedLink;
+    try {
+      normalizedLink = normalizeReferralLink(referralLink.trim());
+      logger.info(`🔗 Link normalizado: ${referralLink.trim()} → ${normalizedLink}`);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        error: `Erro ao normalizar link de indicação: ${error.message}`
+      });
+    }
+    
     const config = {
       name: name || `Fila ${Date.now()}`,
       users: usersNum,
       parallel: parallelNum,
-      referralLink: referralLink.trim(),
+      referralLink: normalizedLink, // Usar link normalizado
       selectedDomains: selectedDomains || [], // Passar selectedDomains
       selectedProxies: selectedProxies || [] // Passar selectedProxies
     };

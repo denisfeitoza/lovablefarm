@@ -1,5 +1,37 @@
 [
   {
+    "id": "queue-2",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-26T14:08:49.391Z",
+    "completedAt": "2025-12-26T14:10:51.406Z",
+    "totalUsers": 8,
+    "results": {
+      "total": 5,
+      "success": 0,
+      "failed": 5,
+      "pending": 3,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "completed",
+    "startedAt": "2025-12-26T14:07:01.540Z",
+    "completedAt": "2025-12-26T14:08:28.128Z",
+    "totalUsers": 8,
+    "results": {
+      "total": 8,
+      "success": 0,
+      "failed": 8,
+      "pending": 0,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
     "id": "queue-1",
     "name": "tet",
     "status": "completed",

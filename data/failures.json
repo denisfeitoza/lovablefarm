@@ -1,5 +1,155 @@
 [
   {
+    "id": "failure-1766759256351-70tayvfyg",
+    "email": "d.vieira6294@utlierconsorcios.com",
+    "error": "❌ Email não recebido após 5 tentativas",
+    "failedStep": "Verificação de Email",
+    "userId": 6,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:27:36.351Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766759059006-94ocuvren",
+    "email": "francisco1924@utlierconsorcios.com",
+    "error": "❌ Email não recebido após 5 tentativas",
+    "failedStep": "Verificação de Email",
+    "userId": 3,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:24:19.006Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766758251405-7foemmoe2",
+    "email": "r.cavalcanti7510@funcionariosdeia.com",
+    "error": "page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://lovable.dev/auth/action?mode=verifyEmail&oobCode=ZdQgoyUD22FWGV-ibkHrxXaiTCanXFbFi1fBChs5RDgAAAGbWv8f4A&apiKey=AIzaSyBQNjlw9Vp4tP4VVeANzyPJnqbG2wLbYPw&lang=en\"\n============================================================",
+    "failedStep": "Verificação de Email",
+    "userId": 5,
+    "queueId": "queue-2",
+    "timestamp": "2025-12-26T14:10:51.405Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766758220081-atjhyl1h3",
+    "email": "leandroferreira8855@utlierconsorcios.com",
+    "error": "Campo de senha não apareceu após clicar em Continuar",
+    "failedStep": "Cadastro",
+    "userId": 3,
+    "queueId": "queue-2",
+    "timestamp": "2025-12-26T14:10:20.081Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766758212209-wmboms4r5",
+    "email": "lucas.m5868@funcionariosartificiais.com",
+    "error": "page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://lovable.dev/auth/action?mode=verifyEmail&oobCode=bLyjCqlNcMFW-N95zNI6bGPgFHeaXXmmALayM1db-YgAAAGbWv6Hjw&apiKey=AIzaSyBQNjlw9Vp4tP4VVeANzyPJnqbG2wLbYPw&lang=en\"\n============================================================",
+    "failedStep": "Verificação de Email",
+    "userId": 4,
+    "queueId": "queue-2",
+    "timestamp": "2025-12-26T14:10:12.209Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766758173431-v6rnl2t7m",
+    "email": "rafael2232@funcionariosartificiais.com",
+    "error": "page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://lovable.dev/auth/action?mode=verifyEmail&oobCode=WEneXPZUo84ucPc9p2y70HOXkmqcwaTzlsR6hhDmeikAAAGbWv3qPA&apiKey=AIzaSyBQNjlw9Vp4tP4VVeANzyPJnqbG2wLbYPw&lang=en\"\n============================================================",
+    "failedStep": "Verificação de Email",
+    "userId": 1,
+    "queueId": "queue-2",
+    "timestamp": "2025-12-26T14:09:33.431Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766758170857-t7rsj29sc",
+    "email": "campos2832@funcionariosdeia.com",
+    "error": "page.waitForURL: Timeout 10000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://lovable.dev/auth/action?mode=verifyEmail&oobCode=QAEb_P6_500lxK7jg3dehv1llNpDNUSJshrqzdk3p3cAAAGbWv3iOw&apiKey=AIzaSyBQNjlw9Vp4tP4VVeANzyPJnqbG2wLbYPw&lang=en\"\n============================================================",
+    "failedStep": "Verificação de Email",
+    "userId": 2,
+    "queueId": "queue-2",
+    "timestamp": "2025-12-26T14:09:30.857Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766758108127-hv6i470au",
+    "email": "ana.g8527@funcionariosdeia.com",
+    "error": "page.goto: net::ERR_ABORTED; maybe frame was detached?\nCall log:\n  - navigating to \"https://lovable.dev/invite/AIS8RZC\", waiting until \"domcontentloaded\"\n",
+    "failedStep": "Cadastro",
+    "userId": 8,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:08:28.127Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "failure-1766758107573-7akdtppua",
+    "email": "jose4197gomes@funcionariosartificiais.com",
+    "error": "page.goto: net::ERR_ABORTED; maybe frame was detached?\nCall log:\n  - navigating to \"https://lovable.dev/invite/AIS8RZC\", waiting until \"domcontentloaded\"\n",
+    "failedStep": "Cadastro",
+    "userId": 7,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:08:27.573Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "failure-1766758106845-05av828fz",
+    "email": "gabriel2718@funcionariosartificiais.com",
+    "error": "page.waitForTimeout: Target page, context or browser has been closed",
+    "failedStep": "Cadastro",
+    "userId": 4,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:08:26.845Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "failure-1766758106190-2ls98yx6m",
+    "email": "beatrizaraujo6989@utlierconsorcios.com",
+    "error": "page.goto: net::ERR_ABORTED; maybe frame was detached?\nCall log:\n  - navigating to \"https://lovable.dev/invite/AIS8RZC\", waiting until \"domcontentloaded\"\n",
+    "failedStep": "Cadastro",
+    "userId": 6,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:08:26.190Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "failure-1766758105236-88tzev20c",
+    "email": "francisco.viei7785@funcionariosdeia.com",
+    "error": "page.waitForTimeout: Target page, context or browser has been closed",
+    "failedStep": "Cadastro",
+    "userId": 5,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:08:25.236Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "failure-1766758089916-fuj8pymgh",
+    "email": "gomes4095@utlierconsorcios.com",
+    "error": "Campo de senha não apareceu após clicar em Continuar",
+    "failedStep": "Cadastro",
+    "userId": 3,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:08:09.916Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "failure-1766758078135-7fdnax9wj",
+    "email": "beatriz.b7710@funcionariosdeia.com",
+    "error": "Campo de senha não apareceu após clicar em Continuar",
+    "failedStep": "Cadastro",
+    "userId": 2,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:07:58.135Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "failure-1766758038044-6znzze2aj",
+    "email": "maria.roch6326@funcionariosartificiais.com",
+    "error": "page.evaluate: TypeError: Cannot read properties of null (reading 'innerText')\n    at eval (eval at evaluate (:290:30), <anonymous>:2:38)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+    "failedStep": "Cadastro",
+    "userId": 1,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:07:18.044Z",
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
     "id": "failure-1766725438785-e252xnt5g",
     "email": "fernanda.fernandes3576@equipeartificial.com",
     "error": "Banner/popup de créditos não encontrado. Email: fernanda.fernandes3576@equipeartificial.com",

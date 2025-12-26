@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger.js';
 import { config } from '../utils/config.js';
+import { getTimeout, getDelay, DEFAULT_TIMEOUTS } from '../utils/timeouts.js';
 
 /**
  * Fluxo completo na plataforma Lovable - OTIMIZADO
@@ -9,7 +10,7 @@ import { config } from '../utils/config.js';
 /**
  * Etapa 1: Cadastro rápido
  */
-export async function signupOnLovable(page, email, password, userId = 1, referralLink) {
+export async function signupOnLovable(page, email, password, userId = 1, referralLink, usingProxy = false) {
   const startTime = Date.now();
   
   if (!referralLink) throw new Error('Link de indicação é obrigatório');
@@ -17,17 +18,18 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
   try {
     logger.step(1, 'Cadastro na Lovable');
     
-    await page.goto(referralLink, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(2000);
+    const pageLoadTimeout = getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy);
+    await page.goto(referralLink, { waitUntil: 'domcontentloaded', timeout: pageLoadTimeout });
+    await page.waitForTimeout(getDelay(2000, usingProxy));
     logger.success('✅ Página carregada');
 
     // DIRETO para #email - usar locator para ser mais resiliente
     const emailInputLocator = page.locator('#email');
-    await emailInputLocator.waitFor({ state: 'visible', timeout: 15000 });
+    await emailInputLocator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
     await emailInputLocator.click();
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(getDelay(200, usingProxy));
     await emailInputLocator.fill(email);
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(getDelay(400, usingProxy));
     logger.success('✅ Email preenchido');
 
     // Clicar em Continuar (não Google/Gmail)
@@ -57,7 +59,7 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     logger.info('⏳ Aguardando transição para campo de senha...');
     
     // Aguardar transição: pode mudar URL ou aparecer campo de senha
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(getDelay(2000, usingProxy));
     
     // Verificar se há erros na página antes de continuar
     const hasError = await page.evaluate(() => {
@@ -91,7 +93,7 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     for (const selector of passwordSelectors) {
       try {
         const locator = page.locator(selector).first();
-        await locator.waitFor({ state: 'visible', timeout: 5000 });
+        await locator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
         passwordInputLocator = locator;
         logger.info(`✅ Campo de senha encontrado com seletor: ${selector}`);
         break;
@@ -102,12 +104,12 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     
     if (!passwordInputLocator) {
       // Última tentativa: aguardar mais tempo
-      logger.warning('⚠️ Campo de senha não encontrado, aguardando mais 5s...');
-      await page.waitForTimeout(5000);
+      logger.warning('⚠️ Campo de senha não encontrado, aguardando mais tempo...');
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
       
       try {
         passwordInputLocator = page.locator('input[type="password"]').first();
-        await passwordInputLocator.waitFor({ state: 'visible', timeout: 10000 });
+        await passwordInputLocator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
         logger.info('✅ Campo de senha encontrado após espera adicional');
       } catch (e) {
         const currentUrl = page.url();
@@ -120,9 +122,9 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     }
     
     await passwordInputLocator.click();
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(getDelay(200, usingProxy));
     await passwordInputLocator.fill(password);
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(getDelay(400, usingProxy));
     logger.success('✅ Senha preenchida');
 
     // Procurar botão Create/Criar
@@ -143,12 +145,12 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       try {
         // Tentar com locator primeiro (mais resiliente)
         const buttonLocator = page.locator(selector).first();
-        await buttonLocator.waitFor({ state: 'visible', timeout: 2000 });
+        await buttonLocator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
         logger.info(`✅ Botão encontrado com seletor: ${selector}`);
         
         // Tentar clicar com locator (mais resiliente a mudanças no DOM)
         try {
-          await buttonLocator.click({ timeout: 2000 });
+          await buttonLocator.click({ timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
           createButtonClicked = true;
           logger.success('✅ Clicou em Create (via locator)');
           break;
@@ -190,11 +192,11 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
 
     // 🔥 AGUARDAR URL MUDAR (sinal de que aceitou)
     logger.info('⏳ Aguardando página mudar após cadastro...');
-    await page.waitForTimeout(3000); // Esperar 3s primeiro
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy)); // Esperar primeiro
     
     try {
-      // Esperar até 10 segundos pela URL mudar (sair de /signup)
-      await page.waitForURL(url => !url.toString().includes('/signup'), { timeout: 10000 });
+      // Esperar pela URL mudar (sair de /signup)
+      await page.waitForURL(url => !url.toString().includes('/signup'), { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
       logger.success('✅ Cadastro aceito! URL mudou para verificação');
     } catch (e) {
       // Se não mudou em 10s, verificar se tem mensagem de erro
@@ -222,7 +224,7 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
 /**
  * Etapa 2: Verificar email
  */
-export async function verifyEmailInSameSession(page, verificationLink, userId = 1) {
+export async function verifyEmailInSameSession(page, verificationLink, userId = 1, usingProxy = false) {
   const startTime = Date.now();
   
   try {
@@ -234,7 +236,7 @@ export async function verifyEmailInSameSession(page, verificationLink, userId = 
     if (!isValidLink) throw new Error(`❌ Link inválido`);
 
     logger.info('Clicando no link de verificação...');
-    await page.goto(verificationLink, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(verificationLink, { waitUntil: 'domcontentloaded', timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) });
 
     logger.info('⏳ Aguardando loading e redirect...');
     
@@ -243,7 +245,7 @@ export async function verifyEmailInSameSession(page, verificationLink, userId = 
       const urlStr = url.toString();
       // Quando NÃO for mais auth/action ou verify-email = redirect completou
       return !urlStr.includes('auth/action') && !urlStr.includes('verify-email');
-    }, { timeout: 10000 });
+    }, { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
     
     const finalUrl = page.url();
     logger.success(`✅ Redirect completado! URL: ${finalUrl}`);
@@ -262,7 +264,7 @@ export async function verifyEmailInSameSession(page, verificationLink, userId = 
 /**
  * Etapa 3: Completar o quiz de onboarding
  */
-export async function completeOnboardingQuiz(page, userId = 1, email = null) {
+export async function completeOnboardingQuiz(page, userId = 1, email = null, usingProxy = false) {
   const startTime = Date.now();
   
   try {
@@ -270,7 +272,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
 
     // Aguardar a página carregar
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
 
     // 1. Escolher modo (Light ou Dark) - aleatório
     logger.info('1️⃣ Escolhendo modo (Light/Dark)...');
@@ -279,9 +281,9 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     logger.info(`Modo escolhido: ${selectedMode}`);
     
     // Aguardar a página do quiz aparecer
-    await page.waitForSelector('text="Pick your style"', { timeout: 10000 });
+    await page.waitForSelector('text="Pick your style"', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
     logger.info('Quiz de estilo encontrado');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy));
     
     // ESTRATÉGIA AGRESSIVA: Clicar em TUDO que contenha o texto
     const modeClicked = await page.evaluate((mode) => {
@@ -370,7 +372,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
         
         for (const selector of selectors) {
           try {
-            await page.locator(selector).first().click({ force: true, timeout: 2000 });
+            await page.locator(selector).first().click({ force: true, timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
             logger.success(`✅ Clicou com seletor: ${selector}`);
             modeClicked = true;
             break;
@@ -393,14 +395,14 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     logger.info('⏳ Verificando se há botão "Next"...');
     try {
       const nextAfterMode = page.locator('button:has-text("Next")').first();
-      await nextAfterMode.click({ timeout: 2000 });
+      await nextAfterMode.click({ timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
       logger.success('✅ Clicou em Next após modo');
     } catch (e) {
       // Sem Next - transição automática
       logger.info('⏳ Sem botão Next - aguardando transição automática...');
     }
     
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(getDelay(2500, usingProxy));
 
     // 2. Preencher nome
     logger.info('2️⃣ Preenchendo nome...');
@@ -408,19 +410,19 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     const randomName = names[Math.floor(Math.random() * names.length)];
     
     // Aguardar campo de nome aparecer
-    await page.waitForSelector('input[type="text"], input[placeholder*="name" i]', { timeout: 5000 });
+    await page.waitForSelector('input[type="text"], input[placeholder*="name" i]', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
     
     const nameInput = page.locator('input[type="text"], input[placeholder*="name" i]').first();
     await nameInput.fill(randomName);
     logger.info(`Nome preenchido: ${randomName}`);
     
     // Clicar em Next
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.shortDelay, usingProxy));
     const nextButton1 = page.locator('button:has-text("Next")').first();
     await nextButton1.click();
     logger.success('✅ Nome confirmado');
     
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy));
 
     // 3. Escolher profissão (role) - sempre Other
     logger.info('3️⃣ Escolhendo profissão...');
@@ -428,7 +430,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     logger.info(`Profissão escolhida: ${selectedRole}`);
     
     // Aguardar opções de role aparecerem
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(getDelay(1500, usingProxy));
     
     // Usar JavaScript para clicar
     const roleClicked = await page.evaluate((role) => {
@@ -455,7 +457,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     
     // ESPERA MAIOR para backend processar
     logger.info('⏳ Aguardando backend processar...');
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
 
     // 4. Escolher tamanho da empresa - aleatório
     logger.info('4️⃣ Escolhendo tamanho da empresa...');
@@ -463,7 +465,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     const selectedSize = companySizes[Math.floor(Math.random() * companySizes.length)];
     logger.info(`Tamanho escolhido: ${selectedSize}`);
     
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy));
     
     // Usar JavaScript para clicar
     const sizeClicked = await page.evaluate((size) => {
@@ -489,8 +491,8 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     logger.success('✅ Tamanho selecionado');
     
     // 🔥 ESPERA CRÍTICA: Backend precisa processar a indicação!
-    logger.info('⏳ Aguardando backend processar indicação (5s)...');
-    await page.waitForTimeout(5000);
+    logger.info('⏳ Aguardando backend processar indicação...');
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
 
     // 5. Aguardar POPUP ou BANNER de créditos (referral)
     logger.info('5️⃣ Aguardando popup/banner de indicação...');
@@ -504,7 +506,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     // Tentar encontrar o POPUP primeiro
     try {
       logger.info('🔍 Procurando popup de "Congratulations"...');
-      await page.waitForSelector('text=/Congratulations.*earned.*\\+10.*credits/i', { timeout: 5000 });
+      await page.waitForSelector('text=/Congratulations.*earned.*\\+10.*credits/i', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
       logger.success('🎉 POPUP DE CRÉDITOS ENCONTRADO!');
       creditsFound = true;
     } catch (e) {
@@ -515,7 +517,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     if (!creditsFound) {
       try {
         logger.info('🔍 Procurando banner de "referral link"...');
-        await page.waitForSelector('text=/referral link.*Publish.*first project.*bonus credits/i', { timeout: 5000 });
+        await page.waitForSelector('text=/referral link.*Publish.*first project.*bonus credits/i', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
         logger.success('🎉 BANNER DE CRÉDITOS ENCONTRADO!');
         creditsFound = true;
       } catch (e) {
@@ -525,15 +527,15 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
     
     if (creditsFound) {
       logger.success('✅ Indicação reconhecida pelo sistema!');
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy));
       
       // Procurar botão Continue (caso seja popup)
       try {
         logger.info('6️⃣ Procurando botão Continue...');
         const continueButton = page.locator('button:has-text("Continue"), button:has-text("Got it"), button:has-text("OK")').first();
-        await continueButton.click({ timeout: 3000 });
+        await continueButton.click({ timeout: getTimeout(DEFAULT_TIMEOUTS.mediumDelay, usingProxy) });
         logger.success('✅ Clicou em Continue/OK');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy));
       } catch (e) {
         logger.info('⚠️ Sem botão para fechar - continuando...');
       }
@@ -541,8 +543,8 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
       logger.error('❌ NENHUMA MENSAGEM DE INDICAÇÃO ENCONTRADA!');
       logger.warning('⚠️ O sistema NÃO reconheceu a indicação');
       logger.info(`📍 URL atual: ${page.url()}`);
-      logger.info('⏳ Aguardando mais 3s caso apareça...');
-      await page.waitForTimeout(3000);
+      logger.info('⏳ Aguardando mais tempo caso apareça...');
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
       
       // Se ainda não encontrou após espera adicional, lançar erro
       const errorMessage = email 
@@ -566,7 +568,7 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null) {
 /**
  * Etapa 4: Escolher template
  */
-export async function selectTemplate(page, userId = 1) {
+export async function selectTemplate(page, userId = 1, usingProxy = false) {
   const startTime = Date.now();
   
   try {
@@ -583,11 +585,11 @@ export async function selectTemplate(page, userId = 1) {
     logger.info('Procurando templates disponíveis...');
     
     // Aguardar seção de templates
-    await page.waitForSelector('text="Templates"', { timeout: 10000 });
+    await page.waitForSelector('text="Templates"', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
     
     // Rolar para baixo para ver os templates
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy));
 
     // Buscar todos os templates disponíveis
     const templateCards = await page.locator('[role="link"], a').filter({ 
@@ -631,21 +633,21 @@ export async function selectTemplate(page, userId = 1) {
     await selectedTemplate.click();
     logger.info('Aguardando template abrir...');
     
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
 
     // Aguardar e clicar em "Use template"
     logger.info('Procurando botão "Use template"...');
-    await page.waitForSelector('button:has-text("Use template")', { timeout: 15000 });
+    await page.waitForSelector('button:has-text("Use template")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
     
     const useTemplateButton = await page.locator('button:has-text("Use template")').first();
     await useTemplateButton.click();
     logger.success('✅ Clicou em "Use template"');
 
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(getDelay(1500, usingProxy));
 
     // 🔥 AGUARDAR E CLICAR EM "REMIX" (popup que aparece)
     logger.info('⏳ Aguardando popup "Remix"...');
-    await page.waitForSelector('button:has-text("Remix"), button:has-text("remix")', { timeout: 10000 });
+    await page.waitForSelector('button:has-text("Remix"), button:has-text("remix")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
     
     const remixButton = await page.locator('button:has-text("Remix"), button:has-text("remix")').first();
     await remixButton.click();
@@ -653,7 +655,7 @@ export async function selectTemplate(page, userId = 1) {
     
     // Aguardar editor começar a carregar
     logger.info('⏳ Aguardando editor abrir...');
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Template selecionado e editor abrindo em ${executionTime}ms`);
@@ -669,19 +671,19 @@ export async function selectTemplate(page, userId = 1) {
 /**
  * Etapa 5: Publicar projeto
  */
-export async function useTemplateAndPublish(page, userId = 1) {
+export async function useTemplateAndPublish(page, userId = 1, usingProxy = false) {
   const startTime = Date.now();
   
   try {
     logger.step(5, 'Publicando projeto');
 
     // Aguardar editor carregar completamente (após clicar em Remix)
-    logger.info('⏳ Aguardando editor carregar completamente (10s)...');
-    await page.waitForTimeout(10000);
+    logger.info('⏳ Aguardando editor carregar completamente...');
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.veryLongDelay, usingProxy));
     
     await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
       state: 'visible', 
-      timeout: 40000 
+      timeout: getTimeout(40000, usingProxy)
     });
     logger.success('✅ Botão Publish encontrado!');
 
@@ -690,7 +692,7 @@ export async function useTemplateAndPublish(page, userId = 1) {
     await publishButton.click();
     logger.success('✅ Clicou no primeiro Publish (abrindo dropdown)');
 
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(getDelay(1500, usingProxy));
 
     // 2️⃣ Clicar no SEGUNDO Publish (dentro do dropdown)
     logger.info('⏳ Procurando segundo botão Publish no dropdown...');
@@ -708,8 +710,8 @@ export async function useTemplateAndPublish(page, userId = 1) {
     }
 
     // Aguardar publicação começar
-    logger.info('⏳ Aguardando publicação processar (15s)...');
-    await page.waitForTimeout(15000);
+    logger.info('⏳ Aguardando publicação processar...');
+    await page.waitForTimeout(getDelay(15000, usingProxy));
     
     // Verificar se há popup de confirmação ou status "publicado"
     logger.info('⏳ Verificando confirmação de publicação...');
@@ -727,7 +729,7 @@ export async function useTemplateAndPublish(page, userId = 1) {
       logger.warning('⚠️ Confirmação não detectada, mas seguindo em frente...');
     }
 
-    await page.waitForTimeout(2000); // Segurança
+    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy)); // Segurança
     logger.success('✅ Publicação concluída!');
 
     const executionTime = Date.now() - startTime;
