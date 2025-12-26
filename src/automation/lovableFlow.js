@@ -119,7 +119,43 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await createButton.click();
     logger.success('✅ Clicou em Create (após simulação humana)');
 
-    await page.waitForTimeout(2000);
+    // 🔥 VERIFICAR se o cadastro foi processado (mudou de página ou apareceu erro)
+    logger.info('⏳ Aguardando resposta do servidor...');
+    await page.waitForTimeout(3000);
+    
+    // Verificar se apareceu algum erro/notificação
+    const errorDetected = await page.evaluate(() => {
+      // Procurar por mensagens de erro ou notificações
+      const body = document.body.innerText.toLowerCase();
+      const hasConnectionError = body.includes('connection') || 
+                                 body.includes('network') || 
+                                 body.includes('erro') ||
+                                 body.includes('error');
+      
+      // Verificar se ainda está na mesma página (não avançou)
+      const stillOnSignup = document.querySelector('input[type="password"]') !== null;
+      
+      return {
+        hasError: hasConnectionError,
+        stillOnPage: stillOnSignup,
+        bodyText: body.substring(0, 500)
+      };
+    });
+    
+    if (errorDetected.stillOnPage) {
+      logger.error('❌ CADASTRO BLOQUEADO! Ainda está na página de signup');
+      logger.error(`📝 Texto da página: ${errorDetected.bodyText}`);
+      throw new Error('Cadastro bloqueado - possível detecção de automação');
+    }
+    
+    if (errorDetected.hasError) {
+      logger.warning('⚠️ Possível erro detectado na página');
+      logger.warning(`📝 Texto: ${errorDetected.bodyText}`);
+    }
+    
+    logger.success('✅ Cadastro parece ter sido aceito');
+
+    await page.waitForTimeout(1000);
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Cadastro concluído em ${executionTime}ms`);
