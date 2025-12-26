@@ -103,29 +103,21 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     const verificationCheck = await page.evaluate(() => {
       const body = document.body.innerText.toLowerCase();
       
-      // Verificar se apareceu mensagem de verificação
-      const hasVerification = body.includes('verify') || 
-                             body.includes('verif') || 
+      // Verificar se apareceu mensagem de verificação (PT ou EN)
+      const hasVerification = body.includes('verifique') || 
+                             body.includes('verify') || 
                              body.includes('check your email') ||
-                             body.includes('verifique seu email') ||
-                             body.includes('confirme seu email');
-      
-      // Verificar se ainda tem o botão de criar conta (JavaScript puro)
-      const buttons = Array.from(document.querySelectorAll('button'));
-      const hasCreateButton = buttons.some(btn => {
-        const text = btn.innerText.toLowerCase();
-        return text.includes('create') || text.includes('criar');
-      });
+                             body.includes('caixa de entrada') ||
+                             body.includes('inbox');
       
       return {
         hasVerification,
-        hasCreateButton,
         bodyText: body.substring(0, 600)
       };
     });
     
-    if (verificationCheck.hasCreateButton && !verificationCheck.hasVerification) {
-      logger.error('❌ CADASTRO BLOQUEADO! Ainda mostra botão Criar');
+    if (!verificationCheck.hasVerification) {
+      logger.error('❌ CADASTRO BLOQUEADO! Mensagem de verificação não apareceu');
       logger.error(`📝 Texto da página: ${verificationCheck.bodyText}`);
       throw new Error('Cadastro bloqueado - não avançou para verificação');
     }
