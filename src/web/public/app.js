@@ -10,6 +10,7 @@ class App {
     this.stats = {};
     this.activeTimers = new Map(); // { executionId: interval }
     this.history = [];
+    this.failures = [];
     this.basePath = window.BASE_PATH || '';
     this.init();
   }
@@ -32,8 +33,11 @@ class App {
     this.connectWebSocket();
     this.fetchDomains(); // Buscar domínios logo no início
     this.fetchHistory();
+    this.fetchFailures(); // Buscar falhas recentes
     // Iniciar loop de atualização dos timers
     setInterval(() => this.updateTimers(), 1000);
+    // Atualizar falhas a cada 10 segundos
+    setInterval(() => this.fetchFailures(), 10000);
   }
 
   // Fetch inicial de domínios
@@ -157,6 +161,51 @@ class App {
     } catch (error) {
       console.error('Erro ao buscar histórico:', error);
     }
+  }
+
+  // Failures Management
+  async fetchFailures() {
+    try {
+      const response = await fetch(this.apiUrl('/api/failures?limit=20'));
+      const data = await response.json();
+      if (data.success) {
+        this.failures = data.failures;
+        this.renderFailures();
+      }
+    } catch (error) {
+      console.error('Erro ao buscar falhas:', error);
+    }
+  }
+
+  renderFailures() {
+    const container = document.getElementById('failuresList');
+    
+    if (!this.failures || this.failures.length === 0) {
+      container.innerHTML = '<div class="empty-state-small">Nenhuma falha registrada</div>';
+      return;
+    }
+
+    container.innerHTML = this.failures.map(failure => {
+      const date = new Date(failure.timestamp).toLocaleString();
+      
+      return `
+        <div class="failure-item">
+          <div class="failure-header">
+            <span class="failure-email">📧 ${failure.email}</span>
+            <span class="failure-date">${date}</span>
+          </div>
+          <div class="failure-details">
+            <div class="failure-step">Etapa: <strong>${failure.failedStep}</strong></div>
+            <div class="failure-error">Erro: ${failure.error}</div>
+            ${failure.referralLink ? `
+              <div class="failure-link">
+                🔗 <a href="${failure.referralLink}" target="_blank">${failure.referralLink}</a>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   async clearHistory() {

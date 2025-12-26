@@ -90,6 +90,19 @@
         </div>
       </section>
 
+      <!-- Recent Failures Panel -->
+      <section class="panel panel-failures">
+        <div class="panel-header">
+          <h2>❌ Falhas Recentes</h2>
+          <button class="btn btn-small btn-secondary" onclick="app.fetchFailures()">
+            🔄 Atualizar
+          </button>
+        </div>
+        <div class="failures-list" id="failuresList">
+          <div class="loading">Carregando falhas...</div>
+        </div>
+      </section>
+
       <!-- Right Panel - Domains & Executions -->
       <aside class="sidebar">
         <!-- Logs Panel Toggle -->

@@ -247,6 +247,16 @@ class QueueManager {
       } else {
         queue.results.failed++;
         execution.error = result.error;
+        
+        // Registrar falha no histórico
+        historyManager.addFailure({
+          email: result.credentials?.email || result.email || 'N/A',
+          error: result.error || 'Erro desconhecido',
+          failedStep: result.failedStep || 'Desconhecida',
+          userId: userId,
+          queueId: queueId,
+          referralLink: queue.referralLink
+        });
       }
 
       this.emit('execution:completed', { executionId, execution });
@@ -262,6 +272,17 @@ class QueueManager {
       queue.results.total++;
       queue.results.pending--;
       queue.results.failed++;
+
+      // Registrar falha no histórico
+      const email = execution.credentials?.email || 'N/A';
+      historyManager.addFailure({
+        email: email,
+        error: error.message,
+        failedStep: error.message.includes('Banner/popup') ? 'Verificação de Créditos' : 'Erro na execução',
+        userId: userId,
+        queueId: queueId,
+        referralLink: queue.referralLink
+      });
 
       this.emit('execution:failed', { executionId, execution, error: error.message });
       this.emit('queue:updated', { queueId, queue });

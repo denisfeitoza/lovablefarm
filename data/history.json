@@ -1,5 +1,85 @@
 [
   {
+    "id": "queue-2",
+    "name": "111",
+    "status": "completed",
+    "startedAt": "2025-12-26T02:53:27.849Z",
+    "completedAt": "2025-12-26T03:00:07.427Z",
+    "totalUsers": 10,
+    "results": {
+      "total": 10,
+      "success": 4,
+      "failed": 6,
+      "pending": 0,
+      "credits": 40
+    },
+    "referralLink": "https://lovable.dev/invite/7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "2",
+    "status": "completed",
+    "startedAt": "2025-12-26T02:46:50.981Z",
+    "completedAt": "2025-12-26T02:48:29.158Z",
+    "totalUsers": 2,
+    "results": {
+      "total": 2,
+      "success": 2,
+      "failed": 0,
+      "pending": 0,
+      "credits": 20
+    },
+    "referralLink": "https://lovable.dev/invite/7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-26T02:22:29.116Z",
+    "completedAt": "2025-12-26T02:24:02.684Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "pending": 0,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "queue-3",
+    "name": "3",
+    "status": "completed",
+    "startedAt": "2025-12-26T02:08:55.385Z",
+    "completedAt": "2025-12-26T02:10:56.080Z",
+    "totalUsers": 2,
+    "results": {
+      "total": 2,
+      "success": 2,
+      "failed": 0,
+      "pending": 0,
+      "credits": 20
+    },
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "queue-2",
+    "name": "2",
+    "status": "completed",
+    "startedAt": "2025-12-26T02:05:19.076Z",
+    "completedAt": "2025-12-26T02:08:41.599Z",
+    "totalUsers": 2,
+    "results": {
+      "total": 2,
+      "success": 2,
+      "failed": 0,
+      "pending": 0,
+      "credits": 20
+    },
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
     "id": "queue-1",
     "name": "1",
     "status": "completed",

@@ -122,7 +122,7 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
 
     // 7. Completar quiz de onboarding
     logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding');
-    const quizResult = await completeOnboardingQuiz(page, userId);
+    const quizResult = await completeOnboardingQuiz(page, userId, emailData.email);
     result.steps.onboardingQuiz = quizResult.executionTime;
 
     // 8. Selecionar template

@@ -48,6 +48,26 @@ router.get('/history', (req, res) => {
 });
 
 /**
+ * GET /api/failures - Obter falhas recentes
+ */
+router.get('/failures', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const failures = historyManager.getRecentFailures(limit);
+    res.json({
+      success: true,
+      failures
+    });
+  } catch (error) {
+    logger.error('Erro ao obter falhas', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * DELETE /api/history - Limpar histórico
  */
 router.delete('/history', (req, res) => {

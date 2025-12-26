@@ -169,7 +169,7 @@ export async function verifyEmailInSameSession(page, verificationLink, userId = 
 /**
  * Etapa 3: Completar o quiz de onboarding
  */
-export async function completeOnboardingQuiz(page, userId = 1) {
+export async function completeOnboardingQuiz(page, userId = 1, email = null) {
   const startTime = Date.now();
   
   try {
@@ -450,6 +450,12 @@ export async function completeOnboardingQuiz(page, userId = 1) {
       logger.info(`📍 URL atual: ${page.url()}`);
       logger.info('⏳ Aguardando mais 3s caso apareça...');
       await page.waitForTimeout(3000);
+      
+      // Se ainda não encontrou após espera adicional, lançar erro
+      const errorMessage = email 
+        ? `Banner/popup de créditos não encontrado. Email: ${email}`
+        : 'Banner/popup de créditos não encontrado';
+      throw new Error(errorMessage);
     }
 
     const executionTime = Date.now() - startTime;
