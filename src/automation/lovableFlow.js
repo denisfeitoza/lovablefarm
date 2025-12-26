@@ -714,7 +714,47 @@ export async function selectTemplate(page, userId = 1, usingProxy = false) {
     const executionTime = Date.now() - startTime;
     logger.error('❌ Erro ao selecionar template', error);
     logger.error(`URL: ${page.url()}`);
-    throw error;
+    
+    // 🔥 FALLBACK: Se der erro, abrir template específico
+    logger.warning('⚠️ Tentando fallback: abrindo template específico...');
+    try {
+      const fallbackTemplateUrl = 'https://lovable.dev/dashboard/templates/websites/blog/perspective-lifestyle';
+      logger.info(`📍 Navegando para: ${fallbackTemplateUrl}`);
+      
+      await page.goto(fallbackTemplateUrl, { 
+        waitUntil: 'domcontentloaded', 
+        timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) 
+      });
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
+      
+      // Aguardar e clicar em "Use template"
+      logger.info('Procurando botão "Use template" (fallback)...');
+      await page.waitForSelector('button:has-text("Use template")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+      
+      const useTemplateButton = await page.locator('button:has-text("Use template")').first();
+      await useTemplateButton.click();
+      logger.success('✅ Clicou em "Use template" (fallback)');
+      
+      await page.waitForTimeout(getDelay(1500, usingProxy));
+      
+      // Aguardar e clicar em "REMIX" (popup que aparece)
+      logger.info('⏳ Aguardando popup "Remix" (fallback)...');
+      await page.waitForSelector('button:has-text("Remix"), button:has-text("remix")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+      
+      const remixButton = await page.locator('button:has-text("Remix"), button:has-text("remix")').first();
+      await remixButton.click();
+      logger.success('✅ Clicou em "Remix" (fallback)');
+      
+      // Aguardar editor começar a carregar
+      logger.info('⏳ Aguardando editor abrir (fallback)...');
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
+      
+      logger.success(`✅ Template fallback selecionado e editor abrindo em ${Date.now() - startTime}ms`);
+      return { success: true, executionTime: Date.now() - startTime };
+    } catch (fallbackError) {
+      logger.error('❌ Erro também no fallback do template', fallbackError);
+      throw new Error(`Erro ao selecionar template: ${error.message}. Fallback também falhou: ${fallbackError.message}`);
+    }
   }
 }
 
