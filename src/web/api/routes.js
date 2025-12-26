@@ -393,14 +393,14 @@ router.get('/proxies', async (req, res) => {
       try {
         const url = new URL(proxy);
         return {
-          id: index,
+          id: index + 1, // Começar do 1 para deixar 0 para "random"
           value: proxy, // Valor completo para uso
           display: `${url.hostname}:${url.port}`, // Exibição sem senha
           full: proxy
         };
       } catch (e) {
         return {
-          id: index,
+          id: index + 1,
           value: proxy,
           display: proxy.split('@')[1] || proxy,
           full: proxy
@@ -408,10 +408,18 @@ router.get('/proxies', async (req, res) => {
       }
     });
     
+    // Adicionar opção "random" como primeiro item
+    const randomOption = {
+      id: 'random',
+      value: 'random',
+      display: '🎲 Random (todos os proxies aleatórios)',
+      full: 'random'
+    };
+    
     res.json({
       success: true,
-      proxies: formattedProxies,
-      total: formattedProxies.length
+      proxies: [randomOption, ...formattedProxies], // "random" primeiro
+      total: formattedProxies.length + 1
     });
   } catch (error) {
     logger.error('Erro ao listar proxies', error);

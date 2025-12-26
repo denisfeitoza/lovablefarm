@@ -226,12 +226,28 @@ class QueueManager {
         logger.info(`Domínios disponíveis na fila: ${JSON.stringify(queue.selectedDomains)}`);
       }
 
-      // Determinar proxy para este usuário (Round Robin) se houver seleção
+      // Determinar proxy para este usuário
       let proxyString = null;
       if (queue.selectedProxies && queue.selectedProxies.length > 0) {
-        // userId começa em 1, então (userId - 1) % length dá o índice correto
-        proxyString = proxyService.getProxyFromList(queue.selectedProxies, userId - 1);
-        logger.info(`🌐 Usuário ${userId} usará proxy específico da fila: ${proxyString ? proxyString.split('@')[1] : 'N/A'}`);
+        // Verificar se "random" foi selecionado
+        const hasRandom = queue.selectedProxies.includes('random');
+        
+        if (hasRandom) {
+          // Modo random: usar todos os proxies disponíveis de forma aleatória
+          const allProxies = proxyService.getWebshareProxies();
+          if (allProxies.length > 0) {
+            const randomIndex = Math.floor(Math.random() * allProxies.length);
+            proxyString = allProxies[randomIndex];
+            logger.info(`🌐 Usuário ${userId} usará proxy aleatório da fila: ${proxyString ? proxyString.split('@')[1] : 'N/A'}`);
+          } else {
+            logger.warning(`⚠️ Modo random selecionado mas nenhum proxy disponível`);
+          }
+        } else {
+          // Modo normal: Round Robin
+          // userId começa em 1, então (userId - 1) % length dá o índice correto
+          proxyString = proxyService.getProxyFromList(queue.selectedProxies, userId - 1);
+          logger.info(`🌐 Usuário ${userId} usará proxy específico da fila: ${proxyString ? proxyString.split('@')[1] : 'N/A'}`);
+        }
       } else {
         logger.info(`🌐 Usuário ${userId} usará IP local ou proxy global (nenhum proxy foi selecionado para a fila)`);
       }

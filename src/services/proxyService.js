@@ -202,7 +202,14 @@ class ProxyService {
       return null;
     }
 
-    const proxy = proxyList[index % proxyList.length];
+    // Filtrar "random" da lista antes de fazer round-robin
+    const validProxies = proxyList.filter(p => p !== 'random');
+    
+    if (validProxies.length === 0) {
+      return null;
+    }
+
+    const proxy = validProxies[index % validProxies.length];
     return proxy;
   }
 
