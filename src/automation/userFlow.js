@@ -86,26 +86,7 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
         // ANTI-DETECÇÃO ULTRA AGRESSIVA
         // ============================================
         '--disable-blink-features=AutomationControlled',
-        '--exclude-switches=enable-automation',
-        '--disable-dev-shm-usage',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-features=IsolateOrigins,site-per-process',
-        '--disable-infobars',
-        '--window-position=0,0',
-        '--disable-background-networking',
-        '--disable-extensions',
-        '--disable-sync',
-        '--metrics-recording-only',
-        '--mute-audio',
-        '--no-first-run',
-        '--no-default-browser-check',
-        '--enable-features=NetworkService,NetworkServiceInProcess',
-        '--disable-breakpad',
-        '--disable-component-extensions-with-background-pages',
-        '--disable-features=TranslateUI',
-        '--disable-ipc-flooding-protection',
-        '--enable-features=UserActivationSameOriginVisibility'
+        '--exclude-switches=enable-automation'
       ]
     };
 
