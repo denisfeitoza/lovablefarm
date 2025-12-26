@@ -21,11 +21,12 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await page.waitForTimeout(2000);
     logger.success('✅ Página carregada');
 
-    // DIRETO para #email
-    const emailInput = await page.waitForSelector('#email', { timeout: 15000, state: 'visible' });
-    await emailInput.click();
+    // DIRETO para #email - usar locator para ser mais resiliente
+    const emailInputLocator = page.locator('#email');
+    await emailInputLocator.waitFor({ state: 'visible', timeout: 15000 });
+    await emailInputLocator.click();
     await page.waitForTimeout(200);
-    await emailInput.fill(email);
+    await emailInputLocator.fill(email);
     await page.waitForTimeout(400);
     logger.success('✅ Email preenchido');
 
@@ -52,14 +53,75 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       throw new Error('❌ Botão Continuar não encontrado');
     }
     
-    await page.waitForTimeout(1500);
     logger.success('✅ Clicou em Continuar');
+    logger.info('⏳ Aguardando transição para campo de senha...');
+    
+    // Aguardar transição: pode mudar URL ou aparecer campo de senha
+    await page.waitForTimeout(2000);
+    
+    // Verificar se há erros na página antes de continuar
+    const hasError = await page.evaluate(() => {
+      const bodyText = document.body.innerText.toLowerCase();
+      return bodyText.includes('erro') || 
+             bodyText.includes('error') || 
+             bodyText.includes('invalid') ||
+             bodyText.includes('inválido');
+    });
+    
+    if (hasError) {
+      const errorText = await page.evaluate(() => document.body.innerText.substring(0, 500));
+      logger.error('❌ Erro detectado na página após Continuar');
+      logger.error(`📝 Texto: ${errorText}`);
+      throw new Error('Erro na página após clicar em Continuar');
+    }
 
-    // DIRETO para input[type="password"]
-    const passwordInput = await page.waitForSelector('input[type="password"]', { timeout: 20000, state: 'visible' });
-    await passwordInput.click();
+    // DIRETO para input[type="password"] - usar locator para ser mais resiliente
+    logger.info('🔍 Procurando campo de senha...');
+    
+    // Tentar múltiplas estratégias para encontrar o campo de senha
+    let passwordInputLocator = null;
+    const passwordSelectors = [
+      'input[type="password"]',
+      'input[name="password"]',
+      'input[placeholder*="password" i]',
+      'input[placeholder*="senha" i]',
+      'input[id*="password" i]'
+    ];
+    
+    for (const selector of passwordSelectors) {
+      try {
+        const locator = page.locator(selector).first();
+        await locator.waitFor({ state: 'visible', timeout: 5000 });
+        passwordInputLocator = locator;
+        logger.info(`✅ Campo de senha encontrado com seletor: ${selector}`);
+        break;
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (!passwordInputLocator) {
+      // Última tentativa: aguardar mais tempo
+      logger.warning('⚠️ Campo de senha não encontrado, aguardando mais 5s...');
+      await page.waitForTimeout(5000);
+      
+      try {
+        passwordInputLocator = page.locator('input[type="password"]').first();
+        await passwordInputLocator.waitFor({ state: 'visible', timeout: 10000 });
+        logger.info('✅ Campo de senha encontrado após espera adicional');
+      } catch (e) {
+        const currentUrl = page.url();
+        const pageText = await page.evaluate(() => document.body.innerText.substring(0, 300));
+        logger.error(`❌ Campo de senha não encontrado após todas as tentativas`);
+        logger.error(`📍 URL: ${currentUrl}`);
+        logger.error(`📝 Conteúdo da página: ${pageText}`);
+        throw new Error('Campo de senha não apareceu após clicar em Continuar');
+      }
+    }
+    
+    await passwordInputLocator.click();
     await page.waitForTimeout(200);
-    await passwordInput.fill(password);
+    await passwordInputLocator.fill(password);
     await page.waitForTimeout(400);
     logger.success('✅ Senha preenchida');
 
@@ -75,25 +137,56 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       'button[type="submit"]'
     ];
     
-    let createButton = null;
+    // Usar abordagem mais robusta: clicar via JavaScript ou usar locator
+    let createButtonClicked = false;
     for (const selector of createSelectors) {
       try {
-        createButton = await page.waitForSelector(selector, { timeout: 2000, state: 'visible' });
-        if (createButton) {
-          logger.info(`✅ Botão encontrado com seletor: ${selector}`);
+        // Tentar com locator primeiro (mais resiliente)
+        const buttonLocator = page.locator(selector).first();
+        await buttonLocator.waitFor({ state: 'visible', timeout: 2000 });
+        logger.info(`✅ Botão encontrado com seletor: ${selector}`);
+        
+        // Tentar clicar com locator (mais resiliente a mudanças no DOM)
+        try {
+          await buttonLocator.click({ timeout: 2000 });
+          createButtonClicked = true;
+          logger.success('✅ Clicou em Create (via locator)');
           break;
+        } catch (clickError) {
+          // Se falhar, tentar via JavaScript
+          logger.warning('⚠️ Clique via locator falhou, tentando JavaScript...');
+          const jsClicked = await page.evaluate((sel) => {
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const btn = buttons.find(b => {
+              const text = b.textContent.trim();
+              return text === 'Create' || 
+                     text === 'Criar' || 
+                     text === 'Criar sua conta' || 
+                     text === 'Create account' ||
+                     text === 'Sign up' ||
+                     b.type === 'submit';
+            });
+            if (btn) {
+              btn.click();
+              return true;
+            }
+            return false;
+          });
+          
+          if (jsClicked) {
+            createButtonClicked = true;
+            logger.success('✅ Clicou em Create (via JavaScript)');
+            break;
+          }
         }
       } catch (e) {
         continue;
       }
     }
     
-    if (!createButton) {
-      throw new Error('❌ Botão Create/Criar não encontrado');
+    if (!createButtonClicked) {
+      throw new Error('❌ Botão Create/Criar não encontrado ou não foi possível clicar');
     }
-    
-    await createButton.click();
-    logger.success('✅ Clicou em Create');
 
     // 🔥 AGUARDAR URL MUDAR (sinal de que aceitou)
     logger.info('⏳ Aguardando página mudar após cadastro...');
