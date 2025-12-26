@@ -217,7 +217,7 @@ class App {
       return;
     }
 
-    const { total, byCategory, byQueue, byDomain } = this.metrics;
+    const { total, totalSuccesses, byCategory, byQueue, byDomain } = this.metrics;
 
     // Nomes amigáveis para categorias
     const categoryNames = {
@@ -235,22 +235,34 @@ class App {
 
       return Object.entries(data).map(([key, value]) => {
         const totalValue = typeof value === 'object' ? value.total : value;
+        const successes = typeof value === 'object' ? (value.successes || 0) : 0;
         const categories = typeof value === 'object' ? value.byCategory : null;
+        const totalAttempts = totalValue + successes;
+        const successRate = totalAttempts > 0 ? ((successes / totalAttempts) * 100).toFixed(1) : 0;
         
         return `
           <div class="metric-detail-item">
             <div class="metric-detail-header" onclick="app.toggleMetricDetail('${type}-${key}')">
               <span class="metric-detail-key">${key === 'unknown' ? '(Não especificado)' : key}</span>
-              <span class="metric-detail-total">${totalValue} falha(s)</span>
-              <span class="metric-detail-toggle">▼</span>
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span class="metric-success">✅ ${successes} sucesso(s)</span>
+                <span class="metric-failure">❌ ${totalValue} falha(s)</span>
+                <span class="metric-rate">${successRate}% taxa de sucesso</span>
+                <span class="metric-detail-toggle">▼</span>
+              </div>
             </div>
             <div class="metric-detail-content" id="${type}-${key}" style="display: none;">
-              ${categories ? Object.entries(categories).map(([cat, count]) => `
-                <div class="metric-detail-category">
-                  <span>${categoryNames[cat] || cat}:</span>
-                  <strong>${count}</strong>
+              ${categories && totalValue > 0 ? `
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+                  <strong style="color: var(--text-secondary); font-size: 12px;">Erros por categoria:</strong>
+                  ${Object.entries(categories).filter(([cat, count]) => count > 0).map(([cat, count]) => `
+                    <div class="metric-detail-category">
+                      <span>${categoryNames[cat] || cat}:</span>
+                      <strong>${count}</strong>
+                    </div>
+                  `).join('')}
                 </div>
-              `).join('') : ''}
+              ` : ''}
             </div>
           </div>
         `;
@@ -259,9 +271,13 @@ class App {
 
     container.innerHTML = `
       <div class="metrics-overview">
-        <div class="metric-card total">
+        <div class="metric-card total" style="border-color: #ef4444;">
           <div class="metric-label">Total de Falhas</div>
           <div class="metric-value">${total}</div>
+        </div>
+        <div class="metric-card total" style="border-color: #10b981; margin-top: 12px;">
+          <div class="metric-label">Total de Sucessos</div>
+          <div class="metric-value" style="color: #10b981;">${totalSuccesses || 0}</div>
         </div>
       </div>
 

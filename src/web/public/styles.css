@@ -937,9 +937,11 @@ body {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  padding: 8px;
+  padding: 10px;
   border-radius: 4px;
   transition: background 0.2s;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .metric-detail-header:hover {
@@ -956,6 +958,31 @@ body {
   margin-right: 12px;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+.metric-detail-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-right: 12px;
+}
+
+.metric-success {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.metric-failure {
+  color: #ef4444;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.metric-rate {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .metric-detail-toggle {

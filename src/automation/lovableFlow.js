@@ -212,6 +212,54 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       logger.warning('⚠️ URL não mudou, mas sem erro detectado - continuando...');
     }
 
+    // 🔍 VERIFICAR NOTIFICAÇÃO DE DOMÍNIO CANSADO
+    // Após clicar em Create e ir para página de aguardar confirmação,
+    // pode aparecer notificação "Email address not eligible for referral program"
+    // Isso indica que o domínio está cansado/bloqueado
+    logger.info('🔍 Verificando se há notificação de domínio não elegível...');
+    await page.waitForTimeout(getDelay(2000, usingProxy)); // Aguardar notificação aparecer
+    
+    const hasIneligibleNotification = await page.evaluate(() => {
+      const bodyText = document.body.innerText;
+      // Procurar pela mensagem exata ou variações
+      const ineligiblePatterns = [
+        'Email address not eligible for referral program',
+        'not eligible for referral program',
+        'email address not eligible',
+        'referral program',
+        'sign-up will proceed without the referral bonus'
+      ];
+      
+      return ineligiblePatterns.some(pattern => 
+        bodyText.toLowerCase().includes(pattern.toLowerCase())
+      );
+    });
+    
+    if (hasIneligibleNotification) {
+      const notificationText = await page.evaluate(() => {
+        // Tentar encontrar o texto exato da notificação
+        const allText = document.body.innerText;
+        const lines = allText.split('\n');
+        const notificationLine = lines.find(line => 
+          line.toLowerCase().includes('not eligible') || 
+          line.toLowerCase().includes('referral program')
+        );
+        return notificationLine || 'Notificação de domínio não elegível detectada';
+      });
+      
+      logger.error('❌ DOMÍNIO CANSADO DETECTADO!');
+      logger.error(`📝 Notificação: ${notificationText}`);
+      logger.error(`📧 Email usado: ${email}`);
+      
+      // Extrair domínio do email para incluir no erro
+      const emailDomain = email.split('@')[1] || 'unknown';
+      
+      // Lançar erro que será categorizado como email_error (contém "email" e "domínio")
+      throw new Error(`❌ Erro de email - Domínio não elegível para programa de indicação detectado. Email: ${email} | Domínio: ${emailDomain}`);
+    }
+    
+    logger.success('✅ Nenhuma notificação de domínio não elegível detectada');
+
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Cadastro concluído em ${executionTime}ms`);
 

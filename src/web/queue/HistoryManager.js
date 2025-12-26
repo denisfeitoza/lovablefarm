@@ -130,6 +130,57 @@ class HistoryManager {
   }
 
   /**
+   * Adiciona um sucesso individual ao histórico
+   * @param {Object} success - Objeto com dados do sucesso
+   */
+  addSuccess(success) {
+    const record = {
+      id: `success-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      email: success.email,
+      userId: success.userId,
+      queueId: success.queueId,
+      domain: success.domain || null, // Domínio usado
+      creditsEarned: success.creditsEarned || 0,
+      timestamp: new Date().toISOString(),
+      referralLink: success.referralLink || null
+    };
+
+    // Carregar sucessos existentes
+    const successesPath = path.join(__dirname, '../../../data/successes.json');
+    let successes = [];
+    
+    try {
+      if (fs.existsSync(successesPath)) {
+        const data = fs.readFileSync(successesPath, 'utf8');
+        successes = JSON.parse(data);
+      }
+    } catch (error) {
+      logger.error('Erro ao carregar sucessos', error);
+      successes = [];
+    }
+
+    // Adicionar no início da lista (mais recente primeiro)
+    successes.unshift(record);
+    
+    // Manter apenas os últimos 200 sucessos
+    if (successes.length > 200) {
+      successes = successes.slice(0, 200);
+    }
+
+    // Salvar sucessos
+    try {
+      const dataDir = path.dirname(successesPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      fs.writeFileSync(successesPath, JSON.stringify(successes, null, 2), 'utf8');
+      logger.info(`📚 Sucesso registrado: ${success.email}`);
+    } catch (error) {
+      logger.error('Erro ao salvar sucesso', error);
+    }
+  }
+
+  /**
    * Adiciona uma falha individual ao histórico
    * @param {Object} failure - Objeto com dados da falha
    */
@@ -205,11 +256,13 @@ class HistoryManager {
   }
 
   /**
-   * Calcula métricas agregadas de falhas
+   * Calcula métricas agregadas de falhas e sucessos
    */
   getFailureMetrics() {
     const failuresPath = path.join(__dirname, '../../../data/failures.json');
+    const successesPath = path.join(__dirname, '../../../data/successes.json');
     let failures = [];
+    let successes = [];
     
     try {
       if (fs.existsSync(failuresPath)) {
@@ -218,12 +271,21 @@ class HistoryManager {
       }
     } catch (error) {
       logger.error('Erro ao carregar falhas para métricas', error);
-      return this.getEmptyMetrics();
+    }
+
+    try {
+      if (fs.existsSync(successesPath)) {
+        const data = fs.readFileSync(successesPath, 'utf8');
+        successes = JSON.parse(data);
+      }
+    } catch (error) {
+      logger.error('Erro ao carregar sucessos para métricas', error);
     }
 
     // Inicializar contadores
     const metrics = {
       total: failures.length,
+      totalSuccesses: successes.length,
       byCategory: {
         popup_not_found: 0,
         email_error: 0,
@@ -247,6 +309,7 @@ class HistoryManager {
       if (!metrics.byQueue[queueId]) {
         metrics.byQueue[queueId] = {
           total: 0,
+          successes: 0,
           byCategory: {
             popup_not_found: 0,
             email_error: 0,
@@ -265,6 +328,7 @@ class HistoryManager {
       if (!metrics.byDomain[domain]) {
         metrics.byDomain[domain] = {
           total: 0,
+          successes: 0,
           byCategory: {
             popup_not_found: 0,
             email_error: 0,
@@ -279,6 +343,41 @@ class HistoryManager {
       }
     });
 
+    // Processar cada sucesso
+    successes.forEach(success => {
+      // Contar por fila
+      const queueId = success.queueId || 'unknown';
+      if (!metrics.byQueue[queueId]) {
+        metrics.byQueue[queueId] = {
+          total: 0,
+          successes: 0,
+          byCategory: {
+            popup_not_found: 0,
+            email_error: 0,
+            template_error: 0,
+            other_error: 0
+          }
+        };
+      }
+      metrics.byQueue[queueId].successes++;
+
+      // Contar por domínio
+      const domain = success.domain || 'unknown';
+      if (!metrics.byDomain[domain]) {
+        metrics.byDomain[domain] = {
+          total: 0,
+          successes: 0,
+          byCategory: {
+            popup_not_found: 0,
+            email_error: 0,
+            template_error: 0,
+            other_error: 0
+          }
+        };
+      }
+      metrics.byDomain[domain].successes++;
+    });
+
     return metrics;
   }
 
@@ -288,6 +387,7 @@ class HistoryManager {
   getEmptyMetrics() {
     return {
       total: 0,
+      totalSuccesses: 0,
       byCategory: {
         popup_not_found: 0,
         email_error: 0,

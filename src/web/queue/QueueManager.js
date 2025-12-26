@@ -274,6 +274,16 @@ class QueueManager {
       if (result.success) {
         queue.results.success++;
         queue.results.credits += result.creditsEarned || 0;
+        
+        // Registrar sucesso no histórico
+        historyManager.addSuccess({
+          email: result.credentials?.email || result.email || 'N/A',
+          userId: userId,
+          queueId: queueId,
+          domain: domain || null, // Incluir domínio usado
+          creditsEarned: result.creditsEarned || 0,
+          referralLink: queue.referralLink
+        });
       } else {
         queue.results.failed++;
         execution.error = result.error;
@@ -309,10 +319,20 @@ class QueueManager {
       // Determinar domínio usado (pode estar no execution ou na queue)
       const domain = execution.domain || (queue.selectedDomains && queue.selectedDomains.length > 0 ? queue.selectedDomains[0] : null);
       
+      // Determinar etapa que falhou baseado na mensagem de erro
+      let failedStep = 'Erro na execução';
+      if (error.message.includes('Banner/popup') || error.message.includes('créditos')) {
+        failedStep = 'Verificação de Créditos';
+      } else if (error.message.includes('Domínio não elegível') || error.message.includes('not eligible')) {
+        failedStep = 'Cadastro - Domínio não elegível';
+      } else if (error.message.includes('email') || error.message.includes('verificação')) {
+        failedStep = 'Verificação de Email';
+      }
+      
       historyManager.addFailure({
         email: email,
         error: error.message,
-        failedStep: error.message.includes('Banner/popup') ? 'Verificação de Créditos' : 'Erro na execução',
+        failedStep: failedStep,
         userId: userId,
         queueId: queueId,
         domain: domain || null, // Incluir domínio usado
