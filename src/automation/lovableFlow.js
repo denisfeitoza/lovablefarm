@@ -166,35 +166,64 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     const selectedMode = modes[Math.floor(Math.random() * modes.length)];
     logger.info(`Modo escolhido: ${selectedMode}`);
     
-    // Tentar múltiplos seletores para o botão de modo
-    const modeSelectors = [
-      `text="${selectedMode}"`,
-      `button:has-text("${selectedMode}")`,
-      `div:has-text("${selectedMode}")`,
-      `[role="button"]:has-text("${selectedMode}")`
-    ];
+    // Aguardar a página do quiz aparecer
+    await page.waitForSelector('text="Pick your style", text="Light", text="Dark"', { timeout: 10000 });
+    logger.info('Quiz de estilo encontrado');
     
-    let modeClicked = false;
-    for (const selector of modeSelectors) {
-      try {
-        const element = page.locator(selector).first();
-        if (await element.isVisible({ timeout: 2000 })) {
-          await element.click();
-          modeClicked = true;
-          logger.success(`✅ Modo selecionado com: ${selector}`);
-          break;
+    // Usar JavaScript para clicar (mais confiável)
+    const modeClicked = await page.evaluate((mode) => {
+      // Procurar por todos os elementos que contêm o texto
+      const elements = Array.from(document.querySelectorAll('*'));
+      
+      for (const el of elements) {
+        // Verificar se o elemento ou seus filhos contêm o texto exato
+        const text = el.textContent?.trim();
+        if (text === mode) {
+          // Tentar clicar no elemento ou em seu parent
+          const clickable = el.closest('button, [role="button"], div[onclick], a') || el;
+          if (clickable) {
+            clickable.click();
+            console.log('Clicou em:', mode, 'via', clickable.tagName);
+            return true;
+          }
         }
-      } catch (e) {
-        continue;
       }
-    }
+      
+      // Tentar uma abordagem mais agressiva - procurar qualquer coisa com o texto
+      const allText = document.body.innerText;
+      if (allText.includes(mode)) {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+          if (node.textContent?.trim() === mode) {
+            const parent = node.parentElement;
+            if (parent) {
+              parent.click();
+              console.log('Clicou via text node parent');
+              return true;
+            }
+          }
+        }
+      }
+      
+      return false;
+    }, selectedMode);
     
     if (!modeClicked) {
-      throw new Error('Não foi possível clicar no modo Light/Dark');
+      logger.error('❌ Não conseguiu clicar no modo. Tentando forçar...');
+      // Última tentativa - clicar em qualquer elemento visível que contenha o texto
+      try {
+        await page.locator(`text="${selectedMode}"`).first().click({ force: true, timeout: 3000 });
+        logger.success('✅ Modo clicado (forçado)');
+      } catch (e) {
+        throw new Error(`Não foi possível clicar no modo ${selectedMode}`);
+      }
+    } else {
+      logger.success(`✅ Modo ${selectedMode} selecionado`);
     }
     
     // Aguardar transição automática
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
 
     // 2. Preencher nome
     logger.info('2️⃣ Preenchendo nome...');
@@ -222,34 +251,30 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     logger.info(`Profissão escolhida: ${selectedRole}`);
     
     // Aguardar opções de role aparecerem
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
-    const roleSelectors = [
-      `text="${selectedRole}"`,
-      `button:has-text("${selectedRole}")`,
-      `div:has-text("${selectedRole}")`,
-      `[role="button"]:has-text("${selectedRole}")`
-    ];
-    
-    let roleClicked = false;
-    for (const selector of roleSelectors) {
-      try {
-        const element = page.locator(selector).first();
-        if (await element.isVisible({ timeout: 2000 })) {
-          await element.click();
-          roleClicked = true;
-          logger.success(`✅ Profissão selecionada com: ${selector}`);
-          break;
+    // Usar JavaScript para clicar
+    const roleClicked = await page.evaluate((role) => {
+      const elements = Array.from(document.querySelectorAll('*'));
+      for (const el of elements) {
+        const text = el.textContent?.trim();
+        if (text === role) {
+          const clickable = el.closest('button, [role="button"], div[onclick], a') || el;
+          if (clickable) {
+            clickable.click();
+            return true;
+          }
         }
-      } catch (e) {
-        continue;
       }
-    }
+      return false;
+    }, selectedRole);
     
     if (!roleClicked) {
-      throw new Error('Não foi possível clicar na profissão');
+      logger.warning('Tentando forçar clique na profissão...');
+      await page.locator(`text="${selectedRole}"`).first().click({ force: true });
     }
     
+    logger.success('✅ Profissão selecionada');
     await page.waitForTimeout(2000);
 
     // 4. Escolher tamanho da empresa - aleatório
@@ -258,31 +283,30 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     const selectedSize = companySizes[Math.floor(Math.random() * companySizes.length)];
     logger.info(`Tamanho escolhido: ${selectedSize}`);
     
-    const sizeSelectors = [
-      `text="${selectedSize}"`,
-      `button:has-text("${selectedSize}")`,
-      `div:has-text("${selectedSize}")`,
-      `[role="button"]:has-text("${selectedSize}")`
-    ];
+    await page.waitForTimeout(1000);
     
-    let sizeClicked = false;
-    for (const selector of sizeSelectors) {
-      try {
-        const element = page.locator(selector).first();
-        if (await element.isVisible({ timeout: 2000 })) {
-          await element.click();
-          sizeClicked = true;
-          logger.success(`✅ Tamanho selecionado com: ${selector}`);
-          break;
+    // Usar JavaScript para clicar
+    const sizeClicked = await page.evaluate((size) => {
+      const elements = Array.from(document.querySelectorAll('*'));
+      for (const el of elements) {
+        const text = el.textContent?.trim();
+        if (text === size) {
+          const clickable = el.closest('button, [role="button"], div[onclick], a') || el;
+          if (clickable) {
+            clickable.click();
+            return true;
+          }
         }
-      } catch (e) {
-        continue;
       }
-    }
+      return false;
+    }, selectedSize);
     
     if (!sizeClicked) {
-      throw new Error('Não foi possível clicar no tamanho da empresa');
+      logger.warning('Tentando forçar clique no tamanho...');
+      await page.locator(`text="${selectedSize}"`).first().click({ force: true });
     }
+    
+    logger.success('✅ Tamanho selecionado');
 
     // 5. Aguardar mensagem de confirmação de créditos
     logger.info('5️⃣ Aguardando confirmação de créditos...');
