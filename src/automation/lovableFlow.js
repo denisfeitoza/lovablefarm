@@ -110,9 +110,12 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
                              body.includes('verifique seu email') ||
                              body.includes('confirme seu email');
       
-      // Verificar se ainda tem o botão de criar conta (sinal de que não avançou)
-      const hasCreateButton = document.querySelector('button:has-text("Create")') !== null ||
-                             document.querySelector('button:has-text("Criar")') !== null;
+      // Verificar se ainda tem o botão de criar conta (JavaScript puro)
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const hasCreateButton = buttons.some(btn => {
+        const text = btn.innerText.toLowerCase();
+        return text.includes('create') || text.includes('criar');
+      });
       
       return {
         hasVerification,
