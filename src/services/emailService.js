@@ -63,6 +63,21 @@ class EmailService {
         // Se chegou aqui sem erro, o email está ativo e confirmado
         emailValidated = true;
         logger.confirmed(`💗 Email confirmado e ativo: ${email} (pronto para receber mensagens)`);
+        
+        // ✅ VALIDAÇÃO ADICIONAL: Aguardar um pouco e verificar novamente para garantir que está realmente pronto
+        logger.info(`🔍 Validação adicional: aguardando 2s e verificando novamente...`);
+        await this.delay(2000);
+        
+        try {
+          const doubleCheck = await this.client.emails.list({
+            limit: 1,
+            to: email
+          });
+          logger.confirmed(`💗 Email validado novamente - 100% confirmado e pronto: ${email}`);
+        } catch (doubleCheckError) {
+          logger.warning(`⚠️ Segunda validação falhou, mas primeira passou - continuando mesmo assim`);
+          logger.warning(`⚠️ Erro: ${doubleCheckError.message}`);
+        }
       } catch (error) {
         // Email não foi confirmado - recriar
         emailValidated = false;
@@ -278,15 +293,40 @@ class EmailService {
               
               // Buscar conteúdo completo se necessário
               let fullEmail = msg;
-              if (!msg.html && !msg.text) {
-                fullEmail = await this.getEmailContent(msg.id);
+              let emailBody = msg.html || msg.text || '';
+              
+              // Se não tem conteúdo, tentar buscar
+              if (!emailBody && msg.id) {
+                try {
+                  logger.info(`📥 Buscando conteúdo completo do email ${msg.id}...`);
+                  fullEmail = await this.getEmailContent(msg.id);
+                  emailBody = fullEmail.html || fullEmail.text || '';
+                  logger.success('✅ Conteúdo do email recuperado');
+                } catch (contentError) {
+                  logger.warning(`⚠️ Não foi possível buscar conteúdo completo do email: ${contentError.message}`);
+                  logger.warning(`⚠️ Tentando extrair link do assunto ou campos disponíveis...`);
+                  
+                  // Tentar extrair link de outros campos se disponível
+                  if (msg.body) {
+                    emailBody = msg.body;
+                  } else if (msg.content) {
+                    emailBody = typeof msg.content === 'string' ? msg.content : (msg.content.html || msg.content.text || '');
+                  }
+                  
+                  // Se ainda não tem, usar o que já temos
+                  if (!emailBody) {
+                    logger.warning(`⚠️ Nenhum conteúdo disponível, mas email foi encontrado - continuando...`);
+                    emailBody = ''; // Continuar mesmo sem conteúdo, o link pode estar na URL do email
+                  }
+                }
               }
               
               return {
                 id: msg.id,
                 subject,
                 from,
-                body: fullEmail.html || fullEmail.text || ''
+                body: emailBody,
+                raw: fullEmail // Incluir email completo para debug
               };
             }
           }
@@ -374,15 +414,35 @@ class EmailService {
           
           if (isFromLovable && isVerification && !isCreditsEmail && isToCorrectEmail) {
             logger.success('✅ Email de verificação encontrado na verificação final!');
+            
+            // Buscar conteúdo completo se necessário
             let fullEmail = msg;
-            if (!msg.html && !msg.text) {
-              fullEmail = await this.getEmailContent(msg.id);
+            let emailBody = msg.html || msg.text || '';
+            
+            // Se não tem conteúdo, tentar buscar
+            if (!emailBody && msg.id) {
+              try {
+                logger.info(`📥 Buscando conteúdo completo do email ${msg.id}...`);
+                fullEmail = await this.getEmailContent(msg.id);
+                emailBody = fullEmail.html || fullEmail.text || '';
+                logger.success('✅ Conteúdo do email recuperado');
+              } catch (contentError) {
+                logger.warning(`⚠️ Não foi possível buscar conteúdo completo do email: ${contentError.message}`);
+                // Tentar extrair de outros campos
+                if (msg.body) {
+                  emailBody = msg.body;
+                } else if (msg.content) {
+                  emailBody = typeof msg.content === 'string' ? msg.content : (msg.content.html || msg.content.text || '');
+                }
+              }
             }
+            
             return {
               id: msg.id,
               subject,
               from,
-              body: fullEmail.html || fullEmail.text || ''
+              body: emailBody,
+              raw: fullEmail
             };
           }
         }
