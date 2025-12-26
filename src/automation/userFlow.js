@@ -169,11 +169,23 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
     logger.error(`❌ Usuário ${userId} falhou na etapa: ${result.failedStep}`);
     logger.error(`❌ Erro: ${error.message}`);
   } finally {
-    // NÃO FECHAR NAVEGADOR EM CASO DE ERRO (debug mode)
-    if (result.success) {
-      // Sucesso: fechar tudo normalmente e limpar diretório temporário
-      // NÃO fechar page separadamente - já será fechada com o context
-      if (context) await context.close().catch(() => {});
+    // FECHAR NAVEGADOR APÓS REGISTRAR ERRO
+    try {
+      // Registrar informações do erro antes de fechar
+      if (!result.success) {
+        logger.error('🚨 ERRO DETECTADO - Fechando navegador após registro do erro');
+        try {
+          logger.info(`📍 URL atual: ${page ? page.url() : 'indisponível'}`);
+        } catch (e) {
+          logger.info('📍 URL atual: indisponível');
+        }
+      }
+      
+      // Fechar navegador em todos os casos (sucesso ou erro)
+      if (context) {
+        await context.close().catch(() => {});
+        logger.info('🧹 Navegador fechado');
+      }
       
       // Limpar diretório temporário
       if (tempDir) {
@@ -186,18 +198,8 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       }
       
       logger.info('🧹 Recursos limpos');
-    } else {
-      // ERRO: NUNCA FECHAR - deixar aberto indefinidamente
-      logger.error('🚨 ERRO DETECTADO - NAVEGADOR MANTIDO ABERTO INDEFINIDAMENTE');
-      logger.warning('⚠️ Navegador NÃO será fechado automaticamente');
-      logger.warning('⚠️ Feche manualmente quando terminar de debugar');
-      try {
-        logger.info(`📍 URL atual: ${page ? page.url() : 'indisponível'}`);
-      } catch (e) {
-        logger.info('📍 URL atual: indisponível');
-      }
-      logger.info(`📁 Diretório temporário mantido: ${tempDir}`);
-      // NÃO fechar automaticamente - deixar aberto para sempre
+    } catch (cleanupError) {
+      logger.error('❌ Erro ao limpar recursos', cleanupError);
     }
   }
 
