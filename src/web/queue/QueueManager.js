@@ -198,20 +198,6 @@ class QueueManager {
     const queue = this.queues.get(queueId);
     const executionId = `exec-${this.nextExecutionId++}`;
     
-    const execution = {
-      id: executionId,
-      queueId,
-      userId,
-      status: 'running',
-      startedAt: new Date().toISOString(),
-      completedAt: null,
-      result: null,
-      error: null
-    };
-
-    this.activeExecutions.set(executionId, execution);
-    
-    this.emit('execution:started', { executionId, execution });
     logger.info(`▶️  Executando usuário ${userId} (${executionId}) com link: ${queue.referralLink}`);
 
     try {
@@ -252,6 +238,22 @@ class QueueManager {
         logger.info(`🌐 Usuário ${userId} usará IP local ou proxy global (nenhum proxy foi selecionado para a fila)`);
       }
 
+      // Criar execution com informações completas
+      const execution = {
+        id: executionId,
+        queueId,
+        userId,
+        status: 'running',
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        result: null,
+        error: null,
+        domain: domain || null // Armazenar domínio usado
+      };
+
+      this.activeExecutions.set(executionId, execution);
+      this.emit('execution:started', { executionId, execution });
+
       // Executar fluxo do usuário passando o link de indicação, domínio e proxy
       const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString);
 
@@ -283,6 +285,7 @@ class QueueManager {
           failedStep: result.failedStep || 'Desconhecida',
           userId: userId,
           queueId: queueId,
+          domain: domain || null, // Incluir domínio usado
           referralLink: queue.referralLink
         });
       }
@@ -303,12 +306,16 @@ class QueueManager {
 
       // Registrar falha no histórico
       const email = execution.credentials?.email || 'N/A';
+      // Determinar domínio usado (pode estar no execution ou na queue)
+      const domain = execution.domain || (queue.selectedDomains && queue.selectedDomains.length > 0 ? queue.selectedDomains[0] : null);
+      
       historyManager.addFailure({
         email: email,
         error: error.message,
         failedStep: error.message.includes('Banner/popup') ? 'Verificação de Créditos' : 'Erro na execução',
         userId: userId,
         queueId: queueId,
+        domain: domain || null, // Incluir domínio usado
         referralLink: queue.referralLink
       });
 

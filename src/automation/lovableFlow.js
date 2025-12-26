@@ -196,7 +196,8 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     
     try {
       // Esperar pela URL mudar (sair de /signup)
-      await page.waitForURL(url => !url.toString().includes('/signup'), { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+      // Usar pageNavigation timeout (maior) pois redirects podem demorar mais com proxy
+      await page.waitForURL(url => !url.toString().includes('/signup'), { timeout: getTimeout(DEFAULT_TIMEOUTS.pageNavigation || DEFAULT_TIMEOUTS.pageLoad, usingProxy) });
       logger.success('✅ Cadastro aceito! URL mudou para verificação');
     } catch (e) {
       // Se não mudou em 10s, verificar se tem mensagem de erro
@@ -241,11 +242,12 @@ export async function verifyEmailInSameSession(page, verificationLink, userId = 
     logger.info('⏳ Aguardando loading e redirect...');
     
     // Aguardar a URL mudar (sinal de redirect completado)
+    // Usar pageNavigation timeout (maior) pois redirects podem demorar mais com proxy
     await page.waitForURL(url => {
       const urlStr = url.toString();
       // Quando NÃO for mais auth/action ou verify-email = redirect completou
       return !urlStr.includes('auth/action') && !urlStr.includes('verify-email');
-    }, { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+    }, { timeout: getTimeout(DEFAULT_TIMEOUTS.pageNavigation || DEFAULT_TIMEOUTS.pageLoad, usingProxy) });
     
     const finalUrl = page.url();
     logger.success(`✅ Redirect completado! URL: ${finalUrl}`);
@@ -681,9 +683,10 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
     logger.info('⏳ Aguardando editor carregar completamente...');
     await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.veryLongDelay, usingProxy));
     
+    // Usar pageLoad timeout (maior) pois o editor pode demorar mais para carregar com proxy
     await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
       state: 'visible', 
-      timeout: getTimeout(40000, usingProxy)
+      timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy)
     });
     logger.success('✅ Botão Publish encontrado!');
 

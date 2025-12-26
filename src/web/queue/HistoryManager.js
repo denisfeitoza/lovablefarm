@@ -99,10 +99,43 @@ class HistoryManager {
   }
 
   /**
+   * Categoriza o tipo de erro baseado na mensagem
+   */
+  categorizeError(error, failedStep) {
+    const errorLower = (error || '').toLowerCase();
+    const stepLower = (failedStep || '').toLowerCase();
+    
+    // Popup não encontrado
+    if (errorLower.includes('popup') || errorLower.includes('banner') || 
+        errorLower.includes('créditos') || errorLower.includes('credits') ||
+        stepLower.includes('créditos') || stepLower.includes('credits')) {
+      return 'popup_not_found';
+    }
+    
+    // Erros de email
+    if (errorLower.includes('email') || errorLower.includes('verificação') ||
+        errorLower.includes('verification') || stepLower.includes('email') ||
+        stepLower.includes('verificação')) {
+      return 'email_error';
+    }
+    
+    // Erros de template
+    if (errorLower.includes('template') || errorLower.includes('remix') ||
+        stepLower.includes('template') || stepLower.includes('escolher template')) {
+      return 'template_error';
+    }
+    
+    // Outros erros
+    return 'other_error';
+  }
+
+  /**
    * Adiciona uma falha individual ao histórico
    * @param {Object} failure - Objeto com dados da falha
    */
   addFailure(failure) {
+    const errorCategory = this.categorizeError(failure.error, failure.failedStep);
+    
     const record = {
       id: `failure-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       email: failure.email,
@@ -110,6 +143,8 @@ class HistoryManager {
       failedStep: failure.failedStep,
       userId: failure.userId,
       queueId: failure.queueId,
+      domain: failure.domain || null, // Domínio usado
+      errorCategory: errorCategory, // Categoria do erro
       timestamp: new Date().toISOString(),
       referralLink: failure.referralLink || null
     };
@@ -167,6 +202,101 @@ class HistoryManager {
     }
     
     return [];
+  }
+
+  /**
+   * Calcula métricas agregadas de falhas
+   */
+  getFailureMetrics() {
+    const failuresPath = path.join(__dirname, '../../../data/failures.json');
+    let failures = [];
+    
+    try {
+      if (fs.existsSync(failuresPath)) {
+        const data = fs.readFileSync(failuresPath, 'utf8');
+        failures = JSON.parse(data);
+      }
+    } catch (error) {
+      logger.error('Erro ao carregar falhas para métricas', error);
+      return this.getEmptyMetrics();
+    }
+
+    // Inicializar contadores
+    const metrics = {
+      total: failures.length,
+      byCategory: {
+        popup_not_found: 0,
+        email_error: 0,
+        template_error: 0,
+        other_error: 0
+      },
+      byQueue: {},
+      byDomain: {}
+    };
+
+    // Processar cada falha
+    failures.forEach(failure => {
+      // Contar por categoria
+      const category = failure.errorCategory || this.categorizeError(failure.error, failure.failedStep);
+      if (metrics.byCategory[category] !== undefined) {
+        metrics.byCategory[category]++;
+      }
+
+      // Contar por fila
+      const queueId = failure.queueId || 'unknown';
+      if (!metrics.byQueue[queueId]) {
+        metrics.byQueue[queueId] = {
+          total: 0,
+          byCategory: {
+            popup_not_found: 0,
+            email_error: 0,
+            template_error: 0,
+            other_error: 0
+          }
+        };
+      }
+      metrics.byQueue[queueId].total++;
+      if (metrics.byQueue[queueId].byCategory[category] !== undefined) {
+        metrics.byQueue[queueId].byCategory[category]++;
+      }
+
+      // Contar por domínio
+      const domain = failure.domain || 'unknown';
+      if (!metrics.byDomain[domain]) {
+        metrics.byDomain[domain] = {
+          total: 0,
+          byCategory: {
+            popup_not_found: 0,
+            email_error: 0,
+            template_error: 0,
+            other_error: 0
+          }
+        };
+      }
+      metrics.byDomain[domain].total++;
+      if (metrics.byDomain[domain].byCategory[category] !== undefined) {
+        metrics.byDomain[domain].byCategory[category]++;
+      }
+    });
+
+    return metrics;
+  }
+
+  /**
+   * Retorna métricas vazias
+   */
+  getEmptyMetrics() {
+    return {
+      total: 0,
+      byCategory: {
+        popup_not_found: 0,
+        email_error: 0,
+        template_error: 0,
+        other_error: 0
+      },
+      byQueue: {},
+      byDomain: {}
+    };
   }
 }
 

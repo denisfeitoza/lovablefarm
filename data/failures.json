@@ -1,5 +1,45 @@
 [
   {
+    "id": "failure-1766761921452-lg537vkmr",
+    "email": "bcosta4822@utlierconsorcios.com",
+    "error": "❌ Email de verificação não recebido após 5 tentativas para bcosta4822@utlierconsorcios.com. Verifique se o email está correto e se o domínio está configurado no Inbound.new",
+    "failedStep": "Verificação de Email",
+    "userId": 3,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T15:12:01.452Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "failure-1766760509845-2ftynmrtf",
+    "email": "fernando.rocha2048@funcionariosdeia.com",
+    "error": "page.waitForSelector: Timeout 40000ms exceeded.\nCall log:\n  - waiting for locator('button:has-text(\"Publish\"), button:has-text(\"Publicar\")') to be visible\n",
+    "failedStep": "Usar Template / Publicar",
+    "userId": 2,
+    "queueId": "queue-1",
+    "timestamp": "2025-12-26T14:48:29.869Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
+    "id": "failure-1766760497143-3a5ocekvs",
+    "email": "mvieira4458@funcionariosdeia.com",
+    "error": "page.waitForURL: Timeout 45000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://lovable.dev/auth/action?mode=verifyEmail&oobCode=eS-Qg1q4t741IlCpixQPaoD88RJ9VzGovdvfWNMg-P8AAAGbWyCmug&apiKey=AIzaSyBQNjlw9Vp4tP4VVeANzyPJnqbG2wLbYPw&lang=en\"\n============================================================",
+    "failedStep": "Verificação de Email",
+    "userId": 2,
+    "queueId": "queue-2",
+    "timestamp": "2025-12-26T14:48:17.143Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "failure-1766759623389-i7qqcoyxr",
+    "email": "l.costa5896@utlierconsorcios.com",
+    "error": "❌ Email não recebido após 5 tentativas",
+    "failedStep": "Verificação de Email",
+    "userId": 3,
+    "queueId": "queue-2",
+    "timestamp": "2025-12-26T14:33:43.389Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=AIS8RZC"
+  },
+  {
     "id": "failure-1766759256351-70tayvfyg",
     "email": "d.vieira6294@utlierconsorcios.com",
     "error": "❌ Email não recebido após 5 tentativas",

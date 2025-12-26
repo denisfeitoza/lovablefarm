@@ -818,6 +818,177 @@ body {
   text-decoration: underline;
 }
 
+/* Metrics */
+.metrics-content {
+  padding: 16px;
+}
+
+.metrics-overview {
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: var(--bg-dark);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  border: 2px solid var(--border);
+}
+
+.metric-card.total {
+  border-color: var(--primary);
+}
+
+.metric-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.metrics-categories {
+  margin-bottom: 24px;
+}
+
+.metrics-categories h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.category-card {
+  background: var(--bg-dark);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid var(--border);
+  transition: transform 0.2s;
+}
+
+.category-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.category-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.category-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.category-percentage {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.metrics-details {
+  margin-top: 24px;
+}
+
+.metric-section {
+  margin-bottom: 24px;
+}
+
+.metric-section h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.metric-details-list {
+  background: var(--bg-dark);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+
+.metric-detail-item {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.metric-detail-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.metric-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.metric-detail-header:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.metric-detail-key {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.metric-detail-total {
+  margin-right: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.metric-detail-toggle {
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.metric-detail-content {
+  padding: 12px 8px 0 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.metric-detail-category {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.metric-detail-category strong {
+  color: var(--text-primary);
+}
+
+.metric-detail-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 /* Footer */
 .footer {
   background: var(--bg-card);

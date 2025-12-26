@@ -70,6 +70,25 @@ router.get('/failures', (req, res) => {
 });
 
 /**
+ * GET /api/metrics - Obter métricas de falhas
+ */
+router.get('/metrics', (req, res) => {
+  try {
+    const metrics = historyManager.getFailureMetrics();
+    res.json({
+      success: true,
+      metrics
+    });
+  } catch (error) {
+    logger.error('Erro ao obter métricas', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * DELETE /api/history - Limpar histórico
  */
 router.delete('/history', (req, res) => {

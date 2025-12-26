@@ -12,6 +12,7 @@ class App {
     this.activeTimers = new Map(); // { executionId: interval }
     this.history = [];
     this.failures = [];
+    this.metrics = null;
     this.basePath = window.BASE_PATH || '';
     this.init();
   }
@@ -36,6 +37,7 @@ class App {
     this.fetchProxies(); // Buscar proxies logo no início
     this.fetchHistory();
     this.fetchFailures(); // Buscar falhas recentes
+    this.fetchMetrics(); // Buscar métricas
     // Iniciar loop de atualização dos timers
     setInterval(() => this.updateTimers(), 1000);
     // Atualizar falhas a cada 10 segundos
@@ -191,6 +193,121 @@ class App {
       }
     } catch (error) {
       console.error('Erro ao buscar falhas:', error);
+    }
+  }
+
+  async fetchMetrics() {
+    try {
+      const response = await fetch(this.apiUrl('/api/metrics'));
+      const data = await response.json();
+      if (data.success) {
+        this.metrics = data.metrics;
+        this.renderMetrics();
+      }
+    } catch (error) {
+      console.error('Erro ao buscar métricas:', error);
+    }
+  }
+
+  renderMetrics() {
+    const container = document.getElementById('metricsContent');
+    
+    if (!this.metrics) {
+      container.innerHTML = '<div class="empty-state-small">Carregando métricas...</div>';
+      return;
+    }
+
+    const { total, byCategory, byQueue, byDomain } = this.metrics;
+
+    // Nomes amigáveis para categorias
+    const categoryNames = {
+      popup_not_found: 'Popup não encontrado',
+      email_error: 'Erros de Email',
+      template_error: 'Erros de Template',
+      other_error: 'Outros Erros'
+    };
+
+    // Função para renderizar detalhes expansíveis
+    const renderDetails = (title, data, type) => {
+      if (!data || Object.keys(data).length === 0) {
+        return `<div class="metric-detail-empty">Nenhum dado disponível</div>`;
+      }
+
+      return Object.entries(data).map(([key, value]) => {
+        const totalValue = typeof value === 'object' ? value.total : value;
+        const categories = typeof value === 'object' ? value.byCategory : null;
+        
+        return `
+          <div class="metric-detail-item">
+            <div class="metric-detail-header" onclick="app.toggleMetricDetail('${type}-${key}')">
+              <span class="metric-detail-key">${key === 'unknown' ? '(Não especificado)' : key}</span>
+              <span class="metric-detail-total">${totalValue} falha(s)</span>
+              <span class="metric-detail-toggle">▼</span>
+            </div>
+            <div class="metric-detail-content" id="${type}-${key}" style="display: none;">
+              ${categories ? Object.entries(categories).map(([cat, count]) => `
+                <div class="metric-detail-category">
+                  <span>${categoryNames[cat] || cat}:</span>
+                  <strong>${count}</strong>
+                </div>
+              `).join('') : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    container.innerHTML = `
+      <div class="metrics-overview">
+        <div class="metric-card total">
+          <div class="metric-label">Total de Falhas</div>
+          <div class="metric-value">${total}</div>
+        </div>
+      </div>
+
+      <div class="metrics-categories">
+        <h3>Por Categoria</h3>
+        <div class="category-grid">
+          ${Object.entries(byCategory).map(([cat, count]) => `
+            <div class="category-card">
+              <div class="category-label">${categoryNames[cat] || cat}</div>
+              <div class="category-value">${count}</div>
+              <div class="category-percentage">${total > 0 ? ((count / total) * 100).toFixed(1) : 0}%</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="metrics-details">
+        <div class="metric-section">
+          <h3>Por Fila</h3>
+          <div class="metric-details-list">
+            ${renderDetails('Por Fila', byQueue, 'queue')}
+          </div>
+        </div>
+
+        <div class="metric-section">
+          <h3>Por Domínio</h3>
+          <div class="metric-details-list">
+            ${renderDetails('Por Domínio', byDomain, 'domain')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  toggleMetricDetail(id) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.style.display = element.style.display === 'none' ? 'block' : 'none';
+      // Atualizar ícone de toggle
+      const header = element.previousElementSibling;
+      if (header) {
+        const toggle = header.querySelector('.metric-detail-toggle');
+        if (toggle) {
+          toggle.textContent = element.style.display === 'none' ? '▼' : '▲';
+        }
+      }
     }
   }
 
