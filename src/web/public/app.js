@@ -541,8 +541,8 @@ class App {
     }
     
     // Validar execuções paralelas
-    if (isNaN(parallel) || parallel < 1 || parallel > 10) {
-      alert('Número de execuções paralelas inválido. Deve estar entre 1 e 10.');
+    if (isNaN(parallel) || parallel < 1 || parallel > 5) {
+      alert('Número de execuções paralelas inválido. Deve estar entre 1 e 5.');
       return;
     }
 
