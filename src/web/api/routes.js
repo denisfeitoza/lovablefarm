@@ -128,15 +128,17 @@ router.post('/queues', (req, res) => {
       });
     }
     
-    // Validar entrada
-    if (!users || users < 1) {
+    // Validar e parsear entrada
+    const usersNum = parseInt(users);
+    if (!users || isNaN(usersNum) || usersNum < 1) {
       return res.status(400).json({
         success: false,
         error: 'Número de usuários inválido'
       });
     }
     
-    if (parallel && (parallel < 1 || parallel > 10)) {
+    const parallelNum = parseInt(parallel) || 1;
+    if (isNaN(parallelNum) || parallelNum < 1 || parallelNum > 10) {
       return res.status(400).json({
         success: false,
         error: 'Número de execuções paralelas deve estar entre 1 e 10'
@@ -145,8 +147,8 @@ router.post('/queues', (req, res) => {
     
     const config = {
       name: name || `Fila ${Date.now()}`,
-      users: parseInt(users),
-      parallel: parseInt(parallel) || 1,
+      users: usersNum,
+      parallel: parallelNum,
       referralLink: referralLink.trim(),
       selectedDomains: selectedDomains || [] // Passar selectedDomains
     };

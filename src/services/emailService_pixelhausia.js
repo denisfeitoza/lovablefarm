@@ -129,7 +129,7 @@ class EmailService {
   /**
    * Aguarda email de verificação
    */
-  async waitForVerificationEmail(emailData, maxAttempts = 40, delayMs = 3000) {
+  async waitForVerificationEmail(emailData, maxAttempts = 3, delayMs = 3000) {
     const { proxyId, email } = emailData;
     
     logger.info('🔍 Monitorando chegada de email de verificação...', { 
@@ -205,7 +205,11 @@ class EmailService {
       }
     }
 
-    throw new Error(`❌ Timeout: Email não recebido após ${maxAttempts} tentativas`);
+    // Se não encontrou o email após todas as tentativas, esperar mais 5 segundos antes de falhar
+    logger.warning(`⚠️ Email não encontrado após ${maxAttempts} tentativas. Aguardando mais 5 segundos antes de marcar como falha...`);
+    await this.delay(5000);
+    
+    throw new Error(`❌ Email não recebido após ${maxAttempts} tentativas`);
   }
 
   /**

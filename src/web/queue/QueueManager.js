@@ -82,7 +82,7 @@ class QueueManager {
     this.queues.set(queueId, queue);
     
     this.emit('queue:created', { queueId, queue });
-    logger.info(`📋 Fila criada: ${queueId} (${config.users} usuários, ${config.parallel} paralelo)`);
+    logger.info(`📋 Fila criada: ${queueId} (${config.users} usuários, ${queue.parallelExecutions} paralelo)`);
     
     return queue; // Retornar o objeto completo, não apenas o ID
   }

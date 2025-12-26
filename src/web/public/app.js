@@ -473,8 +473,29 @@ class App {
 
     const referralLink = document.getElementById('queueReferralLink').value.trim();
     const name = document.getElementById('queueName').value;
-    const users = parseInt(document.getElementById('queueUsers').value);
-    const parallel = parseInt(document.getElementById('queueParallel').value);
+    const usersStr = document.getElementById('queueUsers').value;
+    const parallelStr = document.getElementById('queueParallel').value;
+    
+    const users = parseInt(usersStr);
+    const parallel = parseInt(parallelStr);
+
+    // Validar link de indicação
+    if (!referralLink) {
+      alert('Link de indicação é obrigatório');
+      return;
+    }
+    
+    // Validar número de usuários
+    if (!usersStr || isNaN(users) || users < 1) {
+      alert('Número de usuários inválido. Deve ser um número maior que 0.');
+      return;
+    }
+    
+    // Validar execuções paralelas
+    if (isNaN(parallel) || parallel < 1 || parallel > 10) {
+      alert('Número de execuções paralelas inválido. Deve estar entre 1 e 10.');
+      return;
+    }
 
     // Capturar domínios selecionados
     const selectedDomains = [];
@@ -484,12 +505,6 @@ class App {
     console.log('📧 Domínios selecionados:', selectedDomains);
     console.log('📋 Total de checkboxes encontrados:', document.querySelectorAll('#queueDomainSelection input[type="checkbox"]').length);
     console.log('✅ Total de checkboxes marcados:', checkboxes.length);
-
-    // Validar link de indicação
-    if (!referralLink) {
-      alert('Link de indicação é obrigatório');
-      return;
-    }
     
     // Validar seleção de domínios (sem confirmação)
     if (selectedDomains.length === 0) {
