@@ -168,18 +168,6 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
 
     logger.error(`❌ Usuário ${userId} falhou na etapa: ${result.failedStep}`);
     logger.error(`❌ Erro: ${error.message}`);
-
-    // Tirar screenshot final do erro
-    if (page) {
-      try {
-        await page.screenshot({ 
-          path: `reports/error-user-${userId}-final-${Date.now()}.png`,
-          fullPage: true 
-        });
-      } catch (e) {
-        // Ignorar erro de screenshot
-      }
-    }
   } finally {
     // NÃO FECHAR NAVEGADOR EM CASO DE ERRO (debug mode)
     if (result.success) {

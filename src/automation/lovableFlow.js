@@ -95,30 +95,16 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await createButton.click();
     logger.success('✅ Clicou em Create');
 
-    // 📸 SCREENSHOT logo após clicar
-    await page.screenshot({ path: `reports/screenshot-${userId}-apos-criar.png`, fullPage: false });
-    logger.info('📸 Screenshot tirado: apos-criar.png');
-
     // 🔥 AGUARDAR URL MUDAR (sinal de que aceitou)
     logger.info('⏳ Aguardando página mudar após cadastro...');
     await page.waitForTimeout(3000); // Esperar 3s primeiro
-    
-    // 📸 SCREENSHOT após 3s
-    await page.screenshot({ path: `reports/screenshot-${userId}-3s-depois.png`, fullPage: false });
-    logger.info('📸 Screenshot tirado: 3s-depois.png');
     
     try {
       // Esperar até 10 segundos pela URL mudar (sair de /signup)
       await page.waitForURL(url => !url.toString().includes('/signup'), { timeout: 10000 });
       logger.success('✅ Cadastro aceito! URL mudou para verificação');
-      
-      // 📸 SCREENSHOT quando mudar
-      await page.screenshot({ path: `reports/screenshot-${userId}-url-mudou.png`, fullPage: false });
-      logger.info('📸 Screenshot tirado: url-mudou.png');
     } catch (e) {
       // Se não mudou em 10s, verificar se tem mensagem de erro
-      await page.screenshot({ path: `reports/screenshot-${userId}-timeout.png`, fullPage: false });
-      logger.info('📸 Screenshot tirado: timeout.png');
       
       const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
       if (bodyText.includes('erro') || bodyText.includes('error')) {
@@ -157,10 +143,6 @@ export async function verifyEmailInSameSession(page, verificationLink, userId = 
     logger.info('Clicando no link de verificação...');
     await page.goto(verificationLink, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // 📸 SCREENSHOT após clicar no link
-    await page.screenshot({ path: `reports/screenshot-${userId}-link-verificacao.png`, fullPage: false });
-    logger.info('📸 Screenshot: link-verificacao.png');
-
     logger.info('⏳ Aguardando loading e redirect...');
     
     // Aguardar a URL mudar (sinal de redirect completado)
@@ -169,10 +151,6 @@ export async function verifyEmailInSameSession(page, verificationLink, userId = 
       // Quando NÃO for mais auth/action ou verify-email = redirect completou
       return !urlStr.includes('auth/action') && !urlStr.includes('verify-email');
     }, { timeout: 10000 });
-    
-    // 📸 SCREENSHOT após redirect
-    await page.screenshot({ path: `reports/screenshot-${userId}-apos-redirect.png`, fullPage: false });
-    logger.info('📸 Screenshot: apos-redirect.png');
     
     const finalUrl = page.url();
     logger.success(`✅ Redirect completado! URL: ${finalUrl}`);
@@ -200,10 +178,6 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     // Aguardar a página carregar
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
-    
-    // 📸 SCREENSHOT início do quiz
-    await page.screenshot({ path: `reports/screenshot-${userId}-quiz-inicio.png`, fullPage: false });
-    logger.info('📸 Screenshot: quiz-inicio.png');
 
     // 1. Escolher modo (Light ou Dark) - aleatório
     logger.info('1️⃣ Escolhendo modo (Light/Dark)...');
@@ -322,10 +296,6 @@ export async function completeOnboardingQuiz(page, userId = 1) {
       logger.success(`✅ Modo ${selectedMode} selecionado via JavaScript`);
     }
     
-    // 📸 SCREENSHOT após clicar no modo
-    await page.screenshot({ path: `reports/screenshot-${userId}-quiz-modo.png`, fullPage: false });
-    logger.info('📸 Screenshot: quiz-modo.png');
-    
     // Verificar se há botão "Next" (caso o design mude)
     logger.info('⏳ Verificando se há botão "Next"...');
     try {
@@ -338,10 +308,6 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     }
     
     await page.waitForTimeout(2500);
-    
-    // 📸 SCREENSHOT tela do nome
-    await page.screenshot({ path: `reports/screenshot-${userId}-quiz-nome.png`, fullPage: false });
-    logger.info('📸 Screenshot: quiz-nome.png');
 
     // 2. Preencher nome
     logger.info('2️⃣ Preenchendo nome...');
@@ -486,10 +452,6 @@ export async function completeOnboardingQuiz(page, userId = 1) {
       await page.waitForTimeout(3000);
     }
 
-    // 📸 SCREENSHOT final do quiz
-    await page.screenshot({ path: `reports/screenshot-${userId}-quiz-completo.png`, fullPage: false });
-    logger.info('📸 Screenshot: quiz-completo.png');
-    
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Onboarding completado em ${executionTime}ms`);
     return { success: true, executionTime };
@@ -497,17 +459,6 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     const executionTime = Date.now() - startTime;
     logger.error('❌ Erro ao completar quiz', error);
     logger.error(`URL atual: ${page.url()}`);
-    
-    // Tirar screenshot para debug
-    try {
-      await page.screenshot({ 
-        path: `reports/quiz-error-${userId}-${Date.now()}.png`,
-        fullPage: true 
-      });
-      logger.info('📸 Screenshot salvo em reports/');
-    } catch (e) {
-      // Ignorar erro de screenshot
-    }
     
     throw error;
   }
@@ -535,17 +486,9 @@ export async function selectTemplate(page, userId = 1) {
     // Aguardar seção de templates
     await page.waitForSelector('text="Templates"', { timeout: 10000 });
     
-    // 📸 SCREENSHOT tela de templates
-    await page.screenshot({ path: `reports/screenshot-${userId}-templates-topo.png`, fullPage: false });
-    logger.info('📸 Screenshot: templates-topo.png');
-    
     // Rolar para baixo para ver os templates
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(2000);
-    
-    // 📸 SCREENSHOT após scroll
-    await page.screenshot({ path: `reports/screenshot-${userId}-templates-todos.png`, fullPage: true });
-    logger.info('📸 Screenshot: templates-todos.png (full page)');
 
     // Buscar todos os templates disponíveis
     const templateCards = await page.locator('[role="link"], a').filter({ 
@@ -599,10 +542,7 @@ export async function selectTemplate(page, userId = 1) {
     await useTemplateButton.click();
     logger.success('✅ Clicou em "Use template"');
 
-    // 📸 SCREENSHOT após clicar em Use template
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: `reports/screenshot-${userId}-popup-remix.png`, fullPage: false });
-    logger.info('📸 Screenshot: popup-remix.png');
 
     // 🔥 AGUARDAR E CLICAR EM "REMIX" (popup que aparece)
     logger.info('⏳ Aguardando popup "Remix"...');
@@ -615,10 +555,6 @@ export async function selectTemplate(page, userId = 1) {
     // Aguardar editor começar a carregar
     logger.info('⏳ Aguardando editor abrir...');
     await page.waitForTimeout(5000);
-    
-    // 📸 SCREENSHOT editor carregando
-    await page.screenshot({ path: `reports/screenshot-${userId}-editor-carregando.png`, fullPage: false });
-    logger.info('📸 Screenshot: editor-carregando.png');
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Template selecionado e editor abrindo em ${executionTime}ms`);
@@ -644,19 +580,11 @@ export async function useTemplateAndPublish(page, userId = 1) {
     logger.info('⏳ Aguardando editor carregar completamente (10s)...');
     await page.waitForTimeout(10000);
     
-    // 📸 SCREENSHOT antes de procurar Publish
-    await page.screenshot({ path: `reports/screenshot-${userId}-antes-publish.png`, fullPage: false });
-    logger.info('📸 Screenshot: antes-publish.png');
-    
     await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
       state: 'visible', 
       timeout: 40000 
     });
     logger.success('✅ Botão Publish encontrado!');
-
-    // 📸 SCREENSHOT com botão Publish visível
-    await page.screenshot({ path: `reports/screenshot-${userId}-publish-visivel.png`, fullPage: false });
-    logger.info('📸 Screenshot: publish-visivel.png');
 
     // 1️⃣ Clicar no PRIMEIRO Publish (abre dropdown)
     const publishButton = page.locator('button:has-text("Publish"), button:has-text("Publicar")').first();
@@ -664,10 +592,6 @@ export async function useTemplateAndPublish(page, userId = 1) {
     logger.success('✅ Clicou no primeiro Publish (abrindo dropdown)');
 
     await page.waitForTimeout(1500);
-    
-    // 📸 SCREENSHOT dropdown aberto
-    await page.screenshot({ path: `reports/screenshot-${userId}-dropdown-publish.png`, fullPage: false });
-    logger.info('📸 Screenshot: dropdown-publish.png');
 
     // 2️⃣ Clicar no SEGUNDO Publish (dentro do dropdown)
     logger.info('⏳ Procurando segundo botão Publish no dropdown...');
@@ -687,10 +611,6 @@ export async function useTemplateAndPublish(page, userId = 1) {
     // Aguardar publicação começar
     logger.info('⏳ Aguardando publicação processar (15s)...');
     await page.waitForTimeout(15000);
-    
-    // 📸 SCREENSHOT após publicar
-    await page.screenshot({ path: `reports/screenshot-${userId}-apos-publicar.png`, fullPage: false });
-    logger.info('📸 Screenshot: apos-publicar.png');
     
     // Verificar se há popup de confirmação ou status "publicado"
     logger.info('⏳ Verificando confirmação de publicação...');
