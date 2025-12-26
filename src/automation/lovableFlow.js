@@ -340,7 +340,10 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     }
     
     logger.success('✅ Profissão selecionada');
-    await page.waitForTimeout(2000);
+    
+    // ESPERA MAIOR para backend processar
+    logger.info('⏳ Aguardando backend processar...');
+    await page.waitForTimeout(3000);
 
     // 4. Escolher tamanho da empresa - aleatório
     logger.info('4️⃣ Escolhendo tamanho da empresa...');
@@ -348,7 +351,7 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     const selectedSize = companySizes[Math.floor(Math.random() * companySizes.length)];
     logger.info(`Tamanho escolhido: ${selectedSize}`);
     
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     
     // Usar JavaScript para clicar
     const sizeClicked = await page.evaluate((size) => {
@@ -372,38 +375,72 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     }
     
     logger.success('✅ Tamanho selecionado');
-
-    // 5. Verificar se já pulou para o dashboard OU aguardar mensagem de créditos
-    logger.info('5️⃣ Verificando se quiz foi completado...');
     
-    const currentUrl = page.url();
-    if (currentUrl.includes('/dashboard') || currentUrl === 'https://lovable.dev/') {
-      logger.success('✅ Quiz completado automaticamente! Já está no dashboard');
-    } else {
-      // Aguardar mensagem de confirmação de créditos
-      logger.info('⏳ Aguardando confirmação de créditos...');
+    // 🔥 ESPERA CRÍTICA: Backend precisa processar a indicação!
+    logger.info('⏳ Aguardando backend processar indicação (5s)...');
+    await page.waitForTimeout(5000);
+
+    // 5. Aguardar mensagem de créditos aparecer
+    logger.info('5️⃣ Aguardando mensagem de créditos...');
+    
+    // Tentar múltiplos seletores para a mensagem de créditos
+    const creditSelectors = [
+      'text="+10 credits"',
+      'text="10 credits"',
+      'text=/\\+10\\s*credit/i',
+      'text=/10\\s*credit/i',
+      '[class*="credit"]',
+      '[class*="toast"]',
+      '[class*="notification"]',
+      '[class*="banner"]',
+      '[role="alert"]',
+      '[role="status"]'
+    ];
+    
+    let creditsFound = false;
+    
+    for (const selector of creditSelectors) {
       try {
-        await page.waitForSelector('text="+10 credits", text="10 credits"', { timeout: 8000 });
-        logger.success('✅ Mensagem de créditos encontrada!');
+        logger.info(`🔍 Tentando seletor: ${selector}`);
+        await page.waitForSelector(selector, { timeout: 3000 });
+        const element = await page.locator(selector).first();
+        const text = await element.textContent().catch(() => '');
         
-        await page.waitForTimeout(1500);
-        
-        // Clicar em Continue
-        logger.info('6️⃣ Clicando em Continue...');
-        const continueButton = page.locator('button:has-text("Continue")').first();
-        await continueButton.click();
-        logger.success('✅ Quiz completado!');
-        
-        // Aguardar dashboard carregar
-        await page.waitForTimeout(4000);
-      } catch (e) {
-        // Se não encontrou a mensagem, verificar se já está no dashboard
-        if (page.url().includes('/dashboard') || page.url() === 'https://lovable.dev/') {
-          logger.success('✅ Já estava no dashboard! Quiz pulado');
-        } else {
-          logger.warning('⚠️ Mensagem de créditos não encontrada, mas continuando...');
-          await page.waitForTimeout(2000);
+        if (text.includes('10') || text.includes('credit')) {
+          logger.success(`✅ Créditos encontrados com: ${selector}`);
+          logger.info(`📝 Texto: "${text}"`);
+          creditsFound = true;
+          break;
         }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (creditsFound) {
+      logger.success('✅ Mensagem de créditos detectada!');
+      await page.waitForTimeout(2000);
+      
+      // Procurar botão Continue
+      try {
+        logger.info('6️⃣ Procurando botão Continue...');
+        const continueButton = page.locator('button:has-text("Continue")').first();
+        await continueButton.click({ timeout: 5000 });
+        logger.success('✅ Clicou em Continue');
+        await page.waitForTimeout(3000);
+      } catch (e) {
+        logger.warning('⚠️ Botão Continue não encontrado - verificando URL...');
+      }
+    } else {
+      logger.warning('⚠️ Nenhuma mensagem de créditos encontrada');
+      logger.info(`📍 URL atual: ${page.url()}`);
+      
+      // Verificar se já está no dashboard
+      if (page.url().includes('/dashboard') || page.url() === 'https://lovable.dev/') {
+        logger.info('✅ Já está no dashboard, continuando...');
+      } else {
+        logger.warning('⚠️ Ainda no getting-started, esperando mais...');
+        await page.waitForTimeout(3000);
       }
     }
 
