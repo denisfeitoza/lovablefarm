@@ -167,41 +167,58 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     logger.info(`Modo escolhido: ${selectedMode}`);
     
     // Aguardar a página do quiz aparecer
-    await page.waitForSelector('text="Pick your style", text="Light", text="Dark"', { timeout: 10000 });
+    await page.waitForSelector('text="Pick your style"', { timeout: 10000 });
     logger.info('Quiz de estilo encontrado');
+    await page.waitForTimeout(1500);
     
-    // Usar JavaScript para clicar (mais confiável)
+    // Clicar no BLOCO/CONTAINER acima do texto (não no texto em si)
     const modeClicked = await page.evaluate((mode) => {
-      // Procurar por todos os elementos que contêm o texto
-      const elements = Array.from(document.querySelectorAll('*'));
+      // Encontrar o texto Light ou Dark
+      const allElements = Array.from(document.querySelectorAll('*'));
       
-      for (const el of elements) {
-        // Verificar se o elemento ou seus filhos contêm o texto exato
+      for (const el of allElements) {
         const text = el.textContent?.trim();
-        if (text === mode) {
-          // Tentar clicar no elemento ou em seu parent
-          const clickable = el.closest('button, [role="button"], div[onclick], a') || el;
-          if (clickable) {
-            clickable.click();
-            console.log('Clicou em:', mode, 'via', clickable.tagName);
-            return true;
-          }
-        }
-      }
-      
-      // Tentar uma abordagem mais agressiva - procurar qualquer coisa com o texto
-      const allText = document.body.innerText;
-      if (allText.includes(mode)) {
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-        let node;
-        while (node = walker.nextNode()) {
-          if (node.textContent?.trim() === mode) {
-            const parent = node.parentElement;
-            if (parent) {
-              parent.click();
-              console.log('Clicou via text node parent');
+        
+        // Se encontrou o texto exato
+        if (text === mode && el.childNodes.length <= 3) {
+          // Pegar o container pai (o bloco visual)
+          // Geralmente é um div, button ou elemento com padding grande
+          let container = el.parentElement;
+          
+          // Subir até 5 níveis para encontrar o container principal
+          for (let i = 0; i < 5; i++) {
+            if (!container) break;
+            
+            // Verificar se é um container clicável
+            const style = window.getComputedStyle(container);
+            const hasClickHandler = container.onclick || 
+                                   container.getAttribute('onclick') ||
+                                   style.cursor === 'pointer' ||
+                                   container.tagName === 'BUTTON' ||
+                                   container.getAttribute('role') === 'button';
+            
+            if (hasClickHandler) {
+              console.log('Clicando no container:', container.tagName, container.className);
+              container.click();
               return true;
             }
+            
+            // Tentar clicar no container se ele for grande o suficiente (bloco visual)
+            const rect = container.getBoundingClientRect();
+            if (rect.width > 100 && rect.height > 100) {
+              console.log('Clicando no bloco visual:', container.tagName);
+              container.click();
+              return true;
+            }
+            
+            container = container.parentElement;
+          }
+          
+          // Se não encontrou container específico, clicar no parent imediato
+          if (el.parentElement) {
+            console.log('Clicando no parent direto');
+            el.parentElement.click();
+            return true;
           }
         }
       }
@@ -210,20 +227,21 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     }, selectedMode);
     
     if (!modeClicked) {
-      logger.error('❌ Não conseguiu clicar no modo. Tentando forçar...');
-      // Última tentativa - clicar em qualquer elemento visível que contenha o texto
+      logger.error('❌ Não conseguiu clicar no bloco. Tentando forçar...');
+      // Última tentativa - clicar no elemento que contém o texto
       try {
-        await page.locator(`text="${selectedMode}"`).first().click({ force: true, timeout: 3000 });
+        const element = page.locator(`text="${selectedMode}"`).first();
+        await element.click({ force: true, timeout: 3000 });
         logger.success('✅ Modo clicado (forçado)');
       } catch (e) {
         throw new Error(`Não foi possível clicar no modo ${selectedMode}`);
       }
     } else {
-      logger.success(`✅ Modo ${selectedMode} selecionado`);
+      logger.success(`✅ Modo ${selectedMode} selecionado via bloco`);
     }
     
     // Aguardar transição automática
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(3000);
 
     // 2. Preencher nome
     logger.info('2️⃣ Preenchendo nome...');

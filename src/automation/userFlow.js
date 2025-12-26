@@ -121,20 +121,60 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       contextOptions.proxy = proxyConfig;
     }
 
-    context = await browser.newContext(contextOptions);
+    // IMPORTANTE: Criar contexto TOTALMENTE ISOLADO e ANÔNIMO
+    context = await browser.newContext({
+      ...contextOptions,
+      // Forçar modo privado/incognito
+      storageState: undefined, // Sem estado compartilhado
+      // Cada contexto começa limpo
+      clearCookies: true,
+      clearPermissions: true
+    });
+    
+    // Limpar TUDO no contexto antes de usar
+    await context.clearCookies();
+    await context.clearPermissions();
     
     // Adicionar scripts AVANÇADOS para evitar detecção de automação e bot
     await context.addInitScript(() => {
-      // Limpar TUDO antes de iniciar (storage, cookies, cache)
+      // Limpar TUDO antes de iniciar (storage, cookies, cache, indexedDB)
       try {
-        localStorage.clear();
-        sessionStorage.clear();
-        // Limpar cookies via document.cookie
-        document.cookie.split(";").forEach(c => {
-          document.cookie = c.replace(/^ +/, "").replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
-        });
+        // LocalStorage
+        if (window.localStorage) {
+          localStorage.clear();
+        }
+        
+        // SessionStorage
+        if (window.sessionStorage) {
+          sessionStorage.clear();
+        }
+        
+        // Cookies
+        if (document.cookie) {
+          document.cookie.split(";").forEach(c => {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, `=;expires=${new Date(0).toUTCString()};path=/`);
+          });
+        }
+        
+        // IndexedDB
+        if (window.indexedDB) {
+          try {
+            indexedDB.databases().then(dbs => {
+              dbs.forEach(db => indexedDB.deleteDatabase(db.name));
+            }).catch(() => {});
+          } catch (e) {}
+        }
+        
+        // Cache Storage
+        if (window.caches) {
+          caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+          }).catch(() => {});
+        }
+        
+        console.log('🧹 Storage completamente limpo - Sessão 100% anônima');
       } catch (e) {
-        // Ignorar erros de limpeza
+        console.log('Erro ao limpar storage:', e);
       }
 
       // Remover webdriver flag
