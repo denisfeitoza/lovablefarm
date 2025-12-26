@@ -380,68 +380,57 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     logger.info('⏳ Aguardando backend processar indicação (5s)...');
     await page.waitForTimeout(5000);
 
-    // 5. Aguardar mensagem de créditos aparecer
-    logger.info('5️⃣ Aguardando mensagem de créditos...');
+    // 5. Aguardar POPUP ou BANNER de créditos (referral)
+    logger.info('5️⃣ Aguardando popup/banner de indicação...');
     
-    // Tentar múltiplos seletores para a mensagem de créditos
-    const creditSelectors = [
-      'text="+10 credits"',
-      'text="10 credits"',
-      'text=/\\+10\\s*credit/i',
-      'text=/10\\s*credit/i',
-      '[class*="credit"]',
-      '[class*="toast"]',
-      '[class*="notification"]',
-      '[class*="banner"]',
-      '[role="alert"]',
-      '[role="status"]'
-    ];
+    // Textos corretos que devemos procurar:
+    // POPUP: "Congratulations! You have earned +10 credits"
+    // BANNER: "You've signed up using a referral link. Publish your first project and reward your friend with 10 bonus credits."
     
     let creditsFound = false;
     
-    for (const selector of creditSelectors) {
+    // Tentar encontrar o POPUP primeiro
+    try {
+      logger.info('🔍 Procurando popup de "Congratulations"...');
+      await page.waitForSelector('text=/Congratulations.*earned.*\\+10.*credits/i', { timeout: 5000 });
+      logger.success('🎉 POPUP DE CRÉDITOS ENCONTRADO!');
+      creditsFound = true;
+    } catch (e) {
+      logger.info('⚠️ Popup não encontrado, procurando banner...');
+    }
+    
+    // Se não encontrou popup, tentar encontrar o BANNER
+    if (!creditsFound) {
       try {
-        logger.info(`🔍 Tentando seletor: ${selector}`);
-        await page.waitForSelector(selector, { timeout: 3000 });
-        const element = await page.locator(selector).first();
-        const text = await element.textContent().catch(() => '');
-        
-        if (text.includes('10') || text.includes('credit')) {
-          logger.success(`✅ Créditos encontrados com: ${selector}`);
-          logger.info(`📝 Texto: "${text}"`);
-          creditsFound = true;
-          break;
-        }
+        logger.info('🔍 Procurando banner de "referral link"...');
+        await page.waitForSelector('text=/referral link.*Publish.*first project.*bonus credits/i', { timeout: 5000 });
+        logger.success('🎉 BANNER DE CRÉDITOS ENCONTRADO!');
+        creditsFound = true;
       } catch (e) {
-        continue;
+        logger.warning('⚠️ Banner não encontrado');
       }
     }
     
     if (creditsFound) {
-      logger.success('✅ Mensagem de créditos detectada!');
+      logger.success('✅ Indicação reconhecida pelo sistema!');
       await page.waitForTimeout(2000);
       
-      // Procurar botão Continue
+      // Procurar botão Continue (caso seja popup)
       try {
         logger.info('6️⃣ Procurando botão Continue...');
-        const continueButton = page.locator('button:has-text("Continue")').first();
-        await continueButton.click({ timeout: 5000 });
-        logger.success('✅ Clicou em Continue');
-        await page.waitForTimeout(3000);
+        const continueButton = page.locator('button:has-text("Continue"), button:has-text("Got it"), button:has-text("OK")').first();
+        await continueButton.click({ timeout: 3000 });
+        logger.success('✅ Clicou em Continue/OK');
+        await page.waitForTimeout(2000);
       } catch (e) {
-        logger.warning('⚠️ Botão Continue não encontrado - verificando URL...');
+        logger.info('⚠️ Sem botão para fechar - continuando...');
       }
     } else {
-      logger.warning('⚠️ Nenhuma mensagem de créditos encontrada');
+      logger.error('❌ NENHUMA MENSAGEM DE INDICAÇÃO ENCONTRADA!');
+      logger.warning('⚠️ O sistema NÃO reconheceu a indicação');
       logger.info(`📍 URL atual: ${page.url()}`);
-      
-      // Verificar se já está no dashboard
-      if (page.url().includes('/dashboard') || page.url() === 'https://lovable.dev/') {
-        logger.info('✅ Já está no dashboard, continuando...');
-      } else {
-        logger.warning('⚠️ Ainda no getting-started, esperando mais...');
-        await page.waitForTimeout(3000);
-      }
+      logger.info('⏳ Aguardando mais 3s caso apareça...');
+      await page.waitForTimeout(3000);
     }
 
     const executionTime = Date.now() - startTime;

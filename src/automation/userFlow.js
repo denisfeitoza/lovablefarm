@@ -81,19 +81,31 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
         // MODO INCÓGNITO / PRIVADO (PRIORIDADE MÁXIMA)
         // ============================================
         '--incognito',                    // ✅ Modo anônimo REAL do Chrome
+        
+        // ============================================
+        // ANTI-DETECÇÃO ULTRA AGRESSIVA
+        // ============================================
         '--disable-blink-features=AutomationControlled',
+        '--exclude-switches=enable-automation',
         '--disable-dev-shm-usage',
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-web-security',
         '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-infobars',
+        '--window-position=0,0',
         '--disable-background-networking',
         '--disable-extensions',
         '--disable-sync',
         '--metrics-recording-only',
         '--mute-audio',
         '--no-first-run',
-        '--no-default-browser-check'
+        '--no-default-browser-check',
+        '--enable-features=NetworkService,NetworkServiceInProcess',
+        '--disable-breakpad',
+        '--disable-component-extensions-with-background-pages',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--enable-features=UserActivationSameOriginVisibility'
       ]
     };
 
@@ -116,51 +128,108 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
     await context.clearCookies();
     await context.clearPermissions();
     
-    // Adicionar scripts AVANÇADOS para evitar detecção de automação e bot
+    // 🔥 SCRIPTS ULTRA AVANÇADOS ANTI-DETECÇÃO
     await context.addInitScript(() => {
-      // Limpar TUDO antes de iniciar (storage, cookies, cache, indexedDB)
+      // Limpar TUDO antes de iniciar
       try {
-        // LocalStorage
-        if (window.localStorage) {
-          localStorage.clear();
-        }
-        
-        // SessionStorage
-        if (window.sessionStorage) {
-          sessionStorage.clear();
-        }
-        
-        // Cookies
+        if (window.localStorage) localStorage.clear();
+        if (window.sessionStorage) sessionStorage.clear();
         if (document.cookie) {
           document.cookie.split(";").forEach(c => {
             document.cookie = c.replace(/^ +/, "").replace(/=.*/, `=;expires=${new Date(0).toUTCString()};path=/`);
           });
         }
-        
-        // IndexedDB
         if (window.indexedDB) {
-          try {
-            indexedDB.databases().then(dbs => {
-              dbs.forEach(db => indexedDB.deleteDatabase(db.name));
-            }).catch(() => {});
-          } catch (e) {}
+          indexedDB.databases().then(dbs => {
+            dbs.forEach(db => indexedDB.deleteDatabase(db.name));
+          }).catch(() => {});
         }
-        
-        // Cache Storage
         if (window.caches) {
           caches.keys().then(names => {
             names.forEach(name => caches.delete(name));
           }).catch(() => {});
         }
-        
-        console.log('🧹 Storage completamente limpo - Sessão 100% anônima');
-      } catch (e) {
-        console.log('Erro ao limpar storage:', e);
-      }
+      } catch (e) {}
 
-      // Remover webdriver flag
+      // 🔥 REMOVER TODAS as flags de automação
+      delete navigator.__proto__.webdriver;
       Object.defineProperty(navigator, 'webdriver', {
-        get: () => false,
+        get: () => undefined,
+        configurable: true
+      });
+      
+      // Remover todas as propriedades de Playwright/Puppeteer
+      delete window.playwright;
+      delete window.Playwright;
+      delete window.__playwright;
+      delete window.__pw_manual;
+      delete window.__PW_inspect;
+      delete navigator.__playwright;
+      
+      // Remover Puppeteer
+      delete window.puppeteer;
+      delete window.__puppeteer;
+      delete navigator.puppeteer;
+      
+      // Remover Selenium
+      delete window.selenium;
+      delete window.callSelenium;
+      delete window._selenium;
+      delete window.__selenium_unwrapped;
+      delete window.__webdriver_evaluate;
+      delete window.__webdriver_script_function;
+      delete window.__webdriver_script_func;
+      delete window.__webdriver_script_fn;
+      delete window.__fxdriver_evaluate;
+      delete window.__fxdriver_unwrapped;
+      delete window.__driver_evaluate;
+      delete window.__webdriver_unwrapped;
+      delete window.__driver_unwrapped;
+      
+      // Sobrescrever toString de funções nativas
+      const originalToString = Function.prototype.toString;
+      Function.prototype.toString = function() {
+        if (this === navigator.permissions.query) {
+          return 'function query() { [native code] }';
+        }
+        return originalToString.apply(this, arguments);
+      };
+      
+      // 🔥 MOCKAR MOUSE/TOUCH EVENTS (parecer humano)
+      let lastMouseX = 0, lastMouseY = 0;
+      document.addEventListener('mousemove', (e) => {
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      }, true);
+      
+      // Adicionar histórico de movimentos
+      window.__mouseHistory = [];
+      
+      // 🔥 SOBRESCREVER NOTIFICATION API
+      const OriginalNotification = window.Notification;
+      Object.defineProperty(window, 'Notification', {
+        get: () => OriginalNotification,
+        set: () => {}
+      });
+      
+      // 🔥 MOCK de BATTERY API (navegadores reais têm)
+      if (!navigator.getBattery) {
+        navigator.getBattery = () => Promise.resolve({
+          charging: Math.random() > 0.5,
+          chargingTime: Math.random() * 10000,
+          dischargingTime: Math.random() * 100000,
+          level: 0.5 + Math.random() * 0.5
+        });
+      }
+      
+      // 🔥 MOCK de CONNECTION API
+      Object.defineProperty(navigator, 'connection', {
+        get: () => ({
+          effectiveType: '4g',
+          downlink: 10,
+          rtt: 50,
+          saveData: false
+        })
       });
 
       // Adicionar plugins realistas
