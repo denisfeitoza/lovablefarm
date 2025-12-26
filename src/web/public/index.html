@@ -256,7 +256,11 @@
 
         <div class="form-group">
           <label>Proxies para esta Fila (Opcional)</label>
-          <small style="margin-bottom: 8px;">Selecione quais proxies usar. Se nenhum for marcado, usa IP local ou proxy global.</small>
+          <small style="margin-bottom: 8px; display: block; color: var(--warning); font-weight: 500;">
+            ⚠️ Recomendado usar proxies apenas em muitas operações paralelas e preferencialmente no modo Random.
+            Para poucas execuções paralelas, usar IP local é mais rápido e eficiente.
+          </small>
+          <small style="margin-bottom: 8px; display: block;">Selecione quais proxies usar. Se nenhum for marcado, usa IP local ou proxy global.</small>
           <div style="margin-bottom: 8px; display: flex; gap: 8px;">
             <button type="button" class="btn btn-small btn-secondary" onclick="app.selectAllProxies()">
               ✓ Todos
