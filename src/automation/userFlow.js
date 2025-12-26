@@ -3,7 +3,7 @@ import { logger } from '../utils/logger.js';
 import { config } from '../utils/config.js';
 import { emailService } from '../services/emailService.js';
 import { proxyService } from '../services/proxyService.js';
-import { signupOnLovable, verifyEmailInSameSession, goToTemplate, useTemplateAndPublish } from './lovableFlow.js';
+import { signupOnLovable, verifyEmailInSameSession, completeOnboardingQuiz, selectTemplate, useTemplateAndPublish } from './lovableFlow.js';
 
 /**
  * Executa o fluxo completo de um usuário
@@ -273,13 +273,18 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
     const verifyResult = await verifyEmailInSameSession(page, verificationLink, userId);
     result.steps.emailVerification = verifyResult.executionTime;
 
-    // 7. Ir direto para o template (sem quiz)
-    logger.info('\n⏭️  Etapa 4: Indo direto para Template (Quiz pulado)');
-    const skipResult = await goToTemplate(page, userId);
-    result.steps.skipQuiz = skipResult.executionTime;
+    // 7. Completar quiz de onboarding
+    logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding');
+    const quizResult = await completeOnboardingQuiz(page, userId);
+    result.steps.onboardingQuiz = quizResult.executionTime;
 
-    // 8. Usar template e publicar
-    logger.info('\n🚀 Etapa 5: Usando Template e Publicando');
+    // 8. Selecionar template
+    logger.info('\n🎨 Etapa 5: Selecionando Template');
+    const templateResult = await selectTemplate(page, userId);
+    result.steps.selectTemplate = templateResult.executionTime;
+
+    // 9. Usar template e publicar
+    logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
     const publishResult = await useTemplateAndPublish(page, userId);
     result.steps.useTemplateAndPublish = publishResult.executionTime;
 
@@ -304,8 +309,10 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       result.failedStep = 'Cadastro';
     } else if (!result.steps.emailVerification) {
       result.failedStep = 'Verificação de Email';
-    } else if (!result.steps.skipQuiz) {
-      result.failedStep = 'Pular Quiz / Carregar Template';
+    } else if (!result.steps.onboardingQuiz) {
+      result.failedStep = 'Quiz de Onboarding';
+    } else if (!result.steps.selectTemplate) {
+      result.failedStep = 'Seleção de Template';
     } else if (!result.steps.useTemplateAndPublish) {
       result.failedStep = 'Usar Template / Publicar';
     } else {
