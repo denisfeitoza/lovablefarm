@@ -52,20 +52,35 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
     }
 
     // 3. Iniciar navegador com configurações ANÔNIMAS e anti-detecção
-    logger.info('🌐 Iniciando navegador em modo anônimo...');
+    logger.info('🌐 Iniciando navegador em MODO INCÓGNITO REAL...');
     browser = await chromium.launch({
       headless: config.headless,
       slowMo: config.slowMo,
+      // MODO INCÓGNITO NATIVO DO CHROMIUM
+      channel: 'chrome', // Usar Chrome real se disponível
       args: [
-        // Anti-detecção
+        // ============================================
+        // MODO INCÓGNITO / PRIVADO (PRIORIDADE MÁXIMA)
+        // ============================================
+        '--incognito',                    // Modo anônimo nativo
+        '--guest',                        // Modo convidado (ainda mais isolado)
+        '--bwsi',                         // Browse Without Sign In
+        '--no-first-run',                 // Não executar first-run
+        '--no-default-browser-check',    // Não verificar navegador padrão
+        
+        // ============================================
+        // ANTI-DETECÇÃO
+        // ============================================
         '--disable-blink-features=AutomationControlled',
         '--disable-dev-shm-usage',
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-web-security',
         '--disable-features=IsolateOrigins,site-per-process',
-        // Privacidade / Anonimato
-        '--incognito',
+        
+        // ============================================
+        // PRIVACIDADE TOTAL (sem cache, sem histórico, sem dados)
+        // ============================================
         '--disable-background-networking',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
@@ -90,13 +105,20 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
         '--ignore-gpu-blacklist',
         '--metrics-recording-only',
         '--mute-audio',
-        '--no-default-browser-check',
-        '--no-first-run',
         '--no-pings',
         '--no-zygote',
         '--password-store=basic',
         '--use-mock-keychain',
-        '--disable-blink-features=AutomationControlled'
+        
+        // ============================================
+        // STORAGE E CACHE (TUDO DESABILITADO)
+        // ============================================
+        '--disk-cache-size=0',           // Cache zerado
+        '--media-cache-size=0',          // Cache de mídia zerado
+        '--disable-application-cache',   // Sem cache de aplicação
+        '--disable-cache',               // Sem cache
+        '--disable-offline-load-stale-cache',
+        '--disable-gpu-shader-disk-cache'
       ]
     });
 
