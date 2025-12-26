@@ -329,39 +329,19 @@ export async function selectTemplate(page, userId = 1) {
 }
 
 /**
- * Etapa 4: Usar template e publicar
+ * Etapa 5: Publicar projeto
  */
 export async function useTemplateAndPublish(page, userId = 1) {
   const startTime = Date.now();
   
   try {
-    logger.step(4, 'Usando template e publicando');
+    logger.step(5, 'Publicando projeto');
 
-    // Clicar em Use Template
-    const useTemplateButton = await page.waitForSelector('button:has-text("Use Template"), button:has-text("Usar Template")', {
-      state: 'visible',
-      timeout: 15000
-    });
-    
-    await useTemplateButton.click();
-    logger.success('✅ Clicou em Usar Template');
-
-    // Aguardar e clicar em Remix se aparecer
-    try {
-      const remixButton = await page.waitForSelector('button:has-text("Remix"), button:has-text("Remixar")', {
-        state: 'visible',
-        timeout: 5000
-      });
-      await remixButton.click();
-      logger.success('✅ Clicou em Remix');
-    } catch (e) {
-      logger.info('⚠️ Remix não encontrado (opcional)');
-    }
-
-    // Aguardar editor carregar
+    // Aguardar editor carregar (após clicar em Use Template na etapa anterior)
+    logger.info('⏳ Aguardando editor carregar...');
     await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
       state: 'visible', 
-      timeout: 20000 
+      timeout: 30000 
     });
     logger.success('✅ Editor carregado');
 
