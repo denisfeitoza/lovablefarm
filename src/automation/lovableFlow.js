@@ -599,10 +599,29 @@ export async function selectTemplate(page, userId = 1) {
     await useTemplateButton.click();
     logger.success('✅ Clicou em "Use template"');
 
-    await page.waitForTimeout(3000);
+    // 📸 SCREENSHOT após clicar em Use template
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: `reports/screenshot-${userId}-popup-remix.png`, fullPage: false });
+    logger.info('📸 Screenshot: popup-remix.png');
+
+    // 🔥 AGUARDAR E CLICAR EM "REMIX" (popup que aparece)
+    logger.info('⏳ Aguardando popup "Remix"...');
+    await page.waitForSelector('button:has-text("Remix"), button:has-text("remix")', { timeout: 10000 });
+    
+    const remixButton = await page.locator('button:has-text("Remix"), button:has-text("remix")').first();
+    await remixButton.click();
+    logger.success('✅ Clicou em "Remix"');
+    
+    // Aguardar editor começar a carregar
+    logger.info('⏳ Aguardando editor abrir...');
+    await page.waitForTimeout(5000);
+    
+    // 📸 SCREENSHOT editor carregando
+    await page.screenshot({ path: `reports/screenshot-${userId}-editor-carregando.png`, fullPage: false });
+    logger.info('📸 Screenshot: editor-carregando.png');
 
     const executionTime = Date.now() - startTime;
-    logger.success(`✅ Template selecionado em ${executionTime}ms`);
+    logger.success(`✅ Template selecionado e editor abrindo em ${executionTime}ms`);
     return { success: true, executionTime };
   } catch (error) {
     const executionTime = Date.now() - startTime;
@@ -621,61 +640,72 @@ export async function useTemplateAndPublish(page, userId = 1) {
   try {
     logger.step(5, 'Publicando projeto');
 
-    // Aguardar editor carregar (após clicar em Use Template na etapa anterior)
-    logger.info('⏳ Aguardando editor carregar...');
+    // Aguardar editor carregar completamente (após clicar em Remix)
+    logger.info('⏳ Aguardando editor carregar completamente (10s)...');
+    await page.waitForTimeout(10000);
+    
+    // 📸 SCREENSHOT antes de procurar Publish
+    await page.screenshot({ path: `reports/screenshot-${userId}-antes-publish.png`, fullPage: false });
+    logger.info('📸 Screenshot: antes-publish.png');
+    
     await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
       state: 'visible', 
-      timeout: 30000 
+      timeout: 40000 
     });
-    logger.success('✅ Editor carregado');
+    logger.success('✅ Botão Publish encontrado!');
 
-    // Clicar em Publish
-    const publishButton = await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', {
-      state: 'visible',
-      timeout: 10000
-    });
-    
+    // 📸 SCREENSHOT com botão Publish visível
+    await page.screenshot({ path: `reports/screenshot-${userId}-publish-visivel.png`, fullPage: false });
+    logger.info('📸 Screenshot: publish-visivel.png');
+
+    // 1️⃣ Clicar no PRIMEIRO Publish (abre dropdown)
+    const publishButton = page.locator('button:has-text("Publish"), button:has-text("Publicar")').first();
     await publishButton.click();
-    logger.success('✅ Clicou em Publish');
+    logger.success('✅ Clicou no primeiro Publish (abrindo dropdown)');
 
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1500);
+    
+    // 📸 SCREENSHOT dropdown aberto
+    await page.screenshot({ path: `reports/screenshot-${userId}-dropdown-publish.png`, fullPage: false });
+    logger.info('📸 Screenshot: dropdown-publish.png');
 
-    // Clicar no segundo botão Publish (dropdown)
-    try {
-      const allPublishButtons = await page.locator('button:has-text("Publish")').all();
-      if (allPublishButtons.length > 1) {
-        for (let i = 1; i < allPublishButtons.length; i++) {
-          if (await allPublishButtons[i].isVisible()) {
-            await allPublishButtons[i].click();
-            logger.success('✅ Clicou em Publish (dropdown)');
-            break;
-          }
-        }
-      }
-    } catch (e) {
-      logger.warning('⚠️ Dropdown não encontrado');
+    // 2️⃣ Clicar no SEGUNDO Publish (dentro do dropdown)
+    logger.info('⏳ Procurando segundo botão Publish no dropdown...');
+    
+    // Buscar todos os botões Publish visíveis
+    const allPublishButtons = await page.locator('button:has-text("Publish"), button:has-text("Publicar")').all();
+    logger.info(`📋 Encontrados ${allPublishButtons.length} botões Publish`);
+    
+    if (allPublishButtons.length > 1) {
+      await allPublishButtons[1].click();
+      logger.success('✅ Clicou no segundo Publish (confirmação)');
+    } else {
+      logger.warning('⚠️ Apenas 1 botão Publish - tentando clicar novamente');
+      await allPublishButtons[0].click();
     }
 
-    // Aguardar publicação
-    logger.info('⏳ Aguardando publicação...');
-    await page.waitForTimeout(5000);
-
-    // Verificar se ainda está processando
-    let isProcessing = true;
-    let maxWait = 10000;
-    const startWait = Date.now();
+    // Aguardar publicação começar
+    logger.info('⏳ Aguardando publicação processar (15s)...');
+    await page.waitForTimeout(15000);
     
-    while (isProcessing && (Date.now() - startWait) < maxWait) {
-      const hasSpinner = await page.locator('[class*="spin"], [class*="load"], [role="progressbar"]').first().isVisible({ timeout: 500 }).catch(() => false);
-      const hasProcessingText = await page.locator('text=/processing|publicando|deploying/i').first().isVisible({ timeout: 500 }).catch(() => false);
-      
-      if (!hasSpinner && !hasProcessingText) {
-        isProcessing = false;
-        logger.success(`✅ Processamento finalizado`);
-        break;
-      }
-      
-      await page.waitForTimeout(1000);
+    // 📸 SCREENSHOT após publicar
+    await page.screenshot({ path: `reports/screenshot-${userId}-apos-publicar.png`, fullPage: false });
+    logger.info('📸 Screenshot: apos-publicar.png');
+    
+    // Verificar se há popup de confirmação ou status "publicado"
+    logger.info('⏳ Verificando confirmação de publicação...');
+    const hasConfirmation = await page.evaluate(() => {
+      const body = document.body.innerText.toLowerCase();
+      return body.includes('publicado') || 
+             body.includes('published') || 
+             body.includes('success') || 
+             body.includes('live');
+    });
+    
+    if (hasConfirmation) {
+      logger.success('🎉 Publicação confirmada!');
+    } else {
+      logger.warning('⚠️ Confirmação não detectada, mas seguindo em frente...');
     }
 
     await page.waitForTimeout(2000); // Segurança
