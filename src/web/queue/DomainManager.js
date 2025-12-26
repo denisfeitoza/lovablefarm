@@ -41,13 +41,13 @@ class DomainManager {
         logger.info(`📧 Domínios carregados: ${this.domains.length} domínio(s)`);
       } else {
         // Configuração padrão
-        this.domains = ['funcionariosartificiais.com', 'funcionariosdeia.com', 'utlierconsorcios.com'];
+        this.domains = ['funcionariosartificiais.com', 'funcionariosdeia.com', 'vindia.com.br'];
         this.saveDomains();
         logger.info('📧 Configuração padrão de domínios criada');
       }
     } catch (error) {
       logger.error('Erro ao carregar domínios', error);
-      this.domains = ['funcionariosartificiais.com', 'funcionariosdeia.com', 'utlierconsorcios.com'];
+      this.domains = ['funcionariosartificiais.com', 'funcionariosdeia.com', 'vindia.com.br'];
     }
   }
 
