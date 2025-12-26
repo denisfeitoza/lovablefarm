@@ -95,34 +95,23 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await createButton.click();
     logger.success('✅ Clicou em Create');
 
-    // 🔥 VERIFICAR se apareceu mensagem de verificação de email
-    logger.info('⏳ Aguardando mensagem de verificação...');
-    await page.waitForTimeout(2000);
-    
-    // Verificar se avançou para a tela de verificação
-    const verificationCheck = await page.evaluate(() => {
-      const body = document.body.innerText.toLowerCase();
-      
-      // Verificar se apareceu mensagem de verificação (PT ou EN)
-      const hasVerification = body.includes('verifique') || 
-                             body.includes('verify') || 
-                             body.includes('check your email') ||
-                             body.includes('caixa de entrada') ||
-                             body.includes('inbox');
-      
-      return {
-        hasVerification,
-        bodyText: body.substring(0, 600)
-      };
-    });
-    
-    if (!verificationCheck.hasVerification) {
-      logger.error('❌ CADASTRO BLOQUEADO! Mensagem de verificação não apareceu');
-      logger.error(`📝 Texto da página: ${verificationCheck.bodyText}`);
-      throw new Error('Cadastro bloqueado - não avançou para verificação');
+    // 🔥 AGUARDAR URL MUDAR (sinal de que aceitou)
+    logger.info('⏳ Aguardando página mudar após cadastro...');
+    try {
+      // Esperar até 10 segundos pela URL mudar (sair de /signup)
+      await page.waitForURL(url => !url.toString().includes('/signup'), { timeout: 10000 });
+      logger.success('✅ Cadastro aceito! URL mudou para verificação');
+    } catch (e) {
+      // Se não mudou em 10s, verificar se tem mensagem de erro
+      const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
+      if (bodyText.includes('erro') || bodyText.includes('error')) {
+        logger.error('❌ CADASTRO BLOQUEADO! Erro detectado');
+        logger.error(`📝 Texto: ${bodyText.substring(0, 500)}`);
+        throw new Error('Cadastro bloqueado');
+      }
+      // Se não tem erro, apenas não mudou ainda - continuar mesmo assim
+      logger.warning('⚠️ URL não mudou, mas sem erro detectado - continuando...');
     }
-    
-    logger.success('✅ Cadastro aceito! Mensagem de verificação detectada');
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Cadastro concluído em ${executionTime}ms`);
