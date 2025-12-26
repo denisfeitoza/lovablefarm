@@ -28,8 +28,9 @@ class EmailService {
 
   /**
    * Gera um novo email usando domínio customizado (com alternância global ou específica)
+   * Recria até ser confirmado/validado pela API
    */
-  async generateEmail(userId, specificDomain = null) {
+  async generateEmail(userId, specificDomain = null, attempt = 1, maxAttempts = 10) {
     try {
       await this.initialize();
       
@@ -40,12 +41,81 @@ class EmailService {
       const username = generateRandomUsername();
       const email = `${username}@${domain}`;
       
-      logger.info(`Gerando email: ${email} (domínio: ${domain}${specificDomain ? ' - específico' : ' - global'})`);
+      logger.info(`Gerando email (tentativa ${attempt}/${maxAttempts}): ${email} (domínio: ${domain}${specificDomain ? ' - específico' : ' - global'})`);
       
       // Garantir que não reutilizamos
       if (this.usedEmails.has(email)) {
         logger.warning('Email já usado, gerando novo');
-        return this.generateEmail(userId, specificDomain);
+        return this.generateEmail(userId, specificDomain, 1, maxAttempts); // Resetar tentativas
+      }
+
+      // ✅ VALIDAÇÃO OBRIGATÓRIA: Verificar se email está ativo e funcional
+      logger.info(`🔍 Validando se email está ativo: ${email}...`);
+      let emailValidated = false;
+      
+      try {
+        // Tentar buscar mensagens (mesmo que vazio) para validar que a API reconhece o email
+        const testResponse = await this.client.emails.list({
+          limit: 1,
+          to: email
+        });
+        
+        // Se chegou aqui sem erro, o email está ativo e confirmado
+        emailValidated = true;
+        logger.confirmed(`💗 Email confirmado e ativo: ${email} (pronto para receber mensagens)`);
+      } catch (error) {
+        // Email não foi confirmado - recriar
+        emailValidated = false;
+        
+        // Verificar se é um erro crítico (API não reconhece o email/domínio)
+        const isCriticalError = error.message && (
+          error.message.includes('not found') ||
+          error.message.includes('invalid') ||
+          error.message.includes('domain') ||
+          error.message.includes('404') ||
+          error.message.includes('403')
+        );
+        
+        if (isCriticalError) {
+          // Erro crítico - email não está acessível, recriar
+          logger.warning(`⚠️ Email ${email} não confirmado na API (erro crítico)`);
+          
+          if (attempt < maxAttempts) {
+            logger.warning(`⚠️ Recriando email (tentativa ${attempt + 1}/${maxAttempts})...`);
+            await this.delay(1000); // Pequeno delay entre tentativas
+            return this.generateEmail(userId, specificDomain, attempt + 1, maxAttempts);
+          } else {
+            // Sem mais tentativas
+            logger.error(`❌ Falha ao confirmar email após ${maxAttempts} tentativas`);
+            logger.error(`❌ Último erro: ${error.message}`);
+            throw new Error(`Não foi possível gerar email confirmado após ${maxAttempts} tentativas. Verifique se o domínio ${domain} está configurado corretamente no Inbound.new`);
+          }
+        } else {
+          // Erro não crítico (timeout, etc) - tentar recriar mesmo assim
+          logger.warning(`⚠️ Email ${email} não confirmado (erro não crítico: ${error.message})`);
+          
+          if (attempt < maxAttempts) {
+            logger.warning(`⚠️ Recriando email (tentativa ${attempt + 1}/${maxAttempts})...`);
+            await this.delay(1000);
+            return this.generateEmail(userId, specificDomain, attempt + 1, maxAttempts);
+          } else {
+            // Sem mais tentativas - falhar
+            logger.error(`❌ Falha ao confirmar email após ${maxAttempts} tentativas`);
+            throw new Error(`Não foi possível gerar email confirmado após ${maxAttempts} tentativas`);
+          }
+        }
+      }
+
+      // ✅ Só chega aqui se email foi confirmado
+      if (!emailValidated) {
+        // Isso não deveria acontecer, mas por segurança recriar
+        if (attempt < maxAttempts) {
+          logger.warning(`⚠️ Email não confirmado, recriando (tentativa ${attempt + 1}/${maxAttempts})...`);
+          await this.delay(1000);
+          return this.generateEmail(userId, specificDomain, attempt + 1, maxAttempts);
+        } else {
+          throw new Error(`Email não foi confirmado após ${maxAttempts} tentativas`);
+        }
       }
 
       this.usedEmails.add(email);
@@ -55,10 +125,13 @@ class EmailService {
         email,
         username,
         domain: domain,
-        createdAt: new Date()
+        createdAt: new Date(),
+        validated: true, // Sempre true aqui, pois só chega se foi confirmado
+        validationAttempts: attempt
       });
       
-      logger.success(`✅ Email gerado: ${email}`);
+      // Log rosa de confirmação
+      logger.confirmed(`💗 Email confirmado e pronto: ${email}`);
       
       return {
         email,
@@ -66,6 +139,12 @@ class EmailService {
         domain: domain
       };
     } catch (error) {
+      // Se for erro de validação crítica, já foi tratado acima
+      if (error.message.includes('Não foi possível gerar email confirmado') || 
+          error.message.includes('Email não foi confirmado')) {
+        throw error;
+      }
+      
       logger.error(`Erro ao gerar email`, error);
       throw new Error(`Falha ao gerar email: ${error.message}`);
     }
@@ -73,22 +152,39 @@ class EmailService {
 
   /**
    * Obtém emails recebidos para um endereço específico
+   * Filtra manualmente para garantir que só retorna emails para o endereço exato
    */
   async getMessages(emailAddress) {
     try {
       await this.initialize();
       
-      // Listar emails
+      // Listar emails - usar limit menor e filtrar manualmente
       const response = await this.client.emails.list({
-        limit: 50, // Últimos 50 emails
-        to: emailAddress // Filtrar por destinatário
+        limit: 100, // Buscar mais para garantir que encontramos o email correto
+        to: emailAddress // Filtrar por destinatário (pode retornar emails relacionados)
       });
       
       if (!response.data || response.data.length === 0) {
         return [];
       }
       
-      return response.data;
+      // ✅ FILTRAR MANUALMENTE: Garantir que só retornamos emails para o endereço EXATO
+      // A API pode retornar emails relacionados, então filtramos aqui
+      const exactMatches = response.data.filter(email => {
+        // Verificar campo 'to' (pode ser string ou array)
+        const toField = email.to || email.recipient || email.email || '';
+        const toArray = Array.isArray(toField) ? toField : [toField];
+        
+        // Verificar se o emailAddress está na lista de destinatários (case-insensitive)
+        return toArray.some(recipient => {
+          const recipientStr = typeof recipient === 'string' ? recipient : (recipient.email || recipient.address || '');
+          return recipientStr.toLowerCase().trim() === emailAddress.toLowerCase().trim();
+        });
+      });
+      
+      logger.info(`📧 API retornou ${response.data.length} email(s), ${exactMatches.length} para ${emailAddress} (filtrado)`);
+      
+      return exactMatches;
     } catch (error) {
       logger.error('Erro ao buscar emails', error);
       return [];
@@ -130,12 +226,18 @@ class EmailService {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        logger.info(`📬 Verificando inbox... (${attempt}/${maxAttempts})`);
+        logger.info(`📬 Verificando inbox de ${email}... (${attempt}/${maxAttempts})`);
         
         const messages = await this.getMessages(email);
         
+        // Log detalhado para diagnóstico
         if (messages && messages.length > 0) {
-          logger.info(`✉️  ${messages.length} email(s) encontrado(s)`);
+          logger.info(`✉️  ${messages.length} email(s) encontrado(s) para ${email}`);
+          
+          // Listar todos os emails recebidos para debug
+          messages.forEach((msg, idx) => {
+            logger.info(`  📧 Email ${idx + 1}: De: ${msg.from || 'N/A'} | Assunto: ${msg.subject || 'N/A'}`);
+          });
           
           // Procurar email de verificação da Lovable
           for (const msg of messages) {
@@ -191,25 +293,105 @@ class EmailService {
           
           logger.info('📧 Emails encontrados não são de verificação');
         } else {
-          logger.info(`📭 Inbox vazia - aguardando...`);
+          logger.info(`📭 Inbox vazia para ${email} - aguardando...`);
+          
+          // Na última tentativa, fazer uma verificação final mais detalhada
+          if (attempt === maxAttempts) {
+            logger.warning(`⚠️ Nenhum email encontrado após ${maxAttempts} tentativas`);
+            logger.warning(`⚠️ Verificando se email ${email} está acessível...`);
+            
+            // Tentar uma última verificação para ver se há algum problema com o email
+            try {
+              const finalCheck = await this.getMessages(email);
+              logger.info(`🔍 Verificação final: API respondeu (${finalCheck ? finalCheck.length : 0} emails)`);
+            } catch (finalError) {
+              logger.error(`❌ ERRO CRÍTICO: Email ${email} não está acessível na API`);
+              logger.error(`❌ Erro: ${finalError.message}`);
+              throw new Error(`Email ${email} não está acessível. Verifique se o domínio está configurado corretamente no Inbound.new`);
+            }
+          }
         }
 
         // Aguardar antes da próxima tentativa
         if (attempt < maxAttempts) {
-          logger.info(`⏳ Aguardando ${delayMs}ms...`);
+          logger.info(`⏳ Aguardando ${delayMs}ms antes da próxima tentativa...`);
           await this.delay(delayMs);
         }
       } catch (error) {
-        logger.warning(`⚠️  Erro na tentativa ${attempt}`, { error: error.message });
-        await this.delay(delayMs);
+        // Se for erro de API (não timeout), pode ser problema de configuração
+        if (error.message.includes('não está acessível') || error.message.includes('API')) {
+          throw error; // Re-lançar erros críticos
+        }
+        
+        logger.warning(`⚠️  Erro na tentativa ${attempt}/${maxAttempts}`, { 
+          error: error.message,
+          email: email
+        });
+        
+        // Aguardar antes de tentar novamente
+        if (attempt < maxAttempts) {
+          await this.delay(delayMs);
+        }
       }
     }
 
     // Se não encontrou o email após todas as tentativas, esperar mais 5 segundos antes de falhar
-    logger.warning(`⚠️ Email não encontrado após ${maxAttempts} tentativas. Aguardando mais 5 segundos antes de marcar como falha...`);
+    logger.warning(`⚠️ Email de verificação não encontrado após ${maxAttempts} tentativas para ${email}`);
+    logger.warning(`⚠️ Aguardando mais 5 segundos antes de marcar como falha...`);
     await this.delay(5000);
     
-    throw new Error(`❌ Email não recebido após ${maxAttempts} tentativas`);
+    // Fazer uma última verificação antes de falhar
+    try {
+      const lastCheck = await this.getMessages(email);
+      if (lastCheck && lastCheck.length > 0) {
+        logger.info(`📧 Encontrados ${lastCheck.length} email(s) na verificação final - processando...`);
+        // Processar emails encontrados na última verificação
+        for (const msg of lastCheck) {
+          const from = msg.from || '';
+          const subject = msg.subject || '';
+          const to = msg.to || [];
+          
+          const isFromLovable = 
+            from.toLowerCase().includes('lovable') ||
+            from.toLowerCase().includes('noreply') ||
+            from.toLowerCase().includes('no-reply');
+          
+          const isVerification = 
+            subject.toLowerCase().includes('verif') ||
+            subject.toLowerCase().includes('confirm') ||
+            subject.toLowerCase().includes('activate') ||
+            subject.toLowerCase().includes('ative');
+          
+          const isCreditsEmail = 
+            subject.toLowerCase().includes('credits') ||
+            subject.toLowerCase().includes('friend') ||
+            subject.toLowerCase().includes('referral') ||
+            subject.toLowerCase().includes('créditos');
+          
+          const isToCorrectEmail = to.some(recipient => 
+            recipient.toLowerCase() === email.toLowerCase()
+          );
+          
+          if (isFromLovable && isVerification && !isCreditsEmail && isToCorrectEmail) {
+            logger.success('✅ Email de verificação encontrado na verificação final!');
+            let fullEmail = msg;
+            if (!msg.html && !msg.text) {
+              fullEmail = await this.getEmailContent(msg.id);
+            }
+            return {
+              id: msg.id,
+              subject,
+              from,
+              body: fullEmail.html || fullEmail.text || ''
+            };
+          }
+        }
+      }
+    } catch (lastError) {
+      logger.error(`❌ Erro na verificação final: ${lastError.message}`);
+    }
+    
+    throw new Error(`❌ Email de verificação não recebido após ${maxAttempts} tentativas para ${email}. Verifique se o email está correto e se o domínio está configurado no Inbound.new`);
   }
 
   /**

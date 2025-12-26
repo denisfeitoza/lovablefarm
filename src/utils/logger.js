@@ -65,6 +65,16 @@ class Logger {
     console.log(chalk.cyan(`[STEP ${step}]`), chalk.gray(timestamp), message);
   }
 
+  confirmed(message, data = {}) {
+    const timestamp = new Date().toISOString();
+    const log = { level: 'confirmed', message, data, timestamp };
+    this.logs.push(log);
+    logStream.emitLog('confirmed', message, data);
+    console.log(chalk.magenta(`[CONFIRMED]`), chalk.gray(timestamp), chalk.magenta(message));
+    if (Object.keys(data).length > 0) {
+      console.log(chalk.gray(JSON.stringify(data, null, 2)));
+    }
+  }
 
   getLogs() {
     return this.logs;
