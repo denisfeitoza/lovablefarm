@@ -158,7 +158,7 @@ export async function completeOnboardingQuiz(page, userId = 1) {
 
     // Aguardar a página carregar
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
 
     // 1. Escolher modo (Light ou Dark) - aleatório
     logger.info('1️⃣ Escolhendo modo (Light/Dark)...');
@@ -166,39 +166,91 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     const selectedMode = modes[Math.floor(Math.random() * modes.length)];
     logger.info(`Modo escolhido: ${selectedMode}`);
     
-    const modeButton = await page.locator(`text="${selectedMode}"`).first();
-    await modeButton.click();
-    logger.success('✅ Modo selecionado');
+    // Tentar múltiplos seletores para o botão de modo
+    const modeSelectors = [
+      `text="${selectedMode}"`,
+      `button:has-text("${selectedMode}")`,
+      `div:has-text("${selectedMode}")`,
+      `[role="button"]:has-text("${selectedMode}")`
+    ];
+    
+    let modeClicked = false;
+    for (const selector of modeSelectors) {
+      try {
+        const element = page.locator(selector).first();
+        if (await element.isVisible({ timeout: 2000 })) {
+          await element.click();
+          modeClicked = true;
+          logger.success(`✅ Modo selecionado com: ${selector}`);
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (!modeClicked) {
+      throw new Error('Não foi possível clicar no modo Light/Dark');
+    }
     
     // Aguardar transição automática
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
 
     // 2. Preencher nome
     logger.info('2️⃣ Preenchendo nome...');
     const names = ['Alex Silva', 'Maria Santos', 'João Oliveira', 'Ana Costa', 'Pedro Lima', 'Julia Souza'];
     const randomName = names[Math.floor(Math.random() * names.length)];
     
-    await page.fill('input[placeholder*="name" i], input[type="text"]', randomName);
+    // Aguardar campo de nome aparecer
+    await page.waitForSelector('input[type="text"], input[placeholder*="name" i]', { timeout: 5000 });
+    
+    const nameInput = page.locator('input[type="text"], input[placeholder*="name" i]').first();
+    await nameInput.fill(randomName);
     logger.info(`Nome preenchido: ${randomName}`);
     
-    const nextButton1 = await page.locator('button:has-text("Next")').first();
+    // Clicar em Next
+    await page.waitForTimeout(1000);
+    const nextButton1 = page.locator('button:has-text("Next")').first();
     await nextButton1.click();
     logger.success('✅ Nome confirmado');
     
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
 
-    // 3. Escolher profissão (role) - aleatório, mas sempre Other
+    // 3. Escolher profissão (role) - sempre Other
     logger.info('3️⃣ Escolhendo profissão...');
-    const roles = ['Founder', 'Product', 'Designer', 'Engineer', 'Consultant', 'Marketing / Sales', 'Operations', 'Other'];
-    // Sempre escolher "Other" conforme solicitado
     const selectedRole = 'Other';
     logger.info(`Profissão escolhida: ${selectedRole}`);
     
-    const roleButton = await page.locator(`text="${selectedRole}"`).first();
-    await roleButton.click();
-    logger.success('✅ Profissão selecionada');
+    // Aguardar opções de role aparecerem
+    await page.waitForTimeout(1000);
     
-    await page.waitForTimeout(1500);
+    const roleSelectors = [
+      `text="${selectedRole}"`,
+      `button:has-text("${selectedRole}")`,
+      `div:has-text("${selectedRole}")`,
+      `[role="button"]:has-text("${selectedRole}")`
+    ];
+    
+    let roleClicked = false;
+    for (const selector of roleSelectors) {
+      try {
+        const element = page.locator(selector).first();
+        if (await element.isVisible({ timeout: 2000 })) {
+          await element.click();
+          roleClicked = true;
+          logger.success(`✅ Profissão selecionada com: ${selector}`);
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (!roleClicked) {
+      throw new Error('Não foi possível clicar na profissão');
+    }
+    
+    await page.waitForTimeout(2000);
 
     // 4. Escolher tamanho da empresa - aleatório
     logger.info('4️⃣ Escolhendo tamanho da empresa...');
@@ -206,25 +258,47 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     const selectedSize = companySizes[Math.floor(Math.random() * companySizes.length)];
     logger.info(`Tamanho escolhido: ${selectedSize}`);
     
-    const sizeButton = await page.locator(`text="${selectedSize}"`).first();
-    await sizeButton.click();
-    logger.success('✅ Tamanho da empresa selecionado');
+    const sizeSelectors = [
+      `text="${selectedSize}"`,
+      `button:has-text("${selectedSize}")`,
+      `div:has-text("${selectedSize}")`,
+      `[role="button"]:has-text("${selectedSize}")`
+    ];
+    
+    let sizeClicked = false;
+    for (const selector of sizeSelectors) {
+      try {
+        const element = page.locator(selector).first();
+        if (await element.isVisible({ timeout: 2000 })) {
+          await element.click();
+          sizeClicked = true;
+          logger.success(`✅ Tamanho selecionado com: ${selector}`);
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (!sizeClicked) {
+      throw new Error('Não foi possível clicar no tamanho da empresa');
+    }
 
     // 5. Aguardar mensagem de confirmação de créditos
     logger.info('5️⃣ Aguardando confirmação de créditos...');
-    await page.waitForSelector('text="+10 credits"', { timeout: 10000 });
+    await page.waitForSelector('text="+10 credits", text="10 credits"', { timeout: 15000 });
     logger.success('✅ Mensagem de créditos encontrada!');
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
     // 6. Clicar em Continue
     logger.info('6️⃣ Clicando em Continue...');
-    const continueButton = await page.locator('button:has-text("Continue")').first();
+    const continueButton = page.locator('button:has-text("Continue")').first();
     await continueButton.click();
     logger.success('✅ Quiz completado!');
 
     // Aguardar dashboard carregar
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(4000);
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Onboarding completado em ${executionTime}ms`);
@@ -233,6 +307,18 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     const executionTime = Date.now() - startTime;
     logger.error('❌ Erro ao completar quiz', error);
     logger.error(`URL atual: ${page.url()}`);
+    
+    // Tirar screenshot para debug
+    try {
+      await page.screenshot({ 
+        path: `reports/quiz-error-${userId}-${Date.now()}.png`,
+        fullPage: true 
+      });
+      logger.info('📸 Screenshot salvo em reports/');
+    } catch (e) {
+      // Ignorar erro de screenshot
+    }
+    
     throw error;
   }
 }

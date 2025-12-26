@@ -1,6 +1,22 @@
 [
   {
     "id": "queue-1",
+    "name": "1a",
+    "status": "completed",
+    "startedAt": "2025-12-26T00:38:38.758Z",
+    "completedAt": "2025-12-26T00:39:34.834Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "pending": 0,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/invite/AIS8RZC"
+  },
+  {
+    "id": "queue-1",
     "name": "111",
     "status": "cancelled",
     "startedAt": "2025-12-25T23:43:56.777Z",
