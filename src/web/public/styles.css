@@ -817,3 +817,23 @@ body {
 .failure-link a:hover {
   text-decoration: underline;
 }
+
+/* Footer */
+.footer {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-top: 32px;
+  text-align: center;
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.footer-content {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.footer-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
