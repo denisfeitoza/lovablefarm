@@ -205,6 +205,67 @@ class EmailService {
       }
     }
 
+    // Fallback final: aguardar mais 5 segundos antes de falhar
+    logger.info('⏳ Esperando mais 5 segundos (tentativa final)...');
+    await this.delay(5000);
+    
+    // Última verificação antes de falhar
+    try {
+      logger.info('📬 Última verificação do inbox...');
+      const messages = await this.getMessages(email);
+      
+      if (messages && messages.length > 0) {
+        // Procurar email de verificação da Lovable
+        for (const msg of messages) {
+          const from = msg.from || '';
+          const subject = msg.subject || '';
+          const to = msg.to || [];
+          
+          const isFromLovable = 
+            from.toLowerCase().includes('lovable') ||
+            from.toLowerCase().includes('noreply') ||
+            from.toLowerCase().includes('no-reply');
+          
+          const isVerification = 
+            subject.toLowerCase().includes('verif') ||
+            subject.toLowerCase().includes('confirm') ||
+            subject.toLowerCase().includes('activate') ||
+            subject.toLowerCase().includes('ative');
+          
+          const isCreditsEmail = 
+            subject.toLowerCase().includes('credits') ||
+            subject.toLowerCase().includes('friend') ||
+            subject.toLowerCase().includes('referral') ||
+            subject.toLowerCase().includes('créditos');
+          
+          const isToCorrectEmail = to.some(recipient => 
+            recipient.toLowerCase() === email.toLowerCase()
+          );
+          
+          if (isFromLovable && isVerification && !isCreditsEmail && isToCorrectEmail) {
+            logger.success('✅ Email de verificação encontrado na verificação final!', {
+              subject,
+              from
+            });
+            
+            let fullEmail = msg;
+            if (!msg.html && !msg.text) {
+              fullEmail = await this.getEmailContent(msg.id);
+            }
+            
+            return {
+              id: msg.id,
+              subject,
+              from,
+              body: fullEmail.html || fullEmail.text || ''
+            };
+          }
+        }
+      }
+    } catch (error) {
+      logger.warning('⚠️  Erro na verificação final', { error: error.message });
+    }
+
     throw new Error(`❌ Timeout: Email não recebido após ${maxAttempts} tentativas`);
   }
 
