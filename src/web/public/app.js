@@ -548,6 +548,14 @@ class App {
             <div class="queue-stat-value">${queue.results.pending}</div>
             <div class="queue-stat-label">Pendentes</div>
           </div>
+          ${queue.results.total > 0 ? `
+            <div class="queue-stat">
+              <div class="queue-stat-value" style="color: ${(queue.results.failed / queue.results.total * 100) > 20 ? 'var(--danger)' : 'var(--warning)'}">
+                ${(queue.results.failed / queue.results.total * 100).toFixed(1)}%
+              </div>
+              <div class="queue-stat-label">Taxa de Erro</div>
+            </div>
+          ` : ''}
           <div class="queue-stat">
             <div class="queue-stat-value">${queue.results.credits}</div>
             <div class="queue-stat-label">Créditos</div>
