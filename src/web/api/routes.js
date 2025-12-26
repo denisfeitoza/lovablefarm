@@ -108,6 +108,25 @@ router.delete('/failures', (req, res) => {
 });
 
 /**
+ * DELETE /api/metrics - Limpar todas as métricas (falhas e sucessos)
+ */
+router.delete('/metrics', (req, res) => {
+  try {
+    historyManager.clearAllMetrics();
+    res.json({
+      success: true,
+      message: 'Todas as métricas foram limpas com sucesso'
+    });
+  } catch (error) {
+    logger.error('Erro ao limpar métricas', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * DELETE /api/history - Limpar histórico
  */
 router.delete('/history', (req, res) => {

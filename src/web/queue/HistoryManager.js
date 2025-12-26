@@ -420,6 +420,37 @@ class HistoryManager {
       return false;
     }
   }
+
+  /**
+   * Limpa todos os sucessos registrados
+   */
+  clearSuccesses() {
+    const successesPath = path.join(__dirname, '../../../data/successes.json');
+    
+    try {
+      const dataDir = path.dirname(successesPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      
+      // Salvar array vazio
+      fs.writeFileSync(successesPath, JSON.stringify([], null, 2), 'utf8');
+      logger.info('📚 Sucessos limpos');
+      return true;
+    } catch (error) {
+      logger.error('Erro ao limpar sucessos', error);
+      return false;
+    }
+  }
+
+  /**
+   * Limpa todas as métricas (falhas e sucessos)
+   */
+  clearAllMetrics() {
+    const failuresCleared = this.clearFailures();
+    const successesCleared = this.clearSuccesses();
+    return failuresCleared && successesCleared;
+  }
 }
 
 // Singleton

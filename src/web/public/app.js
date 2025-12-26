@@ -37,11 +37,13 @@ class App {
     this.fetchProxies(); // Buscar proxies logo no início
     this.fetchHistory();
     this.fetchFailures(); // Buscar falhas recentes
-    this.fetchMetrics(); // Buscar métricas
+    this.fetchMetrics(); // Buscar métricas iniciais
     // Iniciar loop de atualização dos timers
     setInterval(() => this.updateTimers(), 1000);
     // Atualizar falhas a cada 10 segundos
     setInterval(() => this.fetchFailures(), 10000);
+    // Atualizar métricas a cada 5 segundos (fallback caso socket.io não funcione)
+    setInterval(() => this.fetchMetrics(), 5000);
   }
 
   // Fetch inicial de domínios
@@ -129,6 +131,12 @@ class App {
       this.renderExecutions(executions);
     });
 
+    // Metrics updates
+    this.socket.on('metrics:update', (metrics) => {
+      this.metrics = metrics;
+      this.renderMetrics();
+    });
+
     // Logs do Sistema
     this.socket.on('system:log', (log) => {
       this.addLog(log);
@@ -206,6 +214,34 @@ class App {
       }
     } catch (error) {
       console.error('Erro ao buscar métricas:', error);
+    }
+  }
+
+  async clearMetrics() {
+    if (!confirm('Tem certeza que deseja limpar todas as métricas? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(this.apiUrl('/api/metrics'), {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        // Atualizar métricas após limpar
+        this.fetchMetrics();
+        // Solicitar atualização via socket também
+        if (this.socket) {
+          this.socket.emit('request:metrics');
+        }
+        this.showAlert('Sucesso', 'Todas as métricas foram limpas com sucesso!');
+      } else {
+        this.showAlert('Erro', data.error || 'Erro ao limpar métricas');
+      }
+    } catch (error) {
+      console.error('Erro ao limpar métricas:', error);
+      this.showAlert('Erro', 'Erro ao limpar métricas');
     }
   }
 

@@ -7,6 +7,7 @@ import { readFileSync } from 'fs';
 import apiRoutes from './api/routes.js';
 import { queueManager } from './queue/QueueManager.js';
 import { domainManager } from './queue/DomainManager.js';
+import { historyManager } from './queue/HistoryManager.js';
 import { proxyService } from '../services/proxyService.js';
 import { logger } from '../utils/logger.js';
 
@@ -74,6 +75,7 @@ io.on('connection', (socket) => {
   socket.emit('stats:update', queueManager.getStats());
   socket.emit('domains:update', domainManager.listDomains());
   socket.emit('queues:update', queueManager.listQueues());
+  socket.emit('metrics:update', historyManager.getFailureMetrics());
 
   // Listener para eventos do QueueManager
   const eventListener = (event, data) => {
@@ -82,6 +84,11 @@ io.on('connection', (socket) => {
     // Atualizar estatísticas em cada evento
     if (event.startsWith('queue:') || event.startsWith('execution:')) {
       socket.emit('stats:update', queueManager.getStats());
+      
+      // Atualizar métricas quando houver execuções completadas
+      if (event === 'execution:completed' || event === 'execution:failed') {
+        socket.emit('metrics:update', historyManager.getFailureMetrics());
+      }
       
       if (event.startsWith('queue:')) {
         socket.emit('queues:update', queueManager.listQueues());
@@ -114,6 +121,10 @@ io.on('connection', (socket) => {
 
   socket.on('request:domains', () => {
     socket.emit('domains:update', domainManager.listDomains());
+  });
+
+  socket.on('request:metrics', () => {
+    socket.emit('metrics:update', historyManager.getFailureMetrics());
   });
 });
 
