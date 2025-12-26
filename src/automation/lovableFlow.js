@@ -182,34 +182,49 @@ export async function completeOnboardingQuiz(page, userId = 1) {
       for (const el of allElements) {
         const text = el.textContent?.trim();
         
-        // Se contém EXATAMENTE o texto (não mais, não menos)
-        if (text === mode) {
+        // Se contém EXATAMENTE o texto OU contém com no máximo 10 chars a mais
+        if (text === mode || (text && text.includes(mode) && text.length <= mode.length + 10)) {
           candidates.push(el);
         }
       }
       
       console.log(`📋 Encontrados ${candidates.length} candidatos para "${mode}"`);
       
-      // Tentar clicar em cada candidato, começando pelos parents
+      // Ordenar por ÁREA (maior primeiro = bloco visual)
+      candidates.sort((a, b) => {
+        const areaA = a.getBoundingClientRect().width * a.getBoundingClientRect().height;
+        const areaB = b.getBoundingClientRect().width * b.getBoundingClientRect().height;
+        return areaB - areaA;
+      });
+      
+      // Tentar clicar em cada candidato, priorizando BLOCOS GRANDES
       for (const el of candidates) {
-        // Tentar até 10 níveis de parents
         let current = el;
-        for (let level = 0; level < 10; level++) {
-          if (!current) break;
+        for (let level = 0; level < 15; level++) {
+          if (!current || current === document.body) break;
           
           const rect = current.getBoundingClientRect();
-          const isVisible = rect.width > 0 && rect.height > 0;
+          const style = window.getComputedStyle(current);
+          const isVisible = rect.width > 30 && rect.height > 30;
           
           if (isVisible) {
-            console.log(`🔍 Nível ${level}: ${current.tagName}.${current.className} (${rect.width}x${rect.height})`);
+            const area = rect.width * rect.height;
+            const isLarge = area > 10000; // 100x100+
+            const isClickable = style.cursor === 'pointer' || 
+                              current.onclick || 
+                              current.getAttribute('role') === 'button';
             
-            // Clicar no elemento - SEMPRE tentar
-            try {
-              current.click();
-              console.log(`✅ CLICOU em ${current.tagName} (nível ${level})`);
-              return true;
-            } catch (e) {
-              console.log(`❌ Erro ao clicar: ${e.message}`);
+            console.log(`🔍 ${level}: ${current.tagName} ${Math.round(rect.width)}x${Math.round(rect.height)} cursor:${style.cursor}`);
+            
+            // Tentar se for grande, clicável, ou já no nível 3+
+            if (isLarge || isClickable || level >= 3) {
+              try {
+                current.click();
+                console.log(`✅ CLICOU ${current.tagName} (nível ${level})`);
+                return true;
+              } catch (e) {
+                console.log(`❌ ${e.message}`);
+              }
             }
           }
           
@@ -217,15 +232,13 @@ export async function completeOnboardingQuiz(page, userId = 1) {
         }
       }
       
-      // Se nada funcionou, tentar clicar direto no primeiro elemento encontrado
-      if (candidates.length > 0) {
-        console.log('🚨 Tentando clique direto no primeiro candidato');
+      // FALLBACK: clicar em QUALQUER candidato
+      console.log('🚨 FALLBACK: clicando qualquer candidato');
+      for (const c of candidates) {
         try {
-          candidates[0].click();
+          c.click();
           return true;
-        } catch (e) {
-          console.log('❌ Falhou:', e.message);
-        }
+        } catch (e) { continue; }
       }
       
       return false;
@@ -264,9 +277,18 @@ export async function completeOnboardingQuiz(page, userId = 1) {
       logger.success(`✅ Modo ${selectedMode} selecionado via JavaScript`);
     }
     
-    // Aguardar transição AUTOMÁTICA (NÃO clicar em Next - é automático!)
-    logger.info('⏳ Aguardando transição automática para próxima etapa...');
-    await page.waitForTimeout(3500);
+    // Verificar se há botão "Next" (caso o design mude)
+    logger.info('⏳ Verificando se há botão "Next"...');
+    try {
+      const nextAfterMode = page.locator('button:has-text("Next")').first();
+      await nextAfterMode.click({ timeout: 2000 });
+      logger.success('✅ Clicou em Next após modo');
+    } catch (e) {
+      // Sem Next - transição automática
+      logger.info('⏳ Sem botão Next - aguardando transição automática...');
+    }
+    
+    await page.waitForTimeout(2500);
 
     // 2. Preencher nome
     logger.info('2️⃣ Preenchendo nome...');

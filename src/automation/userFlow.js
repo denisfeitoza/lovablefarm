@@ -4,6 +4,9 @@ import { config } from '../utils/config.js';
 import { emailService } from '../services/emailService.js';
 import { proxyService } from '../services/proxyService.js';
 import { signupOnLovable, verifyEmailInSameSession, completeOnboardingQuiz, selectTemplate, useTemplateAndPublish } from './lovableFlow.js';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
 
 /**
  * Executa o fluxo completo de um usuário
@@ -22,9 +25,9 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
     executionTime: 0
   };
 
-  let browser = null;
   let context = null;
   let page = null;
+  let tempDir = null;
 
   // Validar link de indicação
   if (!referralLink) {
@@ -51,80 +54,16 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       logger.info('🌐 Usando proxy', { proxy: proxyConfig.server });
     }
 
-    // 3. Iniciar navegador com configurações ANÔNIMAS e anti-detecção
-    logger.info('🌐 Iniciando navegador em MODO INCÓGNITO REAL...');
-    browser = await chromium.launch({
-      headless: config.headless,
-      slowMo: config.slowMo,
-      // MODO INCÓGNITO NATIVO DO CHROMIUM
-      channel: 'chrome', // Usar Chrome real se disponível
-      args: [
-        // ============================================
-        // MODO INCÓGNITO / PRIVADO (PRIORIDADE MÁXIMA)
-        // ============================================
-        '--incognito',                    // Modo anônimo nativo
-        '--guest',                        // Modo convidado (ainda mais isolado)
-        '--bwsi',                         // Browse Without Sign In
-        '--no-first-run',                 // Não executar first-run
-        '--no-default-browser-check',    // Não verificar navegador padrão
-        
-        // ============================================
-        // ANTI-DETECÇÃO
-        // ============================================
-        '--disable-blink-features=AutomationControlled',
-        '--disable-dev-shm-usage',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process',
-        
-        // ============================================
-        // PRIVACIDADE TOTAL (sem cache, sem histórico, sem dados)
-        // ============================================
-        '--disable-background-networking',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-breakpad',
-        '--disable-client-side-phishing-detection',
-        '--disable-component-update',
-        '--disable-default-apps',
-        '--disable-domain-reliability',
-        '--disable-extensions',
-        '--disable-features=AudioServiceOutOfProcess',
-        '--disable-hang-monitor',
-        '--disable-ipc-flooding-protection',
-        '--disable-notifications',
-        '--disable-offer-store-unmasked-wallet-cards',
-        '--disable-popup-blocking',
-        '--disable-print-preview',
-        '--disable-prompt-on-repost',
-        '--disable-renderer-backgrounding',
-        '--disable-speech-api',
-        '--disable-sync',
-        '--hide-scrollbars',
-        '--ignore-gpu-blacklist',
-        '--metrics-recording-only',
-        '--mute-audio',
-        '--no-pings',
-        '--no-zygote',
-        '--password-store=basic',
-        '--use-mock-keychain',
-        
-        // ============================================
-        // STORAGE E CACHE (TUDO DESABILITADO)
-        // ============================================
-        '--disk-cache-size=0',           // Cache zerado
-        '--media-cache-size=0',          // Cache de mídia zerado
-        '--disable-application-cache',   // Sem cache de aplicação
-        '--disable-cache',               // Sem cache
-        '--disable-offline-load-stale-cache',
-        '--disable-gpu-shader-disk-cache'
-      ]
-    });
+    // 3. Criar diretório temporário único (simula modo incógnito isolado)
+    tempDir = path.join(os.tmpdir(), `playwright-incognito-${userId}-${Date.now()}`);
+    fs.mkdirSync(tempDir, { recursive: true });
+    logger.info(`📁 Diretório temporário: ${tempDir}`);
 
-    // IMPORTANTE: Com --incognito, criar contexto SIMPLES para não sobrescrever
-    // O modo incógnito JÁ está ativo no browser, só precisamos do contexto básico
+    // 4. Iniciar navegador em MODO INCÓGNITO REAL (launchPersistentContext)
+    logger.info('🌐 Iniciando navegador em MODO INCÓGNITO REAL...');
+    
     const contextOptions = {
+      headless: config.headless,
       viewport: generateRandomViewport(),
       userAgent: generateRandomUserAgent(),
       locale: generateRandomLocale(),
@@ -136,18 +75,42 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       isMobile: false,
       hasTouch: Math.random() > 0.7,
       acceptDownloads: false,
-      ignoreHTTPSErrors: true
-      // NÃO passar storageState, clearCookies, etc - deixar o --incognito trabalhar
+      ignoreHTTPSErrors: true,
+      args: [
+        // ============================================
+        // MODO INCÓGNITO / PRIVADO (PRIORIDADE MÁXIMA)
+        // ============================================
+        '--incognito',                    // ✅ Modo anônimo REAL do Chrome
+        '--disable-blink-features=AutomationControlled',
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-background-networking',
+        '--disable-extensions',
+        '--disable-sync',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--no-first-run',
+        '--no-default-browser-check'
+      ]
     };
 
     if (proxyConfig) {
       contextOptions.proxy = proxyConfig;
     }
 
-    // Criar contexto SIMPLES - o --incognito já cuida do isolamento
-    context = await browser.newContext(contextOptions);
+    // ✅ USAR launchPersistentContext (modo incógnito REAL)
+    context = await chromium.launchPersistentContext(tempDir, contextOptions);
     
     logger.info('✅ Contexto criado em modo incógnito (via --incognito flag)');
+    
+    // Fechar páginas extras que possam ter sido abertas
+    const pages = context.pages();
+    for (let i = 1; i < pages.length; i++) {
+      await pages[i].close().catch(() => {});
+    }
     
     // Limpar TUDO no contexto antes de usar
     await context.clearCookies();
@@ -288,7 +251,10 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       };
     });
 
-    page = await context.newPage();
+    // ✅ USAR a página que já foi criada automaticamente (NÃO criar nova)
+    page = context.pages()[0] || await context.newPage();
+    
+    logger.info(`✅ Usando página em modo incógnito (total de páginas: ${context.pages().length})`);
     
     // Adicionar headers extras para parecer mais humano
     await page.setExtraHTTPHeaders({
@@ -394,10 +360,20 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
   } finally {
     // NÃO FECHAR NAVEGADOR EM CASO DE ERRO (debug mode)
     if (result.success) {
-      // Sucesso: fechar tudo normalmente
-      if (page) await page.close().catch(() => {});
+      // Sucesso: fechar tudo normalmente e limpar diretório temporário
+      // NÃO fechar page separadamente - já será fechada com o context
       if (context) await context.close().catch(() => {});
-      if (browser) await browser.close().catch(() => {});
+      
+      // Limpar diretório temporário
+      if (tempDir) {
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          logger.info(`🧹 Diretório temporário removido: ${tempDir}`);
+        } catch (e) {
+          logger.warning(`⚠️ Não foi possível remover o diretório: ${e.message}`);
+        }
+      }
+      
       logger.info('🧹 Recursos limpos');
     } else {
       // ERRO: NUNCA FECHAR - deixar aberto indefinidamente
@@ -405,6 +381,7 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       logger.warning('⚠️ Navegador NÃO será fechado automaticamente');
       logger.warning('⚠️ Feche manualmente quando terminar de debugar');
       logger.info(`📍 URL atual: ${page ? await page.url().catch(() => 'indisponível') : 'indisponível'}`);
+      logger.info(`📁 Diretório temporário mantido: ${tempDir}`);
       // NÃO fechar automaticamente - deixar aberto para sempre
     }
   }
