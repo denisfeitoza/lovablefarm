@@ -396,10 +396,25 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       }
     }
   } finally {
-    // Limpar recursos
-    if (page) await page.close().catch(() => {});
-    if (context) await context.close().catch(() => {});
-    if (browser) await browser.close().catch(() => {});
+    // Limpar recursos APENAS SE NÃO HOUVER ERRO (para debug)
+    if (result.success) {
+      // Sucesso: fechar tudo normalmente
+      if (page) await page.close().catch(() => {});
+      if (context) await context.close().catch(() => {});
+      if (browser) await browser.close().catch(() => {});
+      logger.info('🧹 Recursos limpos');
+    } else {
+      // ERRO: manter navegador aberto para debug
+      logger.warning('⚠️ NAVEGADOR MANTIDO ABERTO PARA DEBUG (erro detectado)');
+      logger.warning('⚠️ Feche manualmente ou use Ctrl+C para terminar');
+      // Aguardar 5 minutos antes de fechar automaticamente
+      setTimeout(() => {
+        if (page) page.close().catch(() => {});
+        if (context) context.close().catch(() => {});
+        if (browser) browser.close().catch(() => {});
+        logger.info('🕐 Navegador fechado automaticamente após 5 minutos');
+      }, 300000); // 5 minutos
+    }
   }
 
   return result;
