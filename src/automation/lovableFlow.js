@@ -169,57 +169,62 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     // Aguardar a página do quiz aparecer
     await page.waitForSelector('text="Pick your style"', { timeout: 10000 });
     logger.info('Quiz de estilo encontrado');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    // Clicar no BLOCO/CONTAINER acima do texto (não no texto em si)
+    // ESTRATÉGIA AGRESSIVA: Clicar em TUDO que contenha o texto
     const modeClicked = await page.evaluate((mode) => {
-      // Encontrar o texto Light ou Dark
+      console.log('🎯 Procurando pelo modo:', mode);
+      
+      // Estratégia 1: Procurar TODOS os elementos que contêm o texto
       const allElements = Array.from(document.querySelectorAll('*'));
+      const candidates = [];
       
       for (const el of allElements) {
         const text = el.textContent?.trim();
         
-        // Se encontrou o texto exato
-        if (text === mode && el.childNodes.length <= 3) {
-          // Pegar o container pai (o bloco visual)
-          // Geralmente é um div, button ou elemento com padding grande
-          let container = el.parentElement;
+        // Se contém EXATAMENTE o texto (não mais, não menos)
+        if (text === mode) {
+          candidates.push(el);
+        }
+      }
+      
+      console.log(`📋 Encontrados ${candidates.length} candidatos para "${mode}"`);
+      
+      // Tentar clicar em cada candidato, começando pelos parents
+      for (const el of candidates) {
+        // Tentar até 10 níveis de parents
+        let current = el;
+        for (let level = 0; level < 10; level++) {
+          if (!current) break;
           
-          // Subir até 5 níveis para encontrar o container principal
-          for (let i = 0; i < 5; i++) {
-            if (!container) break;
+          const rect = current.getBoundingClientRect();
+          const isVisible = rect.width > 0 && rect.height > 0;
+          
+          if (isVisible) {
+            console.log(`🔍 Nível ${level}: ${current.tagName}.${current.className} (${rect.width}x${rect.height})`);
             
-            // Verificar se é um container clicável
-            const style = window.getComputedStyle(container);
-            const hasClickHandler = container.onclick || 
-                                   container.getAttribute('onclick') ||
-                                   style.cursor === 'pointer' ||
-                                   container.tagName === 'BUTTON' ||
-                                   container.getAttribute('role') === 'button';
-            
-            if (hasClickHandler) {
-              console.log('Clicando no container:', container.tagName, container.className);
-              container.click();
+            // Clicar no elemento - SEMPRE tentar
+            try {
+              current.click();
+              console.log(`✅ CLICOU em ${current.tagName} (nível ${level})`);
               return true;
+            } catch (e) {
+              console.log(`❌ Erro ao clicar: ${e.message}`);
             }
-            
-            // Tentar clicar no container se ele for grande o suficiente (bloco visual)
-            const rect = container.getBoundingClientRect();
-            if (rect.width > 100 && rect.height > 100) {
-              console.log('Clicando no bloco visual:', container.tagName);
-              container.click();
-              return true;
-            }
-            
-            container = container.parentElement;
           }
           
-          // Se não encontrou container específico, clicar no parent imediato
-          if (el.parentElement) {
-            console.log('Clicando no parent direto');
-            el.parentElement.click();
-            return true;
-          }
+          current = current.parentElement;
+        }
+      }
+      
+      // Se nada funcionou, tentar clicar direto no primeiro elemento encontrado
+      if (candidates.length > 0) {
+        console.log('🚨 Tentando clique direto no primeiro candidato');
+        try {
+          candidates[0].click();
+          return true;
+        } catch (e) {
+          console.log('❌ Falhou:', e.message);
         }
       }
       
@@ -227,21 +232,41 @@ export async function completeOnboardingQuiz(page, userId = 1) {
     }, selectedMode);
     
     if (!modeClicked) {
-      logger.error('❌ Não conseguiu clicar no bloco. Tentando forçar...');
-      // Última tentativa - clicar no elemento que contém o texto
+      logger.error('❌ JavaScript não conseguiu clicar. Usando Playwright forçado...');
       try {
-        const element = page.locator(`text="${selectedMode}"`).first();
-        await element.click({ force: true, timeout: 3000 });
-        logger.success('✅ Modo clicado (forçado)');
+        // Tentar com Playwright - VÁRIOS seletores
+        const selectors = [
+          `text="${selectedMode}"`,
+          `button:has-text("${selectedMode}")`,
+          `div:has-text("${selectedMode}")`,
+          `[role="button"]:has-text("${selectedMode}")`,
+          `*:has-text("${selectedMode}")`
+        ];
+        
+        for (const selector of selectors) {
+          try {
+            await page.locator(selector).first().click({ force: true, timeout: 2000 });
+            logger.success(`✅ Clicou com seletor: ${selector}`);
+            modeClicked = true;
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        if (!modeClicked) {
+          throw new Error(`Não foi possível clicar no modo ${selectedMode}`);
+        }
       } catch (e) {
-        throw new Error(`Não foi possível clicar no modo ${selectedMode}`);
+        throw new Error(`Falha total ao clicar no modo ${selectedMode}: ${e.message}`);
       }
     } else {
-      logger.success(`✅ Modo ${selectedMode} selecionado via bloco`);
+      logger.success(`✅ Modo ${selectedMode} selecionado via JavaScript`);
     }
     
-    // Aguardar transição automática
-    await page.waitForTimeout(3000);
+    // Aguardar transição AUTOMÁTICA (NÃO clicar em Next - é automático!)
+    logger.info('⏳ Aguardando transição automática para próxima etapa...');
+    await page.waitForTimeout(3500);
 
     // 2. Preencher nome
     logger.info('2️⃣ Preenchendo nome...');
