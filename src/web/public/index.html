@@ -240,6 +240,22 @@
             <!-- Checkboxes serão inseridos via JS -->
           </div>
         </div>
+
+        <div class="form-group">
+          <label>Proxies para esta Fila (Opcional)</label>
+          <small style="margin-bottom: 8px;">Selecione quais proxies usar. Se nenhum for marcado, usa IP local ou proxy global.</small>
+          <div style="margin-bottom: 8px; display: flex; gap: 8px;">
+            <button type="button" class="btn btn-small btn-secondary" onclick="app.selectAllProxies()">
+              ✓ Todos
+            </button>
+            <button type="button" class="btn btn-small btn-secondary" onclick="app.clearProxySelection()">
+              ✗ Nenhum
+            </button>
+          </div>
+          <div id="queueProxySelection" class="domain-selection-list">
+            <!-- Checkboxes serão inseridos via JS -->
+          </div>
+        </div>
         
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="app.hideCreateQueueModal()">

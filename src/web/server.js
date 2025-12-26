@@ -7,6 +7,7 @@ import { readFileSync } from 'fs';
 import apiRoutes from './api/routes.js';
 import { queueManager } from './queue/QueueManager.js';
 import { domainManager } from './queue/DomainManager.js';
+import { proxyService } from '../services/proxyService.js';
 import { logger } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -115,6 +116,16 @@ io.on('connection', (socket) => {
     socket.emit('domains:update', domainManager.listDomains());
   });
 });
+
+// Inicializar serviços
+(async () => {
+  try {
+    await proxyService.initialize();
+    logger.info('✅ Serviços inicializados');
+  } catch (error) {
+    logger.error('Erro ao inicializar serviços', error);
+  }
+})();
 
 // Iniciar servidor
 httpServer.listen(PORT, () => {

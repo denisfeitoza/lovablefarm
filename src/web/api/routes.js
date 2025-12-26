@@ -2,6 +2,7 @@ import express from 'express';
 import { queueManager } from '../queue/QueueManager.js';
 import { domainManager } from '../queue/DomainManager.js';
 import { historyManager } from '../queue/HistoryManager.js';
+import { proxyService } from '../../services/proxyService.js';
 import { logger } from '../../utils/logger.js';
 
 const router = express.Router();
@@ -138,7 +139,7 @@ router.get('/queues/:id', (req, res) => {
  */
 router.post('/queues', (req, res) => {
   try {
-    const { name, users, parallel, referralLink, selectedDomains } = req.body; // Capturar selectedDomains
+    const { name, users, parallel, referralLink, selectedDomains, selectedProxies } = req.body; // Capturar selectedDomains e selectedProxies
     
     // Validar link de indicação
     if (!referralLink) {
@@ -170,7 +171,8 @@ router.post('/queues', (req, res) => {
       users: usersNum,
       parallel: parallelNum,
       referralLink: referralLink.trim(),
-      selectedDomains: selectedDomains || [] // Passar selectedDomains
+      selectedDomains: selectedDomains || [], // Passar selectedDomains
+      selectedProxies: selectedProxies || [] // Passar selectedProxies
     };
     
     const queue = queueManager.createQueue(config); // Agora retorna o objeto completo
@@ -356,6 +358,50 @@ router.post('/domains/reset', (req, res) => {
     res.json(result);
   } catch (error) {
     logger.error('Erro ao resetar índice', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/proxies - Listar proxies disponíveis
+ */
+router.get('/proxies', async (req, res) => {
+  try {
+    // Garantir que proxies estão inicializados
+    await proxyService.initialize();
+    
+    const webshareProxies = proxyService.getWebshareProxies();
+    
+    // Formatar proxies para exibição (ocultar senha)
+    const formattedProxies = webshareProxies.map((proxy, index) => {
+      try {
+        const url = new URL(proxy);
+        return {
+          id: index,
+          value: proxy, // Valor completo para uso
+          display: `${url.hostname}:${url.port}`, // Exibição sem senha
+          full: proxy
+        };
+      } catch (e) {
+        return {
+          id: index,
+          value: proxy,
+          display: proxy.split('@')[1] || proxy,
+          full: proxy
+        };
+      }
+    });
+    
+    res.json({
+      success: true,
+      proxies: formattedProxies,
+      total: formattedProxies.length
+    });
+  } catch (error) {
+    logger.error('Erro ao listar proxies', error);
     res.status(500).json({
       success: false,
       error: error.message

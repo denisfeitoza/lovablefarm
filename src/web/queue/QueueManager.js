@@ -2,6 +2,7 @@ import { executeUserFlow } from '../../automation/userFlow.js';
 import { logger } from '../../utils/logger.js';
 import { logStream } from '../../utils/logStream.js';
 import { historyManager } from './HistoryManager.js';
+import { proxyService } from '../../services/proxyService.js';
 import pLimit from 'p-limit';
 
 /**
@@ -63,6 +64,7 @@ class QueueManager {
       name: config.name || `Fila ${queueId}`,
       referralLink: config.referralLink,
       selectedDomains: config.selectedDomains || [], // Domínios selecionados para esta fila
+      selectedProxies: config.selectedProxies || [], // Proxies selecionados para esta fila
       totalUsers: config.users,
       parallelExecutions: config.parallel || 1,
       status: 'pending', // pending, running, completed, failed
@@ -224,8 +226,18 @@ class QueueManager {
         logger.info(`Domínios disponíveis na fila: ${JSON.stringify(queue.selectedDomains)}`);
       }
 
-      // Executar fluxo do usuário passando o link de indicação e o domínio
-      const result = await executeUserFlow(userId, queue.referralLink, domain);
+      // Determinar proxy para este usuário (Round Robin) se houver seleção
+      let proxyString = null;
+      if (queue.selectedProxies && queue.selectedProxies.length > 0) {
+        // userId começa em 1, então (userId - 1) % length dá o índice correto
+        proxyString = proxyService.getProxyFromList(queue.selectedProxies, userId - 1);
+        logger.info(`🌐 Usuário ${userId} usará proxy específico da fila: ${proxyString ? proxyString.split('@')[1] : 'N/A'}`);
+      } else {
+        logger.info(`🌐 Usuário ${userId} usará IP local ou proxy global (nenhum proxy foi selecionado para a fila)`);
+      }
+
+      // Executar fluxo do usuário passando o link de indicação, domínio e proxy
+      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString);
 
       // Atualizar execução
       execution.status = result.success ? 'success' : 'failed';

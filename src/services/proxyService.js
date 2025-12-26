@@ -1,13 +1,22 @@
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class ProxyService {
   constructor() {
     this.proxies = [];
+    this.webshareProxies = []; // Proxies do arquivo Webshare
     this.currentIndex = 0;
     this.usedProxies = new Map(); // proxy -> count
     this.initialized = false;
+    this.proxyFile = path.join(__dirname, '../../config/proxies.txt');
   }
 
   /**
@@ -17,6 +26,9 @@ class ProxyService {
     if (this.initialized) return;
 
     try {
+      // Sempre carregar proxies do arquivo Webshare se existir
+      await this.loadWebshareProxies();
+
       if (!config.proxyEnabled) {
         logger.info('Rotação de proxy desabilitada - usando IP local');
         this.initialized = true;
@@ -34,18 +46,54 @@ class ProxyService {
       }
 
       // Se não tiver proxies, usar lista de proxies públicos (fallback)
-      if (this.proxies.length === 0) {
+      if (this.proxies.length === 0 && this.webshareProxies.length === 0) {
         logger.warning('Nenhum proxy configurado - usando proxies públicos (não recomendado para produção)');
         this.proxies = await this.getFreeProxies();
       }
 
-      logger.success(`${this.proxies.length} proxies carregados`);
+      logger.success(`${this.proxies.length + this.webshareProxies.length} proxies carregados`);
       this.initialized = true;
     } catch (error) {
       logger.error('Erro ao inicializar proxies', error);
       // Continuar sem proxies
       this.initialized = true;
     }
+  }
+
+  /**
+   * Carrega proxies do arquivo Webshare (formato: IP:PORT:USER:PASS)
+   */
+  async loadWebshareProxies() {
+    try {
+      if (!fs.existsSync(this.proxyFile)) {
+        logger.info('Arquivo de proxies não encontrado, continuando sem proxies do Webshare');
+        return;
+      }
+
+      const content = fs.readFileSync(this.proxyFile, 'utf8');
+      const lines = content.split('\n').filter(line => line.trim());
+      
+      for (const line of lines) {
+        const parts = line.trim().split(':');
+        if (parts.length === 4) {
+          const [ip, port, username, password] = parts;
+          // Converter para formato http://username:password@ip:port
+          const proxyUrl = `http://${username}:${password}@${ip}:${port}`;
+          this.webshareProxies.push(proxyUrl);
+        }
+      }
+
+      logger.success(`✅ ${this.webshareProxies.length} proxies Webshare carregados`);
+    } catch (error) {
+      logger.error('Erro ao carregar proxies Webshare', error);
+    }
+  }
+
+  /**
+   * Obtém lista de proxies Webshare disponíveis
+   */
+  getWebshareProxies() {
+    return [...this.webshareProxies];
   }
 
   /**
@@ -133,8 +181,8 @@ class ProxyService {
 
       // Adicionar autenticação se presente
       if (url.username && url.password) {
-        proxyConfig.username = url.username;
-        proxyConfig.password = url.password;
+        proxyConfig.username = decodeURIComponent(url.username);
+        proxyConfig.password = decodeURIComponent(url.password);
       }
 
       return proxyConfig;
@@ -142,6 +190,20 @@ class ProxyService {
       logger.error('Erro ao parsear proxy', error);
       return null;
     }
+  }
+
+  /**
+   * Obtém proxy de uma lista específica (para uso por fila)
+   * @param {string[]} proxyList - Lista de proxies para escolher
+   * @param {number} index - Índice para round-robin
+   */
+  getProxyFromList(proxyList, index = 0) {
+    if (!proxyList || proxyList.length === 0) {
+      return null;
+    }
+
+    const proxy = proxyList[index % proxyList.length];
+    return proxy;
   }
 
   /**

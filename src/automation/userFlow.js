@@ -13,8 +13,9 @@ import fs from 'fs';
  * @param {number} userId - ID do usuário
  * @param {string} referralLink - Link de indicação (obrigatório)
  * @param {string} domain - Domínio específico para o email (opcional)
+ * @param {string} proxyString - Proxy específico para usar (opcional)
  */
-export async function executeUserFlow(userId, referralLink, domain = null) {
+export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null) {
   const startTime = Date.now();
   const result = {
     userId,
@@ -46,12 +47,20 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
     result.email = emailData.email;
     logger.success(`Email gerado: ${emailData.email}`);
 
-    // 2. Configurar proxy (se habilitado)
-    const proxyString = proxyService.getRandomProxy();
-    const proxyConfig = proxyString ? proxyService.getProxyConfig(proxyString) : null;
+    // 2. Configurar proxy (usar proxy específico se fornecido, senão tentar obter um)
+    let finalProxyString = proxyString;
+    if (!finalProxyString && config.proxyEnabled) {
+      finalProxyString = proxyService.getRandomProxy();
+    }
+    const proxyConfig = finalProxyString ? proxyService.getProxyConfig(finalProxyString) : null;
     
     if (proxyConfig) {
-      logger.info('🌐 Usando proxy', { proxy: proxyConfig.server });
+      logger.info('🌐 Usando proxy', { 
+        proxy: proxyConfig.server,
+        hasAuth: !!(proxyConfig.username && proxyConfig.password)
+      });
+    } else {
+      logger.info('🌐 Usando IP local (sem proxy)');
     }
 
     // 3. Criar diretório temporário único (simula modo incógnito isolado)

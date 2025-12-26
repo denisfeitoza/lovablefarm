@@ -7,6 +7,7 @@ class App {
     this.socket = null;
     this.queues = [];
     this.domains = {};
+    this.proxies = [];
     this.stats = {};
     this.activeTimers = new Map(); // { executionId: interval }
     this.history = [];
@@ -32,6 +33,7 @@ class App {
     }
     this.connectWebSocket();
     this.fetchDomains(); // Buscar domínios logo no início
+    this.fetchProxies(); // Buscar proxies logo no início
     this.fetchHistory();
     this.fetchFailures(); // Buscar falhas recentes
     // Iniciar loop de atualização dos timers
@@ -52,6 +54,21 @@ class App {
       }
     } catch (error) {
       console.error('Erro ao buscar domínios:', error);
+    }
+  }
+
+  // Fetch inicial de proxies
+  async fetchProxies() {
+    try {
+      const response = await fetch(this.apiUrl('/api/proxies'));
+      const data = await response.json();
+      if (data.success) {
+        this.proxies = data.proxies || [];
+        this.renderQueueProxySelection();
+        console.log('✅ Proxies carregados:', this.proxies.length);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar proxies:', error);
     }
   }
 
@@ -548,23 +565,33 @@ class App {
 
     // Capturar domínios selecionados
     const selectedDomains = [];
-    const checkboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]:checked');
-    checkboxes.forEach(cb => selectedDomains.push(cb.value));
+    const domainCheckboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]:checked');
+    domainCheckboxes.forEach(cb => selectedDomains.push(cb.value));
 
     console.log('📧 Domínios selecionados:', selectedDomains);
-    console.log('📋 Total de checkboxes encontrados:', document.querySelectorAll('#queueDomainSelection input[type="checkbox"]').length);
-    console.log('✅ Total de checkboxes marcados:', checkboxes.length);
+    
+    // Capturar proxies selecionados
+    const selectedProxies = [];
+    const proxyCheckboxes = document.querySelectorAll('#queueProxySelection input[type="checkbox"]:checked');
+    proxyCheckboxes.forEach(cb => selectedProxies.push(cb.value));
+
+    console.log('🌐 Proxies selecionados:', selectedProxies.length);
     
     // Validar seleção de domínios (sem confirmação)
     if (selectedDomains.length === 0) {
       console.log('⚠️ Nenhum domínio selecionado. Usando rotação global.');
+    }
+    
+    // Validar seleção de proxies (sem confirmação)
+    if (selectedProxies.length === 0) {
+      console.log('⚠️ Nenhum proxy selecionado. Usando IP local ou proxy global.');
     }
 
     try {
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains })
+        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies })
       });
 
       const data = await response.json();
@@ -710,11 +737,17 @@ class App {
       this.socket.emit('request:domains');
     }
     
+    // Buscar proxies se ainda não foram carregados
+    if (!this.proxies || this.proxies.length === 0) {
+      this.fetchProxies();
+    }
+    
     document.getElementById('createQueueModal').classList.add('active');
     
-    // Pequeno delay para garantir que os domínios foram atualizados
+    // Pequeno delay para garantir que os domínios e proxies foram atualizados
     setTimeout(() => {
       this.renderQueueDomainSelection();
+      this.renderQueueProxySelection();
     }, 100);
   }
 
@@ -758,6 +791,36 @@ class App {
 
   clearDomainSelection() {
     const checkboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = false);
+  }
+
+  renderQueueProxySelection() {
+    const container = document.getElementById('queueProxySelection');
+    
+    console.log('🔍 Renderizando seleção de proxies. Proxies disponíveis:', this.proxies);
+    
+    if (!this.proxies || this.proxies.length === 0) {
+      container.innerHTML = '<div class="info-text">Nenhum proxy disponível. Configure proxies primeiro.</div>';
+      return;
+    }
+
+    container.innerHTML = this.proxies.map(proxy => `
+      <div class="domain-checkbox">
+        <input type="checkbox" id="proxy-${proxy.id}" value="${proxy.value}">
+        <label for="proxy-${proxy.id}">${proxy.display}</label>
+      </div>
+    `).join('');
+    
+    console.log('✅ Checkboxes de proxies renderizados:', this.proxies.length);
+  }
+
+  selectAllProxies() {
+    const checkboxes = document.querySelectorAll('#queueProxySelection input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = true);
+  }
+
+  clearProxySelection() {
+    const checkboxes = document.querySelectorAll('#queueProxySelection input[type="checkbox"]');
     checkboxes.forEach(cb => cb.checked = false);
   }
 
