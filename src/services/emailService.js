@@ -114,7 +114,7 @@ class EmailService {
   /**
    * Aguarda email de verificação
    */
-  async waitForVerificationEmail(emailData, maxAttempts = 3, delayMs = 3000) {
+  async waitForVerificationEmail(emailData, maxAttempts = 5, delayMs = 3000) {
     const { email } = emailData;
     
     logger.info('🔍 Monitorando chegada de email de verificação...', { 
