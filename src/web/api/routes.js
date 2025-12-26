@@ -89,6 +89,25 @@ router.get('/metrics', (req, res) => {
 });
 
 /**
+ * DELETE /api/failures - Limpar falhas
+ */
+router.delete('/failures', (req, res) => {
+  try {
+    historyManager.clearFailures();
+    res.json({
+      success: true,
+      message: 'Falhas limpas com sucesso'
+    });
+  } catch (error) {
+    logger.error('Erro ao limpar falhas', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * DELETE /api/history - Limpar histórico
  */
 router.delete('/history', (req, res) => {

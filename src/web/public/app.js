@@ -412,8 +412,18 @@ class App {
     panel.classList.toggle('hidden');
   }
 
-  clearLogs() {
+  async clearLogs() {
+    // Limpar logs na interface
     document.getElementById('systemLogs').innerHTML = '';
+    
+    // Limpar falhas também
+    try {
+      await fetch(this.apiUrl('/api/failures'), { method: 'DELETE' });
+      this.fetchFailures(); // Atualizar lista de falhas
+      this.fetchMetrics(); // Atualizar métricas
+    } catch (error) {
+      console.error('Erro ao limpar falhas:', error);
+    }
   }
 
   // Alert Management

@@ -298,6 +298,28 @@ class HistoryManager {
       byDomain: {}
     };
   }
+
+  /**
+   * Limpa todas as falhas registradas
+   */
+  clearFailures() {
+    const failuresPath = path.join(__dirname, '../../../data/failures.json');
+    
+    try {
+      const dataDir = path.dirname(failuresPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      
+      // Salvar array vazio
+      fs.writeFileSync(failuresPath, JSON.stringify([], null, 2), 'utf8');
+      logger.info('📚 Falhas limpas');
+      return true;
+    } catch (error) {
+      logger.error('Erro ao limpar falhas', error);
+      return false;
+    }
+  }
 }
 
 // Singleton
