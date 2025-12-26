@@ -58,25 +58,12 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     // DIRETO para input[type="password"]
     const passwordInput = await page.waitForSelector('input[type="password"]', { timeout: 20000, state: 'visible' });
     await passwordInput.click();
-    await page.waitForTimeout(300);
-    
-    // 🔥 SIMULAR DIGITAÇÃO HUMANA (digitar devagar)
-    for (const char of password) {
-      await passwordInput.type(char);
-      await page.waitForTimeout(50 + Math.random() * 100); // 50-150ms por caractere
-    }
-    
-    await page.waitForTimeout(500); // Pausar após digitar
-    logger.success('✅ Senha preenchida (digitação humana)');
-    
-    // 🔥 SIMULAR MOVIMENTO DE MOUSE (parecer humano)
-    logger.info('⏳ Simulando comportamento humano...');
-    await page.mouse.move(100, 100);
     await page.waitForTimeout(200);
-    await page.mouse.move(200, 200);
-    await page.waitForTimeout(200);
+    await passwordInput.fill(password);
+    await page.waitForTimeout(400);
+    logger.success('✅ Senha preenchida');
 
-    // CLIQUE CUIDADOSO em Create/Criar (múltiplos seletores)
+    // Procurar botão Create/Criar
     logger.info('Procurando botão Create/Criar...');
     
     const createSelectors = [
@@ -105,19 +92,8 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       throw new Error('❌ Botão Create/Criar não encontrado');
     }
     
-    // 🔥 PAUSA ANTES DE CLICAR (parecer humano)
-    logger.info('⏳ Aguardando 1s antes de clicar (parecer humano)...');
-    await page.waitForTimeout(1000);
-    
-    // Mover mouse até o botão
-    const box = await createButton.boundingBox();
-    if (box) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 10 });
-      await page.waitForTimeout(300);
-    }
-    
     await createButton.click();
-    logger.success('✅ Clicou em Create (após simulação humana)');
+    logger.success('✅ Clicou em Create');
 
     // 🔥 VERIFICAR se o cadastro foi processado (mudou de página ou apareceu erro)
     logger.info('⏳ Aguardando resposta do servidor...');
