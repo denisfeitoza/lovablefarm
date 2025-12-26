@@ -396,7 +396,7 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       }
     }
   } finally {
-    // Limpar recursos APENAS SE NÃO HOUVER ERRO (para debug)
+    // NÃO FECHAR NAVEGADOR EM CASO DE ERRO (debug mode)
     if (result.success) {
       // Sucesso: fechar tudo normalmente
       if (page) await page.close().catch(() => {});
@@ -404,16 +404,12 @@ export async function executeUserFlow(userId, referralLink, domain = null) {
       if (browser) await browser.close().catch(() => {});
       logger.info('🧹 Recursos limpos');
     } else {
-      // ERRO: manter navegador aberto para debug
-      logger.warning('⚠️ NAVEGADOR MANTIDO ABERTO PARA DEBUG (erro detectado)');
-      logger.warning('⚠️ Feche manualmente ou use Ctrl+C para terminar');
-      // Aguardar 5 minutos antes de fechar automaticamente
-      setTimeout(() => {
-        if (page) page.close().catch(() => {});
-        if (context) context.close().catch(() => {});
-        if (browser) browser.close().catch(() => {});
-        logger.info('🕐 Navegador fechado automaticamente após 5 minutos');
-      }, 300000); // 5 minutos
+      // ERRO: NUNCA FECHAR - deixar aberto indefinidamente
+      logger.error('🚨 ERRO DETECTADO - NAVEGADOR MANTIDO ABERTO INDEFINIDAMENTE');
+      logger.warning('⚠️ Navegador NÃO será fechado automaticamente');
+      logger.warning('⚠️ Feche manualmente quando terminar de debugar');
+      logger.info(`📍 URL atual: ${page ? await page.url().catch(() => 'indisponível') : 'indisponível'}`);
+      // NÃO fechar automaticamente - deixar aberto para sempre
     }
   }
 
