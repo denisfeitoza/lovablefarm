@@ -771,12 +771,39 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
     logger.info('⏳ Aguardando editor carregar completamente...');
     await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.veryLongDelay, usingProxy));
     
-    // Usar pageLoad timeout (maior) pois o editor pode demorar mais para carregar com proxy
-    await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
-      state: 'visible', 
-      timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy)
-    });
-    logger.success('✅ Botão Publish encontrado!');
+    // Tentar encontrar botão Publish com retry e refresh
+    let publishButtonFound = false;
+    const maxRetries = 2;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        logger.info(`🔍 Tentativa ${attempt}/${maxRetries} de encontrar botão Publish...`);
+        
+        // Usar pageLoad timeout (maior) pois o editor pode demorar mais para carregar com proxy
+        await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
+          state: 'visible', 
+          timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy)
+        });
+        logger.success('✅ Botão Publish encontrado!');
+        publishButtonFound = true;
+        break;
+      } catch (error) {
+        if (attempt < maxRetries) {
+          logger.warning(`⚠️ Botão Publish não encontrado na tentativa ${attempt}, tentando refresh...`);
+          // Fazer refresh da página
+          await page.reload({ waitUntil: 'domcontentloaded', timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) });
+          await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
+          logger.info('🔄 Página recarregada, tentando novamente...');
+        } else {
+          logger.error('❌ Botão Publish não encontrado após todas as tentativas');
+          throw error;
+        }
+      }
+    }
+    
+    if (!publishButtonFound) {
+      throw new Error('Botão Publish não encontrado após refresh');
+    }
 
     // 1️⃣ Clicar no PRIMEIRO Publish (abre dropdown)
     const publishButton = page.locator('button:has-text("Publish"), button:has-text("Publicar")').first();

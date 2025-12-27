@@ -162,9 +162,9 @@ class HistoryManager {
     // Adicionar no início da lista (mais recente primeiro)
     successes.unshift(record);
     
-    // Manter apenas os últimos 200 sucessos
-    if (successes.length > 200) {
-      successes = successes.slice(0, 200);
+    // Manter apenas os últimos 10000 sucessos (alta produção)
+    if (successes.length > 10000) {
+      successes = successes.slice(0, 10000);
     }
 
     // Salvar sucessos
@@ -217,9 +217,9 @@ class HistoryManager {
     // Adicionar no início da lista (mais recente primeiro)
     failures.unshift(record);
     
-    // Manter apenas as últimas 100 falhas
-    if (failures.length > 100) {
-      failures = failures.slice(0, 100);
+    // Manter apenas as últimas 10000 falhas (alta produção)
+    if (failures.length > 10000) {
+      failures = failures.slice(0, 10000);
     }
 
     // Salvar falhas
