@@ -388,20 +388,68 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.domain-checkbox:last-child {
+.domain-checkbox:last-child,
+.error-checkbox:last-child {
   border-bottom: none;
 }
 
-.domain-checkbox input[type="checkbox"] {
+.domain-checkbox input[type="checkbox"],
+.error-checkbox input[type="checkbox"] {
   width: auto;
   margin: 0;
+  flex-shrink: 0;
 }
 
-.domain-checkbox label {
+.domain-checkbox label,
+.error-checkbox label {
   margin: 0;
   font-weight: normal;
   cursor: pointer;
   flex: 1;
+  line-height: 1.4;
+}
+
+/* Estilos específicos para error-checkbox */
+.error-checkbox {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.error-checkbox:hover {
+  background: rgba(99, 102, 241, 0.05);
+  border-color: var(--primary);
+}
+
+.error-checkbox:last-child {
+  margin-bottom: 0;
+}
+
+.error-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.error-checkbox label {
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+#queueErrorSimulation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 /* Executions */
