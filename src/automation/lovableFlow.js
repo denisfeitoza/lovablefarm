@@ -618,11 +618,17 @@ export async function completeOnboardingQuiz(page, userId = 1, email = null, usi
 /**
  * Etapa 4: Escolher template
  */
-export async function selectTemplate(page, userId = 1, usingProxy = false) {
+export async function selectTemplate(page, userId = 1, usingProxy = false, simulatedErrors = []) {
   const startTime = Date.now();
   
   try {
     logger.step(4, 'Escolhendo template');
+
+    // 🧪 SIMULAR ERRO DE TEMPLATE se solicitado
+    if (simulatedErrors.includes('template_error')) {
+      logger.warning('🧪 SIMULANDO ERRO DE TEMPLATE para testar fallback...');
+      throw new Error('Nenhum template encontrado');
+    }
 
     // Templates a evitar
     const avoidTemplates = [
@@ -761,7 +767,7 @@ export async function selectTemplate(page, userId = 1, usingProxy = false) {
 /**
  * Etapa 5: Publicar projeto
  */
-export async function useTemplateAndPublish(page, userId = 1, usingProxy = false) {
+export async function useTemplateAndPublish(page, userId = 1, usingProxy = false, simulatedErrors = []) {
   const startTime = Date.now();
   
   try {
@@ -775,9 +781,19 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
     let publishButtonFound = false;
     const maxRetries = 2;
     
+    // 🧪 SIMULAR ERRO DE PUBLISH se solicitado (na primeira tentativa)
+    let shouldSimulatePublishError = simulatedErrors.includes('publish_error');
+    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         logger.info(`🔍 Tentativa ${attempt}/${maxRetries} de encontrar botão Publish...`);
+        
+        // Simular erro na primeira tentativa se solicitado
+        if (shouldSimulatePublishError && attempt === 1) {
+          logger.warning('🧪 SIMULANDO ERRO DE PUBLISH para testar retry com refresh...');
+          shouldSimulatePublishError = false; // Só simular uma vez
+          throw new Error('page.waitForSelector: Timeout 30000ms exceeded. Call log: - waiting for locator(\'button:has-text("Publish"), button:has-text("Publicar")\') to be visible');
+        }
         
         // Usar pageLoad timeout (maior) pois o editor pode demorar mais para carregar com proxy
         await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 

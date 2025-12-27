@@ -278,6 +278,33 @@
             <!-- Checkboxes serão inseridos via JS -->
           </div>
         </div>
+
+        <div class="form-group" style="border-top: 2px solid var(--border); padding-top: 16px; margin-top: 16px;">
+          <label>🧪 Simular Erros (Para Testar Fallbacks)</label>
+          <small style="margin-bottom: 8px; display: block; color: var(--text-secondary);">
+            Selecione quais erros simular para testar os fallbacks do sistema. Útil para validar a resiliência.
+          </small>
+          <div id="queueErrorSimulation" class="domain-selection-list">
+            <div class="error-checkbox">
+              <input type="checkbox" id="simulate-template-error" value="template_error">
+              <label for="simulate-template-error">
+                ❌ Erro de Template (testa fallback para template específico)
+              </label>
+            </div>
+            <div class="error-checkbox">
+              <input type="checkbox" id="simulate-publish-error" value="publish_error">
+              <label for="simulate-publish-error">
+                ❌ Erro de Publish (testa retry com refresh)
+              </label>
+            </div>
+            <div class="error-checkbox">
+              <input type="checkbox" id="simulate-email-error" value="email_error">
+              <label for="simulate-email-error">
+                ❌ Erro de Email (testa detecção de domínio cansado)
+              </label>
+            </div>
+          </div>
+        </div>
         
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="app.hideCreateQueueModal()">

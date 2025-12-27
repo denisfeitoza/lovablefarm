@@ -774,11 +774,18 @@ class App {
       console.log('⚠️ Nenhum proxy selecionado. Usando IP local ou proxy global.');
     }
 
+    // Capturar erros simulados
+    const simulatedErrors = [];
+    const errorCheckboxes = document.querySelectorAll('#queueErrorSimulation input[type="checkbox"]:checked');
+    errorCheckboxes.forEach(cb => simulatedErrors.push(cb.value));
+
+    console.log('🧪 Erros simulados:', simulatedErrors);
+
     try {
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies })
+        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors })
       });
 
       const data = await response.json();

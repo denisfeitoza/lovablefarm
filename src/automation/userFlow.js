@@ -14,8 +14,9 @@ import fs from 'fs';
  * @param {string} referralLink - Link de indicação (obrigatório)
  * @param {string} domain - Domínio específico para o email (opcional)
  * @param {string} proxyString - Proxy específico para usar (opcional)
+ * @param {Array} simulatedErrors - Lista de erros a simular para testar fallbacks (opcional)
  */
-export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null) {
+export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = []) {
   const startTime = Date.now();
   const result = {
     userId,
@@ -138,12 +139,12 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
 
     // 8. Selecionar template
     logger.info('\n🎨 Etapa 5: Selecionando Template');
-    const templateResult = await selectTemplate(page, userId, usingProxy);
+    const templateResult = await selectTemplate(page, userId, usingProxy, simulatedErrors);
     result.steps.selectTemplate = templateResult.executionTime;
 
     // 9. Usar template e publicar
     logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
-    const publishResult = await useTemplateAndPublish(page, userId, usingProxy);
+    const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors);
     result.steps.useTemplateAndPublish = publishResult.executionTime;
 
     // 10. Sucesso!

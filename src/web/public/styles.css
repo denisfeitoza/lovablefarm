@@ -379,7 +379,8 @@ body {
   overflow-y: auto;
 }
 
-.domain-checkbox {
+.domain-checkbox,
+.error-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;

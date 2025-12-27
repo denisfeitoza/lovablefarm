@@ -197,7 +197,7 @@ router.get('/queues/:id', (req, res) => {
  */
 router.post('/queues', (req, res) => {
   try {
-    const { name, users, parallel, referralLink, selectedDomains, selectedProxies } = req.body; // Capturar selectedDomains e selectedProxies
+    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors } = req.body; // Capturar selectedDomains, selectedProxies e simulatedErrors
     
     // Validar link de indicação
     if (!referralLink) {
@@ -242,7 +242,8 @@ router.post('/queues', (req, res) => {
       parallel: parallelNum,
       referralLink: normalizedLink, // Usar link normalizado
       selectedDomains: selectedDomains || [], // Passar selectedDomains
-      selectedProxies: selectedProxies || [] // Passar selectedProxies
+      selectedProxies: selectedProxies || [], // Passar selectedProxies
+      simulatedErrors: simulatedErrors || [] // Passar erros simulados
     };
     
     const queue = queueManager.createQueue(config); // Agora retorna o objeto completo

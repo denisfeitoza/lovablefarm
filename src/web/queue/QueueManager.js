@@ -65,6 +65,7 @@ class QueueManager {
       referralLink: config.referralLink,
       selectedDomains: config.selectedDomains || [], // Domínios selecionados para esta fila
       selectedProxies: config.selectedProxies || [], // Proxies selecionados para esta fila
+      simulatedErrors: config.simulatedErrors || [], // Erros simulados para testar fallbacks
       totalUsers: config.users,
       parallelExecutions: config.parallel || 1,
       status: 'pending', // pending, running, completed, failed
@@ -254,8 +255,8 @@ class QueueManager {
       this.activeExecutions.set(executionId, execution);
       this.emit('execution:started', { executionId, execution });
 
-      // Executar fluxo do usuário passando o link de indicação, domínio e proxy
-      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString);
+      // Executar fluxo do usuário passando o link de indicação, domínio, proxy e erros simulados
+      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || []);
 
       // Atualizar execução
       execution.status = result.success ? 'success' : 'failed';
