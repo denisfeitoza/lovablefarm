@@ -133,7 +133,7 @@ class QueueManager {
     
     // Iniciar timer para atualizar elapsedTime a cada segundo
     queue.timerInterval = setInterval(() => {
-      if (queue.status === 'running' && queue.startedAt) {
+      if ((queue.status === 'running' || queue.status === 'finalizing') && queue.startedAt) {
         const startTime = new Date(queue.startedAt).getTime();
         const now = Date.now();
         queue.elapsedTime = Math.floor((now - startTime) / 1000);
@@ -324,7 +324,7 @@ class QueueManager {
     
     // Continuar até atingir a meta original ou ser cancelado
     // IMPORTANTE: Comparar com totalUsers (meta original), não com target (que pode ter sido aumentado)
-    while (queue.results.success < originalTarget && !queue.cancelled) {
+    while (queue.results.success < originalTarget && !queue.cancelled && queue.status !== 'finalizing') {
       // Verificar se já atingiu a meta ANTES de criar novas execuções
       if (queue.results.success >= originalTarget) {
         break;
@@ -333,10 +333,10 @@ class QueueManager {
       // Manter sempre o número máximo de execuções paralelas rodando
       while (runningPromises.size < queue.parallelExecutions && 
              queue.results.success < originalTarget && 
-             !queue.cancelled) {
+             !queue.cancelled && queue.status !== 'finalizing') {
         
         // Verificar novamente antes de criar cada nova promise
-        if (queue.results.success >= originalTarget || queue.cancelled) {
+        if (queue.results.success >= originalTarget || queue.cancelled || queue.status === 'finalizing') {
           break;
         }
         
@@ -344,7 +344,7 @@ class QueueManager {
         
         const promise = limit(async () => {
           // IMPORTANTE: Verificar meta original ANTES de executar
-          if (queue.cancelled || queue.results.success >= originalTarget) {
+          if (queue.cancelled || queue.status === 'finalizing' || queue.results.success >= originalTarget) {
             runningPromises.delete(promise);
             return { cancelled: true };
           }
@@ -387,7 +387,7 @@ class QueueManager {
         await Promise.race(Array.from(runningPromises));
         
         // Verificar novamente após uma execução completar - CRÍTICO para parar
-        if (queue.results.success >= originalTarget) {
+        if (queue.results.success >= originalTarget || queue.cancelled || queue.status === 'finalizing') {
           // Cancelar todas as execuções pendentes
           queue.cancelled = true;
           break;

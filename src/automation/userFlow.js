@@ -127,7 +127,45 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       3000 // 3 segundos entre tentativas
     );
     
-    const verificationLink = emailService.extractVerificationLink(verificationEmail);
+    // 6. Extrair link de verificação com fallback
+    let verificationLink;
+    try {
+      verificationLink = emailService.extractVerificationLink(verificationEmail);
+    } catch (linkError) {
+      logger.error('❌ Erro ao extrair link de verificação:', linkError.message);
+      // Se não encontrou o link, fazer fallback para template (como se a verificação tivesse falhado)
+      logger.warning('⚠️ Link de verificação não encontrado no email. Fazendo fallback para template...');
+      await fallbackToTemplate(page, userId, usingProxy);
+      result.steps.emailVerification = 0; // Marcado como pulado (fallback usado)
+      
+      // Continuar fluxo a partir do template (independente do modo)
+      if (turboMode) {
+        result.steps.onboardingQuiz = 0; // Marcado como pulado
+        result.steps.selectTemplate = 0; // Marcado como pulado
+        logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo - Fallback)');
+        const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
+        result.steps.useTemplateAndPublish = publishResult.executionTime;
+      } else {
+        // Modo normal: continuar com quiz e depois publicar
+        logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding (Fallback)');
+        const quizResult = await completeOnboardingQuiz(page, userId, emailData.email, usingProxy);
+        result.steps.onboardingQuiz = quizResult.executionTime;
+        
+        logger.info('\n🎨 Etapa 5: Seleção de Template (já no template via fallback)');
+        result.steps.selectTemplate = 0; // Já estamos no template
+        
+        logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Fallback)');
+        const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false);
+        result.steps.useTemplateAndPublish = publishResult.executionTime;
+      }
+      
+      // Marcar como sucesso após fallback
+      result.success = true;
+      result.creditsEarned = 10;
+      result.executionTime = Date.now() - startTime;
+      logger.success(`✅ Usuário ${userId} completou via fallback após erro no link!`);
+      return result;
+    }
     
     // 6. Clicar no link de verificação NA MESMA SESSÃO
     logger.info('\n✅ Etapa 3: Clicando em Link de Verificação (mesma sessão)');
