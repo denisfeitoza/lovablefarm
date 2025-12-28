@@ -1306,80 +1306,139 @@ class App {
     `}).join('');
   }
 
+  // Mostrar erro de validação no modal
+  showQueueError(message) {
+    // Remover mensagem anterior se existir
+    const existingError = document.getElementById('queueCreateError');
+    if (existingError) {
+      existingError.remove();
+    }
+
+    // Criar elemento de erro
+    const errorDiv = document.createElement('div');
+    errorDiv.id = 'queueCreateError';
+    errorDiv.style.cssText = 'padding: 12px; margin-bottom: 16px; background: #fee; border: 2px solid #f44; border-radius: 8px; color: #c33; font-weight: 600;';
+    errorDiv.innerHTML = `❌ ${message}`;
+
+    // Inserir antes dos botões de ação
+    const formActions = document.querySelector('#createQueueModal .form-actions');
+    if (formActions) {
+      formActions.parentNode.insertBefore(errorDiv, formActions);
+      // Scroll até o erro
+      errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  // Remover erro de validação
+  clearQueueError() {
+    const existingError = document.getElementById('queueCreateError');
+    if (existingError) {
+      existingError.remove();
+    }
+  }
+
   // API Calls
   async createQueue(event) {
     event.preventDefault();
-
-    const referralLink = document.getElementById('queueReferralLink').value.trim();
-    const name = document.getElementById('queueName').value;
-    const usersStr = document.getElementById('queueUsers').value;
-    const parallelStr = document.getElementById('queueParallel').value;
     
-    const users = parseInt(usersStr);
-    const parallel = parseInt(parallelStr);
+    // Limpar erros anteriores
+    this.clearQueueError();
 
-    // Validar link de indicação
-    if (!referralLink) {
-      console.error('❌ Link de indicação é obrigatório');
-      return;
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton ? submitButton.innerHTML : '✅ Criar Fila';
+    
+    // Desabilitar botão durante processamento
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.innerHTML = '⏳ Criando...';
     }
-    
-    // Validar número de usuários
-    if (!usersStr || isNaN(users) || users < 1) {
-      console.error('❌ Número de usuários inválido. Deve ser um número maior que 0.');
-      return;
-    }
-    
-    // Validar execuções paralelas
-    if (isNaN(parallel) || parallel < 1 || parallel > 10) {
-      console.error('❌ Número de execuções paralelas inválido. Deve estar entre 1 e 10.');
-      return;
-    }
-
-    // Capturar domínios selecionados
-    const selectedDomains = [];
-    const domainCheckboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]:checked');
-    domainCheckboxes.forEach(cb => selectedDomains.push(cb.value));
-
-    console.log('📧 Domínios selecionados:', selectedDomains);
-    
-    // Capturar proxies selecionados
-    const selectedProxies = [];
-    const proxyCheckboxes = document.querySelectorAll('#queueProxySelection input[type="checkbox"]:checked');
-    proxyCheckboxes.forEach(cb => selectedProxies.push(cb.value));
-
-    console.log('🌐 Proxies selecionados:', selectedProxies.length);
-    
-    // Validar seleção de domínios - OBRIGATÓRIO pelo menos 1
-    if (selectedDomains.length === 0) {
-      console.error('❌ É necessário selecionar pelo menos 1 domínio para criar uma fila.');
-      return;
-    }
-    
-    // Validar seleção de proxies (sem confirmação)
-    if (selectedProxies.length === 0) {
-      console.log('⚠️ Nenhum proxy selecionado. Usando IP local ou proxy global.');
-    }
-
-    // Capturar erros simulados
-    const simulatedErrors = [];
-    const errorCheckboxes = document.querySelectorAll('#queueErrorSimulation input[type="checkbox"]:checked');
-    errorCheckboxes.forEach(cb => simulatedErrors.push(cb.value));
-
-    // Capturar opção "buscar créditos a todo custo"
-    const forceCredits = document.getElementById('queueForceCredits').checked;
-    // Capturar opção "modo turbo"
-    const turboMode = document.getElementById('queueTurboMode').checked;
-    // Capturar opção "verificar banner de créditos" (só disponível se turboMode estiver ativo)
-    const checkCreditsBannerEl = document.getElementById('queueCheckCreditsBanner');
-    const checkCreditsBanner = checkCreditsBannerEl ? (checkCreditsBannerEl.checked && turboMode) : false;
-
-    console.log('🧪 Erros simulados:', simulatedErrors);
-    console.log('💰 Buscar créditos a todo custo:', forceCredits);
-    console.log('⚡ Modo Turbo:', turboMode);
-    console.log('🔍 Verificar Banner de Créditos:', checkCreditsBanner);
 
     try {
+      const referralLink = document.getElementById('queueReferralLink').value.trim();
+      const name = document.getElementById('queueName').value;
+      const usersStr = document.getElementById('queueUsers').value;
+      const parallelStr = document.getElementById('queueParallel').value;
+      
+      const users = parseInt(usersStr);
+      const parallel = parseInt(parallelStr);
+
+      // Validar link de indicação
+      if (!referralLink) {
+        this.showQueueError('Link de indicação é obrigatório');
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalButtonText;
+        }
+        return;
+      }
+      
+      // Validar número de usuários
+      if (!usersStr || isNaN(users) || users < 1) {
+        this.showQueueError('Número de usuários inválido. Deve ser um número maior que 0.');
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalButtonText;
+        }
+        return;
+      }
+      
+      // Validar execuções paralelas
+      if (isNaN(parallel) || parallel < 1 || parallel > 10) {
+        this.showQueueError('Número de execuções paralelas inválido. Deve estar entre 1 e 10.');
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalButtonText;
+        }
+        return;
+      }
+
+      // Capturar domínios selecionados
+      const selectedDomains = [];
+      const domainCheckboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]:checked');
+      domainCheckboxes.forEach(cb => selectedDomains.push(cb.value));
+
+      console.log('📧 Domínios selecionados:', selectedDomains);
+      
+      // Capturar proxies selecionados
+      const selectedProxies = [];
+      const proxyCheckboxes = document.querySelectorAll('#queueProxySelection input[type="checkbox"]:checked');
+      proxyCheckboxes.forEach(cb => selectedProxies.push(cb.value));
+
+      console.log('🌐 Proxies selecionados:', selectedProxies.length);
+      
+      // Validar seleção de domínios - OBRIGATÓRIO pelo menos 1
+      if (selectedDomains.length === 0) {
+        this.showQueueError('É necessário selecionar pelo menos 1 domínio para criar uma fila.');
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalButtonText;
+        }
+        return;
+      }
+      
+      // Validar seleção de proxies (sem confirmação)
+      if (selectedProxies.length === 0) {
+        console.log('⚠️ Nenhum proxy selecionado. Usando IP local ou proxy global.');
+      }
+
+      // Capturar erros simulados
+      const simulatedErrors = [];
+      const errorCheckboxes = document.querySelectorAll('#queueErrorSimulation input[type="checkbox"]:checked');
+      errorCheckboxes.forEach(cb => simulatedErrors.push(cb.value));
+
+      // Capturar opção "buscar créditos a todo custo"
+      const forceCredits = document.getElementById('queueForceCredits').checked;
+      // Capturar opção "modo turbo"
+      const turboMode = document.getElementById('queueTurboMode').checked;
+      // Capturar opção "verificar banner de créditos" (só disponível se turboMode estiver ativo)
+      const checkCreditsBannerEl = document.getElementById('queueCheckCreditsBanner');
+      const checkCreditsBanner = checkCreditsBannerEl ? (checkCreditsBannerEl.checked && turboMode) : false;
+
+      console.log('🧪 Erros simulados:', simulatedErrors);
+      console.log('💰 Buscar créditos a todo custo:', forceCredits);
+      console.log('⚡ Modo Turbo:', turboMode);
+      console.log('🔍 Verificar Banner de Créditos:', checkCreditsBanner);
+
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1412,10 +1471,22 @@ class App {
         this.hideCreateQueueModal();
         this.socket.emit('request:queues');
       } else {
-        console.error('Erro ao criar fila:', data.error);
+        const errorMessage = data.error || 'Erro desconhecido ao criar fila';
+        this.showQueueError(errorMessage);
+        console.error('Erro ao criar fila:', errorMessage);
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalButtonText;
+        }
       }
     } catch (error) {
+      const errorMessage = error.message || 'Erro de conexão ao criar fila';
+      this.showQueueError(errorMessage);
       console.error('Erro ao criar fila:', error);
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+      }
     }
   }
 
@@ -1592,6 +1663,9 @@ class App {
 
   // Modal Controls
   showCreateQueueModal() {
+    // Limpar erros anteriores
+    this.clearQueueError();
+    
     // Primeiro buscar domínios se ainda não foram carregados
     if (!this.domains || !this.domains.domains || this.domains.domains.length === 0) {
       this.socket.emit('request:domains');
