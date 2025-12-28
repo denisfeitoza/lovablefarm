@@ -843,10 +843,6 @@ class App {
               <div class="queue-stat-label">Taxa de Erro</div>
             </div>
           ` : ''}
-          <div class="queue-stat">
-            <div class="queue-stat-value">${queue.results.credits}</div>
-            <div class="queue-stat-label">Créditos</div>
-          </div>
         </div>
         
         <div class="queue-progress">
