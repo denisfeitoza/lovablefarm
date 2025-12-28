@@ -1359,7 +1359,8 @@ class App {
     // Capturar opção "modo turbo"
     const turboMode = document.getElementById('queueTurboMode').checked;
     // Capturar opção "verificar banner de créditos" (só disponível se turboMode estiver ativo)
-    const checkCreditsBanner = document.getElementById('queueCheckCreditsBanner').checked && turboMode;
+    const checkCreditsBannerEl = document.getElementById('queueCheckCreditsBanner');
+    const checkCreditsBanner = checkCreditsBannerEl ? (checkCreditsBannerEl.checked && turboMode) : false;
 
     console.log('🧪 Erros simulados:', simulatedErrors);
     console.log('💰 Buscar créditos a todo custo:', forceCredits);
