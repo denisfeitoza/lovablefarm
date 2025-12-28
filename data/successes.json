@@ -1,5 +1,115 @@
 [
   {
+    "id": "success-1766891695340-0dxjelds8",
+    "email": "rafael7541santos@funcionariosartificiais.com",
+    "userId": 13,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:14:55.340Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891592664-pqysdmor8",
+    "email": "larissa.cavalcanti9981@funcionariosdeia.com",
+    "userId": 12,
+    "queueId": "queue-2",
+    "domain": "funcionariosdeia.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:13:12.664Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891590305-wf72t9dke",
+    "email": "ralmeida9503@funcionariosartificiais.com",
+    "userId": 11,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:13:10.305Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891488333-8tnqgteaw",
+    "email": "camila.oliveira2982@funcionariosdeia.com",
+    "userId": 10,
+    "queueId": "queue-2",
+    "domain": "funcionariosdeia.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:11:28.333Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891486472-yb0rv6ecx",
+    "email": "ppereira1998@funcionariosartificiais.com",
+    "userId": 9,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:11:26.472Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891383518-scm5lvjs0",
+    "email": "ricardo.cava1466@funcionariosdeia.com",
+    "userId": 8,
+    "queueId": "queue-2",
+    "domain": "funcionariosdeia.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:09:43.518Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891383299-esnqt3cxd",
+    "email": "joao8548@funcionariosartificiais.com",
+    "userId": 7,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:09:43.299Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891280810-x39mlfq1s",
+    "email": "oliveira1098@funcionariosdeia.com",
+    "userId": 6,
+    "queueId": "queue-2",
+    "domain": "funcionariosdeia.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:08:00.810Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891279613-nfdxn3nl2",
+    "email": "fernando.card7986@funcionariosartificiais.com",
+    "userId": 5,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:07:59.613Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891175923-s5r3oju1r",
+    "email": "gustavo2567@funcionariosdeia.com",
+    "userId": 4,
+    "queueId": "queue-2",
+    "domain": "funcionariosdeia.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:06:15.923Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "success-1766891175304-odbddwhlz",
+    "email": "gabriel5451@funcionariosartificiais.com",
+    "userId": 3,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "creditsEarned": 10,
+    "timestamp": "2025-12-28T03:06:15.304Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
     "id": "success-1766887629135-dxzpwe2ec",
     "email": "s.ribeiro6518@funcionariosdeia.com",
     "userId": 6,

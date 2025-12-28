@@ -1,5 +1,21 @@
 [
   {
+    "id": "queue-2",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-28T03:04:00.450Z",
+    "completedAt": "2025-12-28T03:14:55.348Z",
+    "totalUsers": 10,
+    "results": {
+      "total": 13,
+      "success": 11,
+      "failed": 2,
+      "target": 12,
+      "credits": 110
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
     "id": "queue-1",
     "name": "1",
     "status": "cancelled",

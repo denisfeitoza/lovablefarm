@@ -1,5 +1,29 @@
 [
   {
+    "id": "failure-1766891071735-k4pd8x8t5",
+    "email": "adriana.oliv5620@funcionariosartificiais.com",
+    "error": "Link de verificação não encontrado no email",
+    "failedStep": "Verificação de Email",
+    "userId": 1,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "errorCategory": "email_error",
+    "timestamp": "2025-12-28T03:04:31.735Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
+    "id": "failure-1766891071626-iztu68ti6",
+    "email": "bfernandes9396@funcionariosdeia.com",
+    "error": "Link de verificação não encontrado no email",
+    "failedStep": "Verificação de Email",
+    "userId": 2,
+    "queueId": "queue-2",
+    "domain": "funcionariosdeia.com",
+    "errorCategory": "email_error",
+    "timestamp": "2025-12-28T03:04:31.626Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=J0XH2LX"
+  },
+  {
     "id": "failure-1766887425521-kl4oyxl81",
     "email": "leandro.santos1151@funcionariosartificiais.com",
     "error": "page.waitForTimeout: Target page, context or browser has been closed",
