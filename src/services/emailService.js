@@ -14,16 +14,39 @@ class EmailService {
     this.client = null;
     this.usedEmails = new Set();
     this.emailData = new Map();
+    this.initializing = false; // Flag para evitar inicializações simultâneas
+    this.initPromise = null; // Promise da inicialização em andamento
   }
 
   /**
-   * Inicializa o cliente Inbound.new
+   * Inicializa o cliente Inbound.new (thread-safe)
    */
   async initialize() {
-    if (!this.client) {
-      this.client = new Inbound({ apiKey: this.apiKey });
-      logger.info('✅ Cliente Inbound.new inicializado');
+    // Se já está inicializado, retornar imediatamente
+    if (this.client) {
+      return;
     }
+    
+    // Se já está inicializando, aguardar a inicialização existente
+    if (this.initializing && this.initPromise) {
+      return this.initPromise;
+    }
+    
+    // Iniciar processo de inicialização
+    this.initializing = true;
+    this.initPromise = (async () => {
+      try {
+        if (!this.client) {
+          this.client = new Inbound({ apiKey: this.apiKey });
+          logger.info('✅ Cliente Inbound.new inicializado');
+        }
+      } finally {
+        this.initializing = false;
+        this.initPromise = null;
+      }
+    })();
+    
+    return this.initPromise;
   }
 
   /**
