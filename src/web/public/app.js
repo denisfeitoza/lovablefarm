@@ -615,6 +615,7 @@ class App {
 
   renderQueue(queue) {
     const forceCredits = queue.forceCredits || false;
+    const turboMode = queue.turboMode || false;
     
     // IMPORTANTE: Se forceCredits está ativo, usar sempre totalUsers (meta original)
     // Se não, usar target dinâmico (que pode ser diferente se houver ajustes)
@@ -775,6 +776,9 @@ class App {
             ${forceCredits ? `
               <span style="padding: 4px 10px; background: var(--success); color: white; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.4);">💰 Meta de Créditos</span>
             ` : ''}
+            ${turboMode ? `
+              <span style="padding: 4px 10px; background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); color: white; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.4);">⚡ Modo Turbo</span>
+            ` : ''}
           </div>
           <div style="display: flex; align-items: center; gap: 12px;">
             ${(queue.status === 'running' || queue.status === 'finalizing' || queue.status === 'completed' || queue.status === 'cancelled') && elapsedTime !== undefined ? `
@@ -820,8 +824,8 @@ class App {
         
         <div class="queue-stats">
           <div class="queue-stat">
-            <div class="queue-stat-value">${queue.results.success}</div>
-            <div class="queue-stat-label">Sucessos</div>
+            <div class="queue-stat-value">${forceCredits ? `${queue.results.success * 10}/${queue.totalUsers * 10}` : queue.results.success}</div>
+            <div class="queue-stat-label">${forceCredits ? 'Créditos (n/meta)' : 'Sucessos'}</div>
           </div>
           <div class="queue-stat">
             <div class="queue-stat-value">${queue.results.failed}</div>
@@ -1304,15 +1308,18 @@ class App {
 
     // Capturar opção "buscar créditos a todo custo"
     const forceCredits = document.getElementById('queueForceCredits').checked;
+    // Capturar opção "modo turbo"
+    const turboMode = document.getElementById('queueTurboMode').checked;
 
     console.log('🧪 Erros simulados:', simulatedErrors);
     console.log('💰 Buscar créditos a todo custo:', forceCredits);
+    console.log('⚡ Modo Turbo:', turboMode);
 
     try {
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits })
+        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode })
       });
 
       const data = await response.json();
@@ -1326,6 +1333,7 @@ class App {
         document.getElementById('queueUsers').value = '3';
         document.getElementById('queueParallel').value = '1';
         document.getElementById('queueForceCredits').checked = false;
+        document.getElementById('queueTurboMode').checked = false;
         
         // Resetar preview de créditos
         this.updateCreditsPreview('3');

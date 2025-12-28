@@ -78,6 +78,7 @@ class QueueManager {
       selectedProxies: config.selectedProxies || [], // Proxies selecionados para esta fila
       simulatedErrors: config.simulatedErrors || [], // Erros simulados para testar fallbacks
       forceCredits: config.forceCredits || false, // Buscar créditos a todo custo
+      turboMode: config.turboMode || false, // Modo turbo (pula quiz e seleção de template)
       totalUsers: config.users,
       parallelExecutions: config.parallel || 1,
       status: 'pending', // pending, running, completed, failed
@@ -472,8 +473,8 @@ class QueueManager {
 
       const executionStartTime = Date.now();
       
-      // Executar fluxo do usuário passando o link de indicação, domínio, proxy e erros simulados
-      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || []);
+      // Executar fluxo do usuário passando o link de indicação, domínio, proxy, erros simulados e modo turbo
+      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || [], queue.turboMode || false);
       
       const executionTime = Math.floor((Date.now() - executionStartTime) / 1000); // em segundos
 

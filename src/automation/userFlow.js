@@ -3,7 +3,7 @@ import { logger } from '../utils/logger.js';
 import { config } from '../utils/config.js';
 import { emailService } from '../services/emailService.js';
 import { proxyService } from '../services/proxyService.js';
-import { signupOnLovable, verifyEmailInSameSession, completeOnboardingQuiz, selectTemplate, useTemplateAndPublish } from './lovableFlow.js';
+import { signupOnLovable, verifyEmailInSameSession, completeOnboardingQuiz, selectTemplate, useTemplateAndPublish, fallbackToTemplate } from './lovableFlow.js';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -15,8 +15,9 @@ import fs from 'fs';
  * @param {string} domain - Domínio específico para o email (opcional)
  * @param {string} proxyString - Proxy específico para usar (opcional)
  * @param {Array} simulatedErrors - Lista de erros a simular para testar fallbacks (opcional)
+ * @param {boolean} turboMode - Se true, pula quiz e seleção de template, vai direto para fallback (opcional)
  */
-export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = []) {
+export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false) {
   const startTime = Date.now();
   const result = {
     userId,
@@ -132,20 +133,34 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
     const verifyResult = await verifyEmailInSameSession(page, verificationLink, userId, usingProxy);
     result.steps.emailVerification = verifyResult.executionTime;
 
-    // 7. Completar quiz de onboarding
-    logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding');
-    const quizResult = await completeOnboardingQuiz(page, userId, emailData.email, usingProxy);
-    result.steps.onboardingQuiz = quizResult.executionTime;
+    // Se modo turbo está ativo, pular quiz e seleção de template, ir direto para fallback
+    if (turboMode) {
+      logger.info('\n⚡ Modo Turbo ativo: Pulando quiz e seleção de template, indo direto para template fallback');
+      await fallbackToTemplate(page, userId, usingProxy);
+      result.steps.onboardingQuiz = 0; // Marcado como pulado
+      result.steps.selectTemplate = 0; // Marcado como pulado
+      
+      // 9. Usar template e publicar (já estamos no template após o fallback)
+      logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo)');
+      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors);
+      result.steps.useTemplateAndPublish = publishResult.executionTime;
+    } else {
+      // Modo normal: completar todas as etapas
+      // 7. Completar quiz de onboarding
+      logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding');
+      const quizResult = await completeOnboardingQuiz(page, userId, emailData.email, usingProxy);
+      result.steps.onboardingQuiz = quizResult.executionTime;
 
-    // 8. Selecionar template
-    logger.info('\n🎨 Etapa 5: Selecionando Template');
-    const templateResult = await selectTemplate(page, userId, usingProxy, simulatedErrors);
-    result.steps.selectTemplate = templateResult.executionTime;
+      // 8. Selecionar template
+      logger.info('\n🎨 Etapa 5: Selecionando Template');
+      const templateResult = await selectTemplate(page, userId, usingProxy, simulatedErrors);
+      result.steps.selectTemplate = templateResult.executionTime;
 
-    // 9. Usar template e publicar
-    logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
-    const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors);
-    result.steps.useTemplateAndPublish = publishResult.executionTime;
+      // 9. Usar template e publicar
+      logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
+      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors);
+      result.steps.useTemplateAndPublish = publishResult.executionTime;
+    }
 
     // 10. Sucesso!
     result.success = true;

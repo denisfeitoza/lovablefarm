@@ -5,7 +5,7 @@ import { getTimeout, getDelay, DEFAULT_TIMEOUTS } from '../utils/timeouts.js';
 /**
  * Função helper para fazer fallback para o template quando houver erros
  */
-async function fallbackToTemplate(page, userId, usingProxy) {
+export async function fallbackToTemplate(page, userId, usingProxy) {
   const fallbackTemplateUrl = config.templateProjectUrl;
   logger.warning('⚠️ Fazendo fallback para template específico...');
   logger.info(`📍 Navegando para: ${fallbackTemplateUrl}`);

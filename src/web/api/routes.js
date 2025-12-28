@@ -197,7 +197,7 @@ router.get('/queues/:id', (req, res) => {
  */
 router.post('/queues', (req, res) => {
   try {
-    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors, forceCredits } = req.body; // Capturar selectedDomains, selectedProxies, simulatedErrors e forceCredits
+    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode } = req.body; // Capturar selectedDomains, selectedProxies, simulatedErrors, forceCredits e turboMode
     
     // Validar link de indicação
     if (!referralLink) {
@@ -244,7 +244,8 @@ router.post('/queues', (req, res) => {
       selectedDomains: selectedDomains || [], // Passar selectedDomains
       selectedProxies: selectedProxies || [], // Passar selectedProxies
       simulatedErrors: simulatedErrors || [], // Passar erros simulados
-      forceCredits: forceCredits === true || forceCredits === 'true' // Passar forceCredits (buscar créditos a todo custo)
+      forceCredits: forceCredits === true || forceCredits === 'true', // Passar forceCredits (buscar créditos a todo custo)
+      turboMode: turboMode === true || turboMode === 'true' // Passar turboMode (modo turbo)
     };
     
     const queue = queueManager.createQueue(config); // Agora retorna o objeto completo
