@@ -163,6 +163,27 @@ httpServer.listen(PORT, () => {
   console.log('\n');
   
   logger.success(`Servidor web iniciado na porta ${PORT}`);
+}).on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    logger.error(`❌ Porta ${PORT} já está em uso!`);
+    console.log('\n');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('  ⚠️  ERRO: Porta já está em uso');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log(`  A porta ${PORT} já está sendo usada por outro processo.`);
+    console.log('');
+    console.log('  Para resolver, execute:');
+    console.log(`    lsof -ti:${PORT} | xargs kill -9`);
+    console.log('');
+    console.log('  Ou use outra porta:');
+    console.log(`    WEB_PORT=8080 npm run web`);
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('\n');
+    process.exit(1);
+  } else {
+    logger.error('Erro ao iniciar servidor', error);
+    process.exit(1);
+  }
 });
 
 // Graceful shutdown

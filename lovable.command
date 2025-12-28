@@ -16,6 +16,18 @@ if [ ! -d "node_modules" ]; then
     echo ""
 fi
 
+# Verificar e matar processos na porta 3000
+PORT=3000
+PID=$(lsof -ti:$PORT)
+if [ ! -z "$PID" ]; then
+    echo "⚠️  Porta $PORT já está em uso (PID: $PID)"
+    echo "🛑 Encerrando processo anterior..."
+    kill -9 $PID 2>/dev/null
+    sleep 1
+    echo "✅ Porta $PORT liberada"
+    echo ""
+fi
+
 # Iniciar servidor em background
 echo "🚀 Iniciando servidor web..."
 npm run web &
