@@ -666,9 +666,6 @@ body {
   pointer-events: auto;
 }
 
-.logs-panel {
-  position: relative;
-}
 
 .scroll-down-btn:hover {
   background: var(--primary-hover, #7c3aed);

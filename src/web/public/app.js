@@ -537,16 +537,18 @@ class App {
       return;
     }
     
+    const isHidden = panel.classList.contains('hidden');
     panel.classList.toggle('hidden');
     
     // Se abrindo o painel, garantir que está no final e auto-scroll ativo
-    if (!panel.classList.contains('hidden')) {
+    if (isHidden) {
       // Garantir que o auto-scroll está ativo quando abrir
       this.logsAutoScroll = true;
       
+      // Aguardar um pouco para garantir que o DOM foi atualizado
       setTimeout(() => {
         this.scrollLogsToBottom();
-      }, 100);
+      }, 50);
     }
   }
 
