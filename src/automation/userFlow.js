@@ -228,10 +228,17 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       // 9. Usar template e publicar
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
       const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false); // checkCreditsBanner só funciona com turboMode
-      if (!publishResult.success) {
-        throw new Error(publishResult.error || 'Erro ao publicar projeto');
-      }
       result.steps.useTemplateAndPublish = publishResult.executionTime;
+      
+      // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
+      // O projeto foi publicado, mas não encontrou o banner, então é uma falha
+      if (!publishResult.success) {
+        result.success = false;
+        result.error = publishResult.error || 'Erro ao publicar projeto';
+        result.failedStep = 'Banner de Créditos no Editor';
+        logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
+        return result;
+      }
     }
 
     // 10. Sucesso!
