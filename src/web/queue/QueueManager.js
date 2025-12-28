@@ -323,7 +323,6 @@ class QueueManager {
     const originalTarget = queue.totalUsers; // Meta original (não aumenta com erros)
     
     // Continuar até atingir a meta original ou ser cancelado
-    // IMPORTANTE: Comparar com totalUsers (meta original), não com target (que pode ter sido aumentado)
     while (queue.results.success < originalTarget && !queue.cancelled && queue.status !== 'finalizing') {
       // Verificar se já atingiu a meta ANTES de criar novas execuções
       if (queue.results.success >= originalTarget) {
@@ -331,6 +330,8 @@ class QueueManager {
       }
       
       // Manter sempre o número máximo de execuções paralelas rodando
+      // IMPORTANTE: Só criar novas promises se o Set tiver menos que o limite
+      // O pLimit já controla a fila interna, mas precisamos controlar quantas criamos
       while (runningPromises.size < queue.parallelExecutions && 
              queue.results.success < originalTarget && 
              !queue.cancelled && queue.status !== 'finalizing') {
@@ -342,6 +343,7 @@ class QueueManager {
         
         const userId = nextUserId++;
         
+        // Criar promise que será executada pelo limit
         const promise = limit(async () => {
           // IMPORTANTE: Verificar meta original ANTES de executar
           if (queue.cancelled || queue.status === 'finalizing' || queue.results.success >= originalTarget) {
@@ -353,10 +355,7 @@ class QueueManager {
             const result = await this.executeUser(queueId, userId);
             
             // Verificar DEPOIS de executar - se já atingiu a meta, retornar cancelled
-            // Isso é importante porque executeUser incrementa success dentro dele
-            if (queue.results.success > originalTarget) {
-              // Se ultrapassou, ajustar para não ultrapassar muito
-              logger.warning(`⚠️ Meta atingida (${queue.results.success}/${originalTarget}), parando execução`);
+            if (queue.results.success >= originalTarget) {
               runningPromises.delete(promise);
               return { cancelled: true };
             }
@@ -371,14 +370,10 @@ class QueueManager {
             throw error;
           } finally {
             runningPromises.delete(promise);
-            // Verificar novamente após limpar a promise
-            if (queue.results.success >= originalTarget && runningPromises.size === 0) {
-              // Se atingiu a meta e não há mais execuções rodando, quebrar o loop
-              queue.cancelled = true;
-            }
           }
         });
         
+        // Adicionar ao Set APENAS após criar a promise
         runningPromises.add(promise);
       }
       
@@ -393,8 +388,8 @@ class QueueManager {
           break;
         }
       } else {
-        // Se não há execuções rodando mas ainda não atingimos a meta, criar uma
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Se não há execuções rodando, parar o loop
+        break;
       }
     }
     
