@@ -162,12 +162,13 @@ class QueueManager {
             break;
           }
           
-          // Adicionar delay escalonado de 2 segundos entre execuções paralelas para evitar picos
-          const delayMs = (i - 1) * 2000; // 2 segundos entre cada execução
+          // Adicionar delay escalonado apenas para as primeiras execuções (até o limite de paralelismo)
+          // Depois disso, as execuções começam imediatamente quando uma termina
+          const delayMs = (i <= queue.parallelExecutions) ? (i - 1) * 2000 : 0;
           
           promises.push(
             limit(async () => {
-              // Aguardar delay escalonado antes de iniciar
+              // Aguardar delay escalonado antes de iniciar (apenas nas primeiras execuções)
               if (delayMs > 0) {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
               }
@@ -327,6 +328,7 @@ class QueueManager {
     if (!queue) return;
 
     let nextUserId = 1; // Contador para userIds únicos
+    let initialExecutions = 0; // Contador de execuções iniciais (para aplicar delay apenas no início)
     const activePromises = new Set(); // Set para rastrear promises ativas
     const originalTarget = queue.totalUsers; // Meta original (não aumenta com erros)
     
@@ -349,12 +351,15 @@ class QueueManager {
         }
         
         const userId = nextUserId++;
-        // Adicionar delay escalonado de 2 segundos entre execuções paralelas para evitar picos
-        const delayMs = (userId - 1) * 2000; // 2 segundos entre cada execução
+        const executionIndex = initialExecutions++;
+        
+        // Adicionar delay escalonado apenas para as primeiras execuções (até o limite de paralelismo)
+        // Depois disso, as execuções começam imediatamente quando uma termina
+        const delayMs = (executionIndex < queue.parallelExecutions) ? executionIndex * 2000 : 0;
         
         // Criar promise que será gerenciada pelo pLimit
         const promise = limit(async () => {
-          // Aguardar delay escalonado antes de iniciar
+          // Aguardar delay escalonado antes de iniciar (apenas nas primeiras execuções)
           if (delayMs > 0) {
             await new Promise(resolve => setTimeout(resolve, delayMs));
           }
