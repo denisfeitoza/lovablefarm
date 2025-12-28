@@ -602,7 +602,9 @@ class QueueManager {
       
       // Determinar etapa que falhou baseado na mensagem de erro
       let failedStep = 'Erro na execução';
-      if (error.message.includes('Banner/popup') || error.message.includes('créditos')) {
+      if (error.message.includes('Banner de crédito não encontrado na etapa final') || error.message.includes('banner de credito nao encontrado na etapa final')) {
+        failedStep = 'Banner de Créditos no Editor';
+      } else if (error.message.includes('Banner/popup') || error.message.includes('créditos')) {
         failedStep = 'Verificação de Créditos';
       } else if (error.message.includes('Domínio não elegível') || error.message.includes('not eligible')) {
         failedStep = 'Cadastro - Domínio não elegível';
