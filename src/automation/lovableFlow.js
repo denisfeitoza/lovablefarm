@@ -997,8 +997,18 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
     logger.success('✅ Publicação concluída!');
 
     const executionTime = Date.now() - startTime;
+    
+    // Se o banner não foi encontrado, marcar como falha mesmo tendo publicado
+    if (bannerNotFound) {
+      logger.warning('⚠️ Publicação concluída, mas banner de créditos não foi encontrado - marcando como falha');
+      return {
+        success: false,
+        error: 'Banner de crédito não encontrado na etapa final',
+        executionTime
+      };
+    }
+    
     logger.success(`✅ Template publicado em ${executionTime}ms`);
-
     return { success: true, executionTime };
   } catch (error) {
     // Verificar se é o erro específico que requer fallback para template
