@@ -144,6 +144,9 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
         result.steps.selectTemplate = 0; // Marcado como pulado
         logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo - Fallback)');
         const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
+        if (!publishResult.success) {
+          throw new Error(publishResult.error || 'Erro ao publicar projeto');
+        }
         result.steps.useTemplateAndPublish = publishResult.executionTime;
       } else {
         // Modo normal: continuar com quiz e depois publicar
@@ -156,6 +159,9 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
         
         logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Fallback)');
         const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false);
+        if (!publishResult.success) {
+          throw new Error(publishResult.error || 'Erro ao publicar projeto');
+        }
         result.steps.useTemplateAndPublish = publishResult.executionTime;
       }
       
@@ -182,6 +188,9 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       // 9. Usar template e publicar (já estamos no template após o fallback)
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo)');
       const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
+      if (!publishResult.success) {
+        throw new Error(publishResult.error || 'Erro ao publicar projeto');
+      }
       result.steps.useTemplateAndPublish = publishResult.executionTime;
     } else {
       // Modo normal: completar todas as etapas
@@ -198,6 +207,9 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       // 9. Usar template e publicar
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
       const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false); // checkCreditsBanner só funciona com turboMode
+      if (!publishResult.success) {
+        throw new Error(publishResult.error || 'Erro ao publicar projeto');
+      }
       result.steps.useTemplateAndPublish = publishResult.executionTime;
     }
 
