@@ -532,7 +532,22 @@ class App {
 
   toggleLogs() {
     const panel = document.getElementById('logsPanel');
+    if (!panel) {
+      console.error('Painel de logs não encontrado!');
+      return;
+    }
+    
     panel.classList.toggle('hidden');
+    
+    // Se abrindo o painel, garantir que está no final e auto-scroll ativo
+    if (!panel.classList.contains('hidden')) {
+      // Garantir que o auto-scroll está ativo quando abrir
+      this.logsAutoScroll = true;
+      
+      setTimeout(() => {
+        this.scrollLogsToBottom();
+      }, 100);
+    }
   }
 
   async clearLogs() {
