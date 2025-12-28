@@ -1386,7 +1386,10 @@ class App {
         document.getElementById('queueParallel').value = '1';
         document.getElementById('queueForceCredits').checked = false;
         document.getElementById('queueTurboMode').checked = false;
-        document.getElementById('queueCheckCreditsBanner').checked = false;
+        const checkCreditsBannerElReset = document.getElementById('queueCheckCreditsBanner');
+        if (checkCreditsBannerElReset) {
+          checkCreditsBannerElReset.checked = false;
+        }
         
         // Resetar estado dos checkboxes
         this.onTurboModeChange();
