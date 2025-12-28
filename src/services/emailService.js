@@ -49,89 +49,9 @@ class EmailService {
         return this.generateEmail(userId, specificDomain, 1, maxAttempts); // Resetar tentativas
       }
 
-      // ✅ VALIDAÇÃO OBRIGATÓRIA: Verificar se email está ativo e funcional
-      logger.info(`🔍 Validando se email está ativo: ${email}...`);
-      let emailValidated = false;
-      
-      try {
-        // Tentar buscar mensagens (mesmo que vazio) para validar que a API reconhece o email
-        const testResponse = await this.client.emails.list({
-          limit: 1,
-          to: email
-        });
-        
-        // Se chegou aqui sem erro, o email está ativo e confirmado
-        emailValidated = true;
-        logger.confirmed(`💗 Email confirmado e ativo: ${email} (pronto para receber mensagens)`);
-        
-        // ✅ VALIDAÇÃO ADICIONAL: Aguardar um pouco e verificar novamente para garantir que está realmente pronto
-        logger.info(`🔍 Validação adicional: aguardando 2s e verificando novamente...`);
-        await this.delay(2000);
-        
-        try {
-          const doubleCheck = await this.client.emails.list({
-            limit: 1,
-            to: email
-          });
-          logger.confirmed(`💗 Email validado novamente - 100% confirmado e pronto: ${email}`);
-        } catch (doubleCheckError) {
-          logger.warning(`⚠️ Segunda validação falhou, mas primeira passou - continuando mesmo assim`);
-          logger.warning(`⚠️ Erro: ${doubleCheckError.message}`);
-        }
-      } catch (error) {
-        // Email não foi confirmado - recriar
-        emailValidated = false;
-        
-        // Verificar se é um erro crítico (API não reconhece o email/domínio)
-        const isCriticalError = error.message && (
-          error.message.includes('not found') ||
-          error.message.includes('invalid') ||
-          error.message.includes('domain') ||
-          error.message.includes('404') ||
-          error.message.includes('403')
-        );
-        
-        if (isCriticalError) {
-          // Erro crítico - email não está acessível, recriar
-          logger.warning(`⚠️ Email ${email} não confirmado na API (erro crítico)`);
-          
-          if (attempt < maxAttempts) {
-            logger.warning(`⚠️ Recriando email (tentativa ${attempt + 1}/${maxAttempts})...`);
-            await this.delay(1000); // Pequeno delay entre tentativas
-            return this.generateEmail(userId, specificDomain, attempt + 1, maxAttempts);
-          } else {
-            // Sem mais tentativas
-            logger.error(`❌ Falha ao confirmar email após ${maxAttempts} tentativas`);
-            logger.error(`❌ Último erro: ${error.message}`);
-            throw new Error(`Não foi possível gerar email confirmado após ${maxAttempts} tentativas. Verifique se o domínio ${domain} está configurado corretamente no Inbound.new`);
-          }
-        } else {
-          // Erro não crítico (timeout, etc) - tentar recriar mesmo assim
-          logger.warning(`⚠️ Email ${email} não confirmado (erro não crítico: ${error.message})`);
-          
-          if (attempt < maxAttempts) {
-            logger.warning(`⚠️ Recriando email (tentativa ${attempt + 1}/${maxAttempts})...`);
-            await this.delay(1000);
-            return this.generateEmail(userId, specificDomain, attempt + 1, maxAttempts);
-          } else {
-            // Sem mais tentativas - falhar
-            logger.error(`❌ Falha ao confirmar email após ${maxAttempts} tentativas`);
-            throw new Error(`Não foi possível gerar email confirmado após ${maxAttempts} tentativas`);
-          }
-        }
-      }
-
-      // ✅ Só chega aqui se email foi confirmado
-      if (!emailValidated) {
-        // Isso não deveria acontecer, mas por segurança recriar
-        if (attempt < maxAttempts) {
-          logger.warning(`⚠️ Email não confirmado, recriando (tentativa ${attempt + 1}/${maxAttempts})...`);
-          await this.delay(1000);
-          return this.generateEmail(userId, specificDomain, attempt + 1, maxAttempts);
-        } else {
-          throw new Error(`Email não foi confirmado após ${maxAttempts} tentativas`);
-        }
-      }
+      // No Inbound.new, emails são criados automaticamente quando o primeiro email chega
+      // Não precisamos validar antes de usar - apenas garantir que o email seja único
+      logger.info(`📧 Email gerado: ${email} (será criado automaticamente quando o primeiro email chegar)`);
 
       this.usedEmails.add(email);
       
@@ -140,13 +60,10 @@ class EmailService {
         email,
         username,
         domain: domain,
-        createdAt: new Date(),
-        validated: true, // Sempre true aqui, pois só chega se foi confirmado
-        validationAttempts: attempt
+        createdAt: new Date()
       });
       
-      // Log rosa de confirmação
-      logger.confirmed(`💗 Email confirmado e pronto: ${email}`);
+      logger.info(`✅ Email gerado e pronto para uso: ${email}`);
       
       return {
         email,
