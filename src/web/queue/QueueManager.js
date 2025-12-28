@@ -153,9 +153,7 @@ class QueueManager {
         await this.executeQueueWithRetry(queueId, limit);
       } else {
         // Modo normal: executar apenas o número especificado de usuários
-        // Criar promises de forma controlada para evitar sobrecarga inicial
         const promises = [];
-        const batchSize = queue.parallelExecutions; // Processar em lotes do tamanho do paralelismo
         
         for (let i = 1; i <= queue.totalUsers; i++) {
           // Verificar se foi cancelado antes de criar nova execução
@@ -174,15 +172,9 @@ class QueueManager {
               return this.executeUser(queueId, i);
             })
           );
-          
-          // Se atingiu o tamanho do lote, aguardar algumas completarem antes de criar mais
-          if (promises.length >= batchSize && i < queue.totalUsers) {
-            // Aguardar pelo menos uma promise completar antes de continuar criando
-            await Promise.race(promises.filter(p => p));
-          }
         }
 
-        // Aguardar todas as execuções
+        // Aguardar todas as execuções (pLimit já controla a concorrência)
         await Promise.allSettled(promises);
       }
 
