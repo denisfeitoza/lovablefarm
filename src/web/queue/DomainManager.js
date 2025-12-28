@@ -18,6 +18,7 @@ class DomainManager {
     this.domains = [];
     this.currentIndex = 0;
     this.configPath = path.join(__dirname, '../../../config/email-domains.json');
+    this.saving = false; // Flag para evitar saves simultâneos
     this.loadDomains();
   }
 
