@@ -295,6 +295,7 @@ class HistoryManager {
       totalSuccesses: successes.length,
       byCategory: {
         popup_not_found: 0,
+        banner_editor_not_found: 0,
         email_error: 0,
         template_error: 0,
         other_error: 0
@@ -360,6 +361,7 @@ class HistoryManager {
           successes: 0,
           byCategory: {
             popup_not_found: 0,
+            banner_editor_not_found: 0,
             email_error: 0,
             template_error: 0,
             other_error: 0
@@ -376,6 +378,7 @@ class HistoryManager {
           successes: 0,
           byCategory: {
             popup_not_found: 0,
+            banner_editor_not_found: 0,
             email_error: 0,
             template_error: 0,
             other_error: 0
@@ -397,6 +400,7 @@ class HistoryManager {
       totalSuccesses: 0,
       byCategory: {
         popup_not_found: 0,
+        banner_editor_not_found: 0,
         email_error: 0,
         template_error: 0,
         other_error: 0
