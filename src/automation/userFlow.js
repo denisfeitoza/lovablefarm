@@ -16,8 +16,9 @@ import fs from 'fs';
  * @param {string} proxyString - Proxy específico para usar (opcional)
  * @param {Array} simulatedErrors - Lista de erros a simular para testar fallbacks (opcional)
  * @param {boolean} turboMode - Se true, pula quiz e seleção de template, vai direto para fallback (opcional)
+ * @param {boolean} checkCreditsBanner - Se true, verifica banner de créditos no editor antes de publicar (só funciona com turboMode) (opcional)
  */
-export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false) {
+export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false, checkCreditsBanner = false) {
   const startTime = Date.now();
   const result = {
     userId,
@@ -142,7 +143,7 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       
       // 9. Usar template e publicar (já estamos no template após o fallback)
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo)');
-      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors);
+      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
       result.steps.useTemplateAndPublish = publishResult.executionTime;
     } else {
       // Modo normal: completar todas as etapas
@@ -158,7 +159,7 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
 
       // 9. Usar template e publicar
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
-      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors);
+      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false); // checkCreditsBanner só funciona com turboMode
       result.steps.useTemplateAndPublish = publishResult.executionTime;
     }
 

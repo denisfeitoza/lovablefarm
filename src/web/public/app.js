@@ -1358,16 +1358,19 @@ class App {
     const forceCredits = document.getElementById('queueForceCredits').checked;
     // Capturar opção "modo turbo"
     const turboMode = document.getElementById('queueTurboMode').checked;
+    // Capturar opção "verificar banner de créditos" (só disponível se turboMode estiver ativo)
+    const checkCreditsBanner = document.getElementById('queueCheckCreditsBanner').checked && turboMode;
 
     console.log('🧪 Erros simulados:', simulatedErrors);
     console.log('💰 Buscar créditos a todo custo:', forceCredits);
     console.log('⚡ Modo Turbo:', turboMode);
+    console.log('🔍 Verificar Banner de Créditos:', checkCreditsBanner);
 
     try {
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode })
+        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner })
       });
 
       const data = await response.json();
@@ -1382,6 +1385,10 @@ class App {
         document.getElementById('queueParallel').value = '1';
         document.getElementById('queueForceCredits').checked = false;
         document.getElementById('queueTurboMode').checked = false;
+        document.getElementById('queueCheckCreditsBanner').checked = false;
+        
+        // Resetar estado dos checkboxes
+        this.onTurboModeChange();
         
         // Resetar preview de créditos
         this.updateCreditsPreview('3');
@@ -1538,6 +1545,33 @@ class App {
     if (preview) {
       preview.textContent = `${totalCredits} créditos`;
     }
+  }
+
+  onTurboModeChange() {
+    const turboMode = document.getElementById('queueTurboMode').checked;
+    const checkCreditsBanner = document.getElementById('queueCheckCreditsBanner');
+    
+    // Habilitar/desabilitar checkbox de verificar banner baseado no modo turbo
+    if (checkCreditsBanner) {
+      checkCreditsBanner.disabled = !turboMode;
+      // Se desabilitar, desmarcar também
+      if (!turboMode) {
+        checkCreditsBanner.checked = false;
+      }
+    }
+  }
+
+  enableAllOptions() {
+    document.getElementById('queueForceCredits').checked = true;
+    document.getElementById('queueTurboMode').checked = true;
+    // Habilitar e marcar verificação de banner (só funciona com turbo)
+    const checkCreditsBanner = document.getElementById('queueCheckCreditsBanner');
+    if (checkCreditsBanner) {
+      checkCreditsBanner.disabled = false;
+      checkCreditsBanner.checked = true;
+    }
+    // Chamar onTurboModeChange para garantir estado consistente
+    this.onTurboModeChange();
   }
 
   // Modal Controls

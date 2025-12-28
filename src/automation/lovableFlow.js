@@ -848,7 +848,7 @@ export async function selectTemplate(page, userId = 1, usingProxy = false, simul
 /**
  * Etapa 5: Publicar projeto
  */
-export async function useTemplateAndPublish(page, userId = 1, usingProxy = false, simulatedErrors = []) {
+export async function useTemplateAndPublish(page, userId = 1, usingProxy = false, simulatedErrors = [], checkCreditsBanner = false) {
   const startTime = Date.now();
   
   try {
@@ -857,6 +857,42 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
     // Aguardar editor carregar completamente (após clicar em Remix)
     logger.info('⏳ Aguardando editor carregar completamente...');
     await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.veryLongDelay, usingProxy));
+    
+    // Se checkCreditsBanner estiver ativo, procurar o banner de créditos antes de publicar
+    if (checkCreditsBanner) {
+      logger.info('🔍 Verificando banner de créditos no editor...');
+      try {
+        // Procurar pelo banner superior de créditos (texto sobre referral/bonus credits)
+        const bannerFound = await page.evaluate(() => {
+          const bodyText = document.body.innerText;
+          // Procurar por textos relacionados a créditos de referral
+          return bodyText.includes('10 credits') || 
+                 bodyText.includes('10 créditos') ||
+                 bodyText.includes('bonus credits') ||
+                 bodyText.includes('referral') && bodyText.includes('credits');
+        });
+        
+        if (bannerFound) {
+          logger.success('✅ Banner de créditos encontrado no editor!');
+        } else {
+          // Tentar encontrar elementos específicos do banner
+          try {
+            await page.waitForSelector('text=/referral.*credits|bonus.*credits|10.*credits/i', { 
+              timeout: getTimeout(3000, usingProxy) // Timeout curto para verificação rápida
+            });
+            logger.success('✅ Banner de créditos encontrado no editor (via seletor)!');
+          } catch (e) {
+            logger.error('❌ Banner de créditos não encontrado no editor');
+            throw new Error('Banner de crédito não encontrado na etapa final');
+          }
+        }
+      } catch (error) {
+        if (error.message === 'Banner de crédito não encontrado na etapa final') {
+          throw error;
+        }
+        logger.warning('⚠️ Erro ao verificar banner, mas continuando...', error.message);
+      }
+    }
     
     // Tentar encontrar botão Publish com retry e refresh
     let publishButtonFound = false;

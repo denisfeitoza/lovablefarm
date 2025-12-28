@@ -251,7 +251,12 @@
 
         <!-- Seção: Opções Avançadas -->
         <div class="form-section form-section-divider">
-          <h3 class="form-section-title">⚙️ Opções Avançadas</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 class="form-section-title" style="margin: 0;">⚙️ Opções Avançadas</h3>
+            <button type="button" class="btn btn-tiny btn-secondary" onclick="app.enableAllOptions()" style="padding: 6px 12px; font-size: 11px;">
+              ✓ Ativar Todas
+            </button>
+          </div>
           
           <div class="form-group">
             <label class="checkbox-label">
@@ -268,12 +273,25 @@
 
           <div class="form-group">
             <label class="checkbox-label">
-              <input type="checkbox" id="queueTurboMode" class="checkbox-input">
+              <input type="checkbox" id="queueTurboMode" class="checkbox-input" onchange="app.onTurboModeChange()">
               <span class="checkbox-custom"></span>
               <div class="checkbox-content">
                 <div class="checkbox-title">⚡ Modo Turbo</div>
                 <div class="checkbox-description">
                   Após verificar o email, pula o quiz e a seleção de template, indo direto para o template fallback. Acelera significativamente a execução.
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="queueCheckCreditsBanner" class="checkbox-input" disabled>
+              <span class="checkbox-custom"></span>
+              <div class="checkbox-content">
+                <div class="checkbox-title">🔍 Verificar Banner de Créditos (Modo Turbo)</div>
+                <div class="checkbox-description">
+                  Procura o banner superior de 10 créditos no editor antes de publicar. Disponível apenas quando Modo Turbo está ativo. Se não encontrar, gera erro na etapa final.
                 </div>
               </div>
             </label>
