@@ -44,20 +44,10 @@ class App {
     this.fetchHistory();
     this.fetchFailures(); // Buscar falhas recentes
     this.fetchMetrics(); // Buscar métricas iniciais
-    // Iniciar loop de atualização dos timers
+    // Iniciar loop de atualização dos timers (apenas para execuções individuais)
+    // Os timers das filas são atualizados via WebSocket do backend
     setInterval(() => {
       this.updateTimers();
-      // Atualizar timers das filas rodando
-      if (this.queues) {
-        this.queues.forEach(queue => {
-          if (queue.status === 'running' && queue.startedAt) {
-            const startTime = new Date(queue.startedAt).getTime();
-            const now = Date.now();
-            queue.elapsedTime = Math.floor((now - startTime) / 1000);
-          }
-        });
-        this.renderQueues();
-      }
     }, 1000);
     // Métricas, histórico e falhas agora são atualizados automaticamente via WebSocket
   }
