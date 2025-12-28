@@ -531,6 +531,7 @@ class App {
   }
 
   toggleLogs() {
+    console.log('toggleLogs chamado');
     const panel = document.getElementById('logsPanel');
     if (!panel) {
       console.error('Painel de logs não encontrado!');
@@ -538,17 +539,27 @@ class App {
     }
     
     const isHidden = panel.classList.contains('hidden');
+    console.log('Painel está escondido?', isHidden);
+    
     panel.classList.toggle('hidden');
+    
+    const isNowHidden = panel.classList.contains('hidden');
+    console.log('Painel agora está escondido?', isNowHidden);
+    console.log('Classes do painel:', panel.className);
     
     // Se abrindo o painel, garantir que está no final e auto-scroll ativo
     if (isHidden) {
+      console.log('Abrindo painel de logs...');
       // Garantir que o auto-scroll está ativo quando abrir
       this.logsAutoScroll = true;
       
       // Aguardar um pouco para garantir que o DOM foi atualizado
       setTimeout(() => {
         this.scrollLogsToBottom();
+        console.log('Painel de logs aberto e scroll aplicado');
       }, 50);
+    } else {
+      console.log('Fechando painel de logs...');
     }
   }
 
