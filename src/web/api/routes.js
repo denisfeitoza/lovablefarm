@@ -217,10 +217,10 @@ router.post('/queues', (req, res) => {
     }
     
     const parallelNum = parseInt(parallel) || 1;
-    if (isNaN(parallelNum) || parallelNum < 1 || parallelNum > 5) {
+    if (isNaN(parallelNum) || parallelNum < 1 || parallelNum > 10) {
       return res.status(400).json({
         success: false,
-        error: 'Número de execuções paralelas deve estar entre 1 e 5'
+        error: 'Número de execuções paralelas deve estar entre 1 e 10'
       });
     }
     
