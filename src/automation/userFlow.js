@@ -123,7 +123,7 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
     logger.info('\n📬 Etapa 2: Aguardando Email de Verificação');
     const verificationEmail = await emailService.waitForVerificationEmail(
       emailData, // Passa o objeto completo com email, proxyId, etc
-      5, // 5 tentativas × 3s = 15s total
+      20, // 20 tentativas × 3s = 60s total (aumentado para aguardar mais tempo)
       3000 // 3 segundos entre tentativas
     );
     
