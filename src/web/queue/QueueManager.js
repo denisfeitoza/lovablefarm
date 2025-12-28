@@ -349,10 +349,17 @@ class QueueManager {
         }
         
         const userId = nextUserId++;
+        // Adicionar delay escalonado de 2 segundos entre execuções paralelas para evitar picos
+        const delayMs = (userId - 1) * 2000; // 2 segundos entre cada execução
         
         // Criar promise que será gerenciada pelo pLimit
         const promise = limit(async () => {
-          // IMPORTANTE: Verificar meta original ANTES de executar
+          // Aguardar delay escalonado antes de iniciar
+          if (delayMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+          
+          // IMPORTANTE: Verificar meta original ANTES de executar (após o delay)
           if (queue.cancelled || queue.status === 'finalizing' || queue.results.success >= originalTarget) {
             activePromises.delete(promise);
             return { cancelled: true };
