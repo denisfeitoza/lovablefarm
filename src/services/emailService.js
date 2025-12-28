@@ -117,16 +117,20 @@ class EmailService {
       return exactMatches;
     } catch (error) {
       // Se for erro 401 (autenticação) ou 404 (não encontrado), significa que o email ainda não foi criado
-      // ou não há emails ainda - isso é normal, retornar lista vazia
-      if (error.status === 401 || error.status === 404 || 
-          error.message?.includes('401') || error.message?.includes('404') ||
-          error.message?.includes('Authentication') || error.message?.includes('not found')) {
-        // Email ainda não foi criado ou não há emails - normal, retornar vazio
+      // ou não há emails ainda - isso é normal, retornar lista vazia silenciosamente
+      const errorMessage = error.message || error.toString() || '';
+      const statusCode = error.status || error.statusCode || error.response?.status || error.response?.statusCode;
+      
+      if (statusCode === 401 || statusCode === 404 || 
+          errorMessage.includes('401') || errorMessage.includes('404') ||
+          errorMessage.includes('Authentication') || errorMessage.includes('not found') ||
+          errorMessage.includes('Unauthorized')) {
+        // Email ainda não foi criado ou não há emails - normal, retornar vazio silenciosamente
         return [];
       }
       
       // Outros erros - logar mas retornar vazio para não bloquear o fluxo
-      logger.warning(`⚠️ Erro ao buscar emails para ${emailAddress}: ${error.message || error}`);
+      logger.warning(`⚠️ Erro ao buscar emails para ${emailAddress}: ${errorMessage}`);
       return [];
     }
   }
