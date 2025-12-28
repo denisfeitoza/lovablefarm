@@ -1004,24 +1004,37 @@ class App {
 
   // Atualizar apenas o timer e o indicador de tempo na timeline, sem re-renderizar tudo
   updateQueueTimerOnly(queue) {
+    // Calcular elapsedTime localmente para garantir precisão e evitar conflitos
+    let elapsedTime = queue.elapsedTime || 0;
+    if (queue.status === 'running' && queue.startedAt) {
+      const startTime = new Date(queue.startedAt).getTime();
+      const now = Date.now();
+      elapsedTime = Math.floor((now - startTime) / 1000);
+      // Atualizar no objeto da fila também para manter sincronizado
+      const index = this.queues.findIndex(q => q.id === queue.id);
+      if (index !== -1) {
+        this.queues[index].elapsedTime = elapsedTime;
+      }
+    }
+    
     // Atualizar o timer no header da fila
     const queueElement = document.querySelector(`[data-queue-id="${queue.id}"]`);
     if (queueElement) {
       const timerElement = queueElement.querySelector('.queue-timer');
-      if (timerElement && queue.elapsedTime !== undefined) {
+      if (timerElement) {
         const formatTime = (seconds) => {
           const mins = Math.floor(seconds / 60);
           const secs = seconds % 60;
           return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         };
-        timerElement.textContent = `⏱️ ${formatTime(queue.elapsedTime)}`;
+        timerElement.textContent = `⏱️ ${formatTime(elapsedTime)}`;
       }
     }
     
     // Atualizar o indicador de tempo atual na timeline
     const timelineId = `timeline-${queue.id}`;
     const timelineElement = document.getElementById(timelineId);
-    if (timelineElement && queue.status === 'running' && queue.elapsedTime > 0) {
+    if (timelineElement && queue.status === 'running' && elapsedTime > 0) {
       const timelineInner = timelineElement.querySelector('.timeline-inner');
       if (timelineInner) {
         // Calcular maxTimestamp baseado nos erros e sucessos
@@ -1029,7 +1042,7 @@ class App {
         const maxTimestamp = Math.max(
           ...timelineData.errors.map(e => e.timestamp || 0),
           ...timelineData.successes.map(s => s.timestamp || 0),
-          queue.elapsedTime || 0,
+          elapsedTime || 0,
           1
         );
         
@@ -1040,7 +1053,7 @@ class App {
           currentIndicator.className = 'queue-timeline-current';
           timelineInner.appendChild(currentIndicator);
         }
-        const position = Math.min((queue.elapsedTime / maxTimestamp) * 100, 100);
+        const position = Math.min((elapsedTime / maxTimestamp) * 100, 100);
         currentIndicator.style.left = `${position}%`;
       }
     }
