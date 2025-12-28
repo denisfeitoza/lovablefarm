@@ -53,9 +53,15 @@ class DomainManager {
   }
 
   /**
-   * Salva domínios no arquivo
+   * Salva domínios no arquivo (thread-safe)
    */
   saveDomains() {
+    // Evitar saves simultâneos
+    if (this.saving) {
+      return;
+    }
+    
+    this.saving = true;
     try {
       const config = {
         domains: this.domains,
@@ -67,6 +73,11 @@ class DomainManager {
       logger.info('💾 Domínios salvos com sucesso');
     } catch (error) {
       logger.error('Erro ao salvar domínios', error);
+    } finally {
+      // Usar setTimeout para garantir que não bloqueie outras chamadas
+      setTimeout(() => {
+        this.saving = false;
+      }, 50);
     }
   }
 
