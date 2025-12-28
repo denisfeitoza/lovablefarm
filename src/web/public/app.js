@@ -1877,6 +1877,9 @@ class App {
       this.renderQueueProxySelection();
       // Garantir que o checkbox do banner está habilitado (turbo mode está marcado por padrão)
       this.onTurboModeChange();
+      // Atualizar preview de créditos com o valor padrão (1000 usuários)
+      const defaultUsers = document.getElementById('queueUsers').value || '1000';
+      this.updateCreditsPreview(defaultUsers);
     }, 100);
   }
 
