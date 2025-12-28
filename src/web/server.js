@@ -17,7 +17,8 @@ const __dirname = dirname(__filename);
 const app = express();
 const httpServer = createServer(app);
 
-const PORT = process.env.WEB_PORT || 3000;
+// Aceitar PORT (padrão) ou WEB_PORT (compatibilidade)
+const PORT = process.env.PORT || process.env.WEB_PORT || 3000;
 const BASE_PATH = (process.env.BASE_PATH || '').replace(/\/$/, ''); // Remove trailing slash
 
 // Configure Socket.IO with base path

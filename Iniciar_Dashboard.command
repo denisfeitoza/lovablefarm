@@ -25,14 +25,17 @@ SERVER_PID=$!
 echo "⏳ Aguardando servidor..."
 sleep 3
 
+# Usar porta da variável de ambiente ou padrão 3000
+PORT=${PORT:-${WEB_PORT:-3000}}
+
 # Abrir navegador padrão
 echo "🌐 Abrindo Dashboard..."
-open "http://localhost:3000"
+open "http://localhost:$PORT"
 
 # Manter terminal aberto e monitorar processo
 echo ""
 echo "✅ Sistema Online!"
-echo "📍 Dashboard: http://localhost:3000"
+echo "📍 Dashboard: http://localhost:$PORT"
 echo "🛑 Pressione Ctrl+C para encerrar"
 echo ""
 

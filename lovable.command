@@ -16,8 +16,10 @@ if [ ! -d "node_modules" ]; then
     echo ""
 fi
 
-# Verificar e matar processos na porta 3000
-PORT=3000
+# Usar porta da variável de ambiente ou padrão 3000
+PORT=${PORT:-${WEB_PORT:-3000}}
+
+# Verificar e matar processos na porta
 PID=$(lsof -ti:$PORT)
 if [ ! -z "$PID" ]; then
     echo "⚠️  Porta $PORT já está em uso (PID: $PID)"
@@ -39,12 +41,12 @@ sleep 3
 
 # Abrir navegador padrão
 echo "🌐 Abrindo Dashboard..."
-open "http://localhost:3000"
+open "http://localhost:$PORT"
 
 # Manter terminal aberto e monitorar processo
 echo ""
 echo "✅ Sistema Online!"
-echo "📍 Dashboard: http://localhost:3000"
+echo "📍 Dashboard: http://localhost:$PORT"
 echo "🛑 Pressione Ctrl+C para encerrar"
 echo ""
 
