@@ -129,17 +129,22 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       'input[id*="password" i]'
     ];
     
-    for (const selector of passwordSelectors) {
-      try {
-        const locator = page.locator(selector).first();
-        await locator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
-        passwordInputLocator = locator;
-        logger.info(`✅ Campo de senha encontrado com seletor: ${selector}`);
-        break;
-      } catch (e) {
-        continue;
+    // Função helper para tentar encontrar o campo de senha
+    const tryFindPasswordField = async () => {
+      for (const selector of passwordSelectors) {
+        try {
+          const locator = page.locator(selector).first();
+          await locator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
+          logger.info(`✅ Campo de senha encontrado com seletor: ${selector}`);
+          return locator;
+        } catch (e) {
+          continue;
+        }
       }
-    }
+      return null;
+    };
+    
+    passwordInputLocator = await tryFindPasswordField();
     
     if (!passwordInputLocator) {
       // Última tentativa: aguardar mais tempo
@@ -151,12 +156,60 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
         await passwordInputLocator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
         logger.info('✅ Campo de senha encontrado após espera adicional');
       } catch (e) {
-        const currentUrl = page.url();
-        const pageText = await page.evaluate(() => document.body.innerText.substring(0, 300));
-        logger.error(`❌ Campo de senha não encontrado após todas as tentativas`);
-        logger.error(`📍 URL: ${currentUrl}`);
-        logger.error(`📝 Conteúdo da página: ${pageText}`);
-        throw new Error('Campo de senha não apareceu após clicar em Continuar');
+        // 🔥 FALLBACK: Se o campo de senha não aparecer, fazer refresh e tentar novamente
+        logger.warning('⚠️ Campo de senha não encontrado. Fazendo refresh e tentando novamente...');
+        
+        // Fazer refresh da página
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) });
+        await page.waitForTimeout(getDelay(2000, usingProxy));
+        logger.info('✅ Página recarregada');
+        
+        // Preencher email novamente
+        const emailInputLocatorRetry = page.locator('#email');
+        await emailInputLocatorRetry.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+        await emailInputLocatorRetry.click();
+        await page.waitForTimeout(getDelay(200, usingProxy));
+        await emailInputLocatorRetry.fill(email);
+        await page.waitForTimeout(getDelay(400, usingProxy));
+        logger.success('✅ Email preenchido novamente');
+        
+        // Clicar em Continuar novamente
+        const clickedRetry = await page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          const continueBtn = buttons.find(btn => {
+            const text = btn.textContent.trim();
+            return (text === 'Continuar' || text === 'Continue') && 
+                   !text.includes('Google') && !text.includes('Gmail') && !text.includes('GitHub');
+          });
+          
+          if (continueBtn) {
+            continueBtn.click();
+            return true;
+          }
+          return false;
+        });
+
+        if (!clickedRetry) {
+          throw new Error('❌ Botão Continuar não encontrado após refresh');
+        }
+        
+        logger.success('✅ Clicou em Continuar novamente (após refresh)');
+        await page.waitForTimeout(getDelay(2000, usingProxy));
+        
+        // Tentar encontrar o campo de senha novamente
+        passwordInputLocator = await tryFindPasswordField();
+        
+        // Se ainda não encontrou após refresh, lançar erro
+        if (!passwordInputLocator) {
+          const currentUrlAfterRetry = page.url();
+          const pageText = await page.evaluate(() => document.body.innerText.substring(0, 300));
+          logger.error(`❌ Campo de senha não encontrado após refresh`);
+          logger.error(`📍 URL: ${currentUrlAfterRetry}`);
+          logger.error(`📝 Conteúdo da página: ${pageText}`);
+          throw new Error('Campo de senha não apareceu após refresh e tentar novamente');
+        }
+        
+        logger.info('✅ Campo de senha encontrado após refresh e nova tentativa');
       }
     }
     
