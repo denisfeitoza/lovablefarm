@@ -319,7 +319,7 @@ class QueueManager {
     if (!queue) return;
 
     let nextUserId = 1; // Contador para userIds únicos
-    const allPromises = []; // Array para rastrear todas as promises criadas
+    const activePromises = new Set(); // Set para rastrear promises ativas
     const originalTarget = queue.totalUsers; // Meta original (não aumenta com erros)
     
     // Continuar até atingir a meta original ou ser cancelado
@@ -329,49 +329,70 @@ class QueueManager {
         break;
       }
       
-      // Criar apenas UMA promise por vez e aguardar ela completar antes de criar a próxima
-      // Isso garante que nunca criamos mais promises do que o pLimit pode processar
-      const userId = nextUserId++;
-      
-      const promise = limit(async () => {
-        // IMPORTANTE: Verificar meta original ANTES de executar
-        if (queue.cancelled || queue.status === 'finalizing' || queue.results.success >= originalTarget) {
-          return { cancelled: true };
+      // Criar promises até atingir o limite de paralelismo
+      // IMPORTANTE: Criar apenas até parallelExecutions promises de uma vez
+      while (activePromises.size < queue.parallelExecutions && 
+             queue.results.success < originalTarget && 
+             !queue.cancelled && queue.status !== 'finalizing') {
+        
+        // Verificar novamente antes de criar cada promise
+        if (queue.results.success >= originalTarget || queue.cancelled || queue.status === 'finalizing') {
+          break;
         }
         
-        try {
-          const result = await this.executeUser(queueId, userId);
-          
-          // Verificar DEPOIS de executar
-          if (queue.results.success >= originalTarget) {
+        const userId = nextUserId++;
+        
+        // Criar promise que será gerenciada pelo pLimit
+        const promise = limit(async () => {
+          // IMPORTANTE: Verificar meta original ANTES de executar
+          if (queue.cancelled || queue.status === 'finalizing' || queue.results.success >= originalTarget) {
+            activePromises.delete(promise);
             return { cancelled: true };
           }
           
-          return result;
-        } catch (error) {
-          // Em caso de erro, verificar se já atingiu meta
-          if (queue.results.success >= originalTarget) {
-            return { cancelled: true };
+          try {
+            const result = await this.executeUser(queueId, userId);
+            
+            // Verificar DEPOIS de executar
+            if (queue.results.success >= originalTarget) {
+              activePromises.delete(promise);
+              return { cancelled: true };
+            }
+            
+            return result;
+          } catch (error) {
+            // Em caso de erro, verificar se já atingiu meta
+            if (queue.results.success >= originalTarget) {
+              activePromises.delete(promise);
+              return { cancelled: true };
+            }
+            throw error;
+          } finally {
+            activePromises.delete(promise);
           }
-          throw error;
+        });
+        
+        activePromises.add(promise);
+      }
+      
+      // Aguardar pelo menos uma promise completar antes de criar novas
+      if (activePromises.size > 0) {
+        await Promise.race(Array.from(activePromises));
+        
+        // Verificar novamente após uma execução completar - CRÍTICO para parar
+        if (queue.results.success >= originalTarget || queue.cancelled || queue.status === 'finalizing') {
+          queue.cancelled = true;
+          break;
         }
-      });
-      
-      allPromises.push(promise);
-      
-      // Aguardar esta promise completar (ou pelo menos uma das promises em andamento)
-      await promise.catch(() => {}); // Ignorar erros aqui, já são tratados dentro
-      
-      // Verificar novamente após uma execução completar - CRÍTICO para parar
-      if (queue.results.success >= originalTarget || queue.cancelled || queue.status === 'finalizing') {
-        queue.cancelled = true;
+      } else {
+        // Se não há promises ativas, parar o loop
         break;
       }
     }
     
-    // Aguardar todas as execuções remanescentes terminarem (se houver)
-    if (allPromises.length > 0) {
-      await Promise.allSettled(allPromises);
+    // Aguardar todas as execuções remanescentes terminarem
+    if (activePromises.size > 0) {
+      await Promise.allSettled(Array.from(activePromises));
     }
   }
 
