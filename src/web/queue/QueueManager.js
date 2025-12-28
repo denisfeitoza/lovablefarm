@@ -162,12 +162,20 @@ class QueueManager {
             break;
           }
           
+          // Adicionar delay escalonado de 2 segundos entre execuções paralelas para evitar picos
+          const delayMs = (i - 1) * 2000; // 2 segundos entre cada execução
+          
           promises.push(
-            limit(() => {
-              // Verificar novamente no momento de executar
+            limit(async () => {
+              // Aguardar delay escalonado antes de iniciar
+              if (delayMs > 0) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+              }
+              
+              // Verificar novamente no momento de executar (após o delay)
               if (queue.cancelled || queue.status === 'finalizing') {
                 logger.warning(`⚠️ Fila ${queueId} cancelada, pulando usuário ${i}`);
-                return Promise.resolve({ cancelled: true });
+                return { cancelled: true };
               }
               return this.executeUser(queueId, i);
             })
