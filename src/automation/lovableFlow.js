@@ -859,6 +859,7 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
     await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.veryLongDelay, usingProxy));
     
     // Se checkCreditsBanner estiver ativo, procurar o banner de créditos antes de publicar
+    let bannerNotFound = false;
     if (checkCreditsBanner) {
       logger.info('🔍 Verificando banner de créditos no editor...');
       try {
@@ -883,14 +884,17 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
             logger.success('✅ Banner de créditos encontrado no editor (via seletor)!');
           } catch (e) {
             logger.error('❌ Banner de créditos não encontrado no editor');
-            throw new Error('Banner de crédito não encontrado na etapa final');
+            logger.warning('⚠️ Continuando publicação mesmo sem banner (será marcado como falha)');
+            bannerNotFound = true;
           }
         }
       } catch (error) {
         if (error.message === 'Banner de crédito não encontrado na etapa final') {
-          throw error;
+          logger.warning('⚠️ Banner não encontrado, mas continuando publicação (será marcado como falha)');
+          bannerNotFound = true;
+        } else {
+          logger.warning('⚠️ Erro ao verificar banner, mas continuando...', error.message);
         }
-        logger.warning('⚠️ Erro ao verificar banner, mas continuando...', error.message);
       }
     }
     

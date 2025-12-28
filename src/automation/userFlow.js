@@ -144,10 +144,17 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
         result.steps.selectTemplate = 0; // Marcado como pulado
         logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo - Fallback)');
         const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
-        if (!publishResult.success) {
-          throw new Error(publishResult.error || 'Erro ao publicar projeto');
-        }
         result.steps.useTemplateAndPublish = publishResult.executionTime;
+        
+        // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
+        // O projeto foi publicado, mas não encontrou o banner, então é uma falha
+        if (!publishResult.success) {
+          result.success = false;
+          result.error = publishResult.error || 'Erro ao publicar projeto';
+          result.failedStep = 'Banner de Créditos no Editor';
+          logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
+          return result;
+        }
       } else {
         // Modo normal: continuar com quiz e depois publicar
         logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding (Fallback)');
@@ -159,10 +166,17 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
         
         logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Fallback)');
         const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false);
-        if (!publishResult.success) {
-          throw new Error(publishResult.error || 'Erro ao publicar projeto');
-        }
         result.steps.useTemplateAndPublish = publishResult.executionTime;
+        
+        // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
+        // O projeto foi publicado, mas não encontrou o banner, então é uma falha
+        if (!publishResult.success) {
+          result.success = false;
+          result.error = publishResult.error || 'Erro ao publicar projeto';
+          result.failedStep = 'Banner de Créditos no Editor';
+          logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
+          return result;
+        }
       }
       
       // Marcar como sucesso após fallback
@@ -188,10 +202,17 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       // 9. Usar template e publicar (já estamos no template após o fallback)
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo)');
       const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
-      if (!publishResult.success) {
-        throw new Error(publishResult.error || 'Erro ao publicar projeto');
-      }
       result.steps.useTemplateAndPublish = publishResult.executionTime;
+      
+      // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
+      // O projeto foi publicado, mas não encontrou o banner, então é uma falha
+      if (!publishResult.success) {
+        result.success = false;
+        result.error = publishResult.error || 'Erro ao publicar projeto';
+        result.failedStep = 'Banner de Créditos no Editor';
+        logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
+        return result;
+      }
     } else {
       // Modo normal: completar todas as etapas
       // 7. Completar quiz de onboarding
