@@ -664,12 +664,18 @@ class App {
         }
       }
       
-      // Restaurar scroll position
+      // Restaurar scroll position apenas se não houver interação recente
+      // Isso evita o "zig zag" quando a timeline é atualizada
       if (savedScroll > 0) {
-        // Usar setTimeout para garantir que o DOM está pronto
-        setTimeout(() => {
-          timeline.scrollLeft = savedScroll;
-        }, 0);
+        // Usar requestAnimationFrame para garantir que o DOM está pronto e evitar flicker
+        requestAnimationFrame(() => {
+          // Só restaurar se o scroll atual estiver próximo do salvo (dentro de 10px)
+          // Isso evita restaurar se o usuário estiver navegando manualmente
+          const currentScroll = timeline.scrollLeft;
+          if (Math.abs(currentScroll - savedScroll) < 10 || currentScroll === 0) {
+            timeline.scrollLeft = savedScroll;
+          }
+        });
       }
     });
   }
@@ -954,6 +960,14 @@ class App {
   updateQueueInList(queue) {
     const index = this.queues.findIndex(q => q.id === queue.id);
     if (index !== -1) {
+      // Salvar scroll atual ANTES de re-renderizar para evitar "zig zag"
+      const timelineId = `timeline-${queue.id}`;
+      const timeline = document.getElementById(timelineId);
+      if (timeline) {
+        // Salvar o scroll atual antes de re-renderizar
+        this.timelineScroll.set(queue.id, timeline.scrollLeft);
+      }
+      
       // Atualizar timer em tempo real para filas rodando
       if (queue.status === 'running' && queue.startedAt) {
         const startTime = new Date(queue.startedAt).getTime();
