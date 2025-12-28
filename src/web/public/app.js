@@ -179,6 +179,15 @@ class App {
       this.socket.emit('request:queues');
       this.socket.emit('request:stats');
       // Histórico será atualizado automaticamente via WebSocket
+      // Auto-iniciar próxima fila pendente
+      this.autoStartNextQueue();
+    });
+
+    this.socket.on('queue:failed', () => {
+      this.socket.emit('request:queues');
+      this.socket.emit('request:stats');
+      // Auto-iniciar próxima fila pendente
+      this.autoStartNextQueue();
     });
 
     this.socket.on('queue:deleted', () => {
@@ -1606,23 +1615,26 @@ class App {
       if (data.success) {
         console.log('✅ Fila criada:', data.queueId);
         
-        // Limpar formulário
+        // Limpar formulário (mantendo valores padrão)
         document.getElementById('queueReferralLink').value = '';
         document.getElementById('queueName').value = '';
-        document.getElementById('queueUsers').value = '3';
-        document.getElementById('queueParallel').value = '1';
-        document.getElementById('queueForceCredits').checked = false;
-        document.getElementById('queueTurboMode').checked = false;
+        document.getElementById('queueUsers').value = '1000';
+        document.getElementById('queueParallel').value = '4';
+        document.getElementById('queueForceCredits').checked = true;
+        document.getElementById('queueTurboMode').checked = true;
         const checkCreditsBannerElReset = document.getElementById('queueCheckCreditsBanner');
         if (checkCreditsBannerElReset) {
-          checkCreditsBannerElReset.checked = false;
+          checkCreditsBannerElReset.checked = true;
         }
         
-        // Resetar estado dos checkboxes
+        // Resetar estado dos checkboxes (garantir que banner está habilitado)
         this.onTurboModeChange();
         
+        // Resetar seleção de domínios (primeiros 2 selecionados)
+        this.renderQueueDomainSelection();
+        
         // Resetar preview de créditos
-        this.updateCreditsPreview('3');
+        this.updateCreditsPreview('1000');
         
         this.hideCreateQueueModal();
         this.socket.emit('request:queues');
@@ -1663,6 +1675,31 @@ class App {
     } catch (error) {
       console.error('Erro ao iniciar fila:', error);
     }
+  }
+
+  async autoStartNextQueue() {
+    // Aguardar um pouco para garantir que as filas foram atualizadas
+    setTimeout(async () => {
+      try {
+        // Buscar todas as filas
+        const response = await fetch(this.apiUrl('/api/queues'));
+        const data = await response.json();
+        
+        if (data.success && data.queues) {
+          // Encontrar a primeira fila pendente (status: 'pending')
+          const pendingQueue = data.queues.find(q => q.status === 'pending');
+          
+          if (pendingQueue) {
+            console.log(`🔄 Auto-iniciando próxima fila pendente: ${pendingQueue.id} (${pendingQueue.name})`);
+            await this.startQueue(pendingQueue.id);
+          } else {
+            console.log('ℹ️ Nenhuma fila pendente para auto-iniciar');
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao auto-iniciar próxima fila:', error);
+      }
+    }, 500); // Aguardar 500ms para garantir que as filas foram atualizadas
   }
 
   async stopQueue(queueId) {
@@ -1864,14 +1901,21 @@ class App {
       return;
     }
 
-    container.innerHTML = this.domains.domains.map(domain => `
+    // Selecionar os 2 primeiros domínios por padrão
+    const firstTwoDomains = this.domains.domains.slice(0, 2);
+    
+    container.innerHTML = this.domains.domains.map((domain, index) => {
+      const isChecked = index < 2 ? 'checked' : '';
+      return `
       <div class="domain-checkbox">
-        <input type="checkbox" id="domain-${domain}" value="${domain}">
+        <input type="checkbox" id="domain-${domain}" value="${domain}" ${isChecked}>
         <label for="domain-${domain}">${domain}</label>
       </div>
-    `).join('');
+    `;
+    }).join('');
     
     console.log('✅ Checkboxes renderizados:', this.domains.domains.length);
+    console.log('✅ Primeiros 2 domínios selecionados por padrão:', firstTwoDomains);
   }
 
   selectAllDomains() {

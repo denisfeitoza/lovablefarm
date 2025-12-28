@@ -222,7 +222,7 @@
                 id="queueUsers" 
                 min="1" 
                 max="10000" 
-                value="3"
+                value="1000"
                 oninput="app.updateCreditsPreview(this.value)"
                 required
               >
@@ -236,7 +236,7 @@
                 id="queueParallel" 
                 min="1" 
                 max="10" 
-                value="1"
+                value="4"
                 required
               >
               <small>Máximo: 10 simultâneas</small>
@@ -263,7 +263,7 @@
           
           <div class="form-group">
             <label class="checkbox-label">
-              <input type="checkbox" id="queueForceCredits" class="checkbox-input">
+              <input type="checkbox" id="queueForceCredits" class="checkbox-input" checked>
               <span class="checkbox-custom"></span>
               <div class="checkbox-content">
                 <div class="checkbox-title">💰 Meta de Créditos</div>
@@ -276,7 +276,7 @@
 
           <div class="form-group">
             <label class="checkbox-label">
-              <input type="checkbox" id="queueTurboMode" class="checkbox-input" onchange="app.onTurboModeChange()">
+              <input type="checkbox" id="queueTurboMode" class="checkbox-input" checked onchange="app.onTurboModeChange()">
               <span class="checkbox-custom"></span>
               <div class="checkbox-content">
                 <div class="checkbox-title">⚡ Modo Turbo</div>
@@ -289,7 +289,7 @@
 
           <div class="form-group">
             <label class="checkbox-label">
-              <input type="checkbox" id="queueCheckCreditsBanner" class="checkbox-input" disabled>
+              <input type="checkbox" id="queueCheckCreditsBanner" class="checkbox-input" checked>
               <span class="checkbox-custom"></span>
               <div class="checkbox-content">
                 <div class="checkbox-title">🔍 Verificar Banner de Créditos (Modo Turbo)</div>
