@@ -17,6 +17,7 @@ class App {
     this.timelineZoom = new Map(); // { queueId: zoomLevel }
     this.timelineScroll = new Map(); // { queueId: scrollPosition }
     this.timeEstimateInterval = null; // Timer para atualizar tempo restante
+    this.timeEstimates = new Map(); // { queueId: { seconds: number, lastUpdate: timestamp } }
     this.init();
   }
 
@@ -635,8 +636,19 @@ class App {
       const isRunning = queue.status === 'running';
       const isFinalizing = queue.status === 'finalizing';
     
-    // Calcular estimativa de prazo
-    const estimateRemaining = this.calculateTimeEstimate(queue);
+    // Calcular estimativa de prazo (com countdown regressivo)
+    // Se já temos uma estimativa armazenada, usar ela (já está sendo decrementada pelo timer)
+    let estimateRemaining = null;
+    if (queue.id && this.timeEstimates.has(queue.id)) {
+      estimateRemaining = this.timeEstimates.get(queue.id).seconds;
+      // Se chegou a zero, recalcular
+      if (estimateRemaining === 0) {
+        estimateRemaining = this.calculateTimeEstimate(queue);
+      }
+    } else {
+      // Se não temos estimativa armazenada, calcular agora
+      estimateRemaining = this.calculateTimeEstimate(queue);
+    }
 
     // Formatar tempo decorrido
     const formatTime = (seconds) => {
@@ -1083,6 +1095,10 @@ class App {
 
   calculateTimeEstimate(queue) {
     if (queue.status !== 'running' || !queue.executionTimes || queue.executionTimes.length === 0) {
+      // Limpar estimativa se a fila não está rodando
+      if (queue.id) {
+        this.timeEstimates.delete(queue.id);
+      }
       return null;
     }
 
@@ -1092,15 +1108,39 @@ class App {
     const completed = queue.forceCredits ? queue.results.success : queue.results.total;
     const remaining = Math.max(0, target - completed);
 
-    if (remaining === 0) return null;
+    if (remaining === 0) {
+      // Limpar estimativa se a meta foi atingida
+      if (queue.id) {
+        this.timeEstimates.delete(queue.id);
+      }
+      return null;
+    }
 
-    // Calcular tempo médio por execução (apenas dos últimos tempos para ser mais preciso)
+    // Verificar se já temos uma estimativa armazenada
+    const existingEstimate = queue.id ? this.timeEstimates.get(queue.id) : null;
+    
+    // Se temos estimativa armazenada e o número de execuções não mudou,
+    // usar a estimativa existente (que já está sendo decrementada pelo timer)
+    if (existingEstimate && existingEstimate.lastTotalExecutions === queue.executionTimes.length) {
+      return existingEstimate.seconds;
+    }
+
+    // Recalcular estimativa baseado nos dados atuais (novas execuções completaram)
     const recentTimes = queue.executionTimes.slice(-10); // Últimos 10 tempos
     const avgTime = recentTimes.reduce((sum, t) => sum + t, 0) / recentTimes.length;
     const parallel = queue.parallelExecutions || 1;
     
     // Tempo estimado = (restantes / paralelo) * tempo médio
     const estimatedSeconds = Math.ceil((remaining / parallel) * avgTime);
+    
+    // Armazenar a nova estimativa com timestamp atual
+    if (queue.id) {
+      this.timeEstimates.set(queue.id, {
+        seconds: estimatedSeconds,
+        lastUpdate: Date.now(),
+        lastTotalExecutions: queue.executionTimes.length
+      });
+    }
     
     return estimatedSeconds;
   }
@@ -1112,12 +1152,24 @@ class App {
     }
     
     this.timeEstimateInterval = setInterval(() => {
+      // Decrementar 1 segundo de cada estimativa armazenada (countdown regressivo)
+      for (const [queueId, estimate] of this.timeEstimates.entries()) {
+        if (estimate.seconds > 0) {
+          estimate.seconds = estimate.seconds - 1;
+          
+          // Remover se chegou a zero
+          if (estimate.seconds === 0) {
+            this.timeEstimates.delete(queueId);
+          }
+        }
+      }
+      
       // Re-renderizar apenas filas rodando para atualizar tempo restante regressivo
       const runningQueues = this.queues.filter(q => q.status === 'running');
       if (runningQueues.length > 0) {
         this.renderQueues();
       }
-    }, 1000); // Atualizar a cada segundo
+    }, 1000); // Atualizar a cada segundo (decrementa 1 segundo)
   }
 
   handleTimelineWheel(event, timelineId) {
