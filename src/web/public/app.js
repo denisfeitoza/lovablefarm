@@ -1126,12 +1126,23 @@ class App {
     }
 
     // Recalcular estimativa baseado nos dados atuais (novas execuções completaram)
-    const recentTimes = queue.executionTimes.slice(-10); // Últimos 10 tempos
-    const avgTime = recentTimes.reduce((sum, t) => sum + t, 0) / recentTimes.length;
+    // Usar todos os tempos disponíveis se houver menos de 10, senão usar os últimos 10
+    const recentTimes = queue.executionTimes.length < 10 
+      ? queue.executionTimes 
+      : queue.executionTimes.slice(-10);
+    
+    // Calcular média dos tempos (usar todos disponíveis quando houver menos de 10)
+    const avgTime = recentTimes.length > 0
+      ? recentTimes.reduce((sum, t) => sum + t, 0) / recentTimes.length
+      : 0;
+    
     const parallel = queue.parallelExecutions || 1;
     
     // Tempo estimado = (restantes / paralelo) * tempo médio
-    const estimatedSeconds = Math.ceil((remaining / parallel) * avgTime);
+    // Se não há tempos disponíveis ainda, usar um valor padrão conservador
+    const estimatedSeconds = avgTime > 0 
+      ? Math.ceil((remaining / parallel) * avgTime)
+      : Math.ceil((remaining / parallel) * 60); // Fallback: 60s por execução
     
     // Armazenar a nova estimativa com timestamp atual
     if (queue.id) {
