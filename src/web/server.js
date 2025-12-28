@@ -85,9 +85,12 @@ io.on('connection', (socket) => {
     if (event.startsWith('queue:') || event.startsWith('execution:')) {
       socket.emit('stats:update', queueManager.getStats());
       
-      // Atualizar métricas quando houver execuções completadas
+      // Atualizar métricas quando houver execuções completadas ou falhas
       if (event === 'execution:completed' || event === 'execution:failed') {
         socket.emit('metrics:update', historyManager.getFailureMetrics());
+        // Atualizar histórico e falhas automaticamente
+        socket.emit('history:update', historyManager.getHistory());
+        socket.emit('failures:update', historyManager.getRecentFailures(20));
       }
       
       if (event.startsWith('queue:')) {
@@ -104,6 +107,8 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     logger.info(`🔌 Cliente desconectado: ${socket.id}`);
+    // Remover listener para evitar vazamento de memória
+    queueManager.removeListener(eventListener);
   });
 
   // Request manual de atualização

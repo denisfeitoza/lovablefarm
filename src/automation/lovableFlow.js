@@ -649,7 +649,7 @@ export async function selectTemplate(page, userId = 1, usingProxy = false, simul
 
     // Buscar todos os templates disponíveis
     const templateCards = await page.locator('[role="link"], a').filter({ 
-      has: page.locator('text=/Architect portfolio|Ecommerce store|Event platform|Lifestyle Blog|Architecture blog|Fashion magazine|Fashion blog|Personal blog/i')
+      has: page.locator('text=/Architect portfolio|Ecommerce store|Lifestyle Blog|Architecture blog|Fashion magazine|Fashion blog|Personal blog/i')
     }).all();
 
     if (templateCards.length === 0) {
@@ -804,6 +804,15 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
         publishButtonFound = true;
         break;
       } catch (error) {
+        // Verificar se é o erro específico de timeout do Publish
+        const isPublishTimeoutError = error.message && error.message.includes('waiting for locator(\'button:has-text("Publish"), button:has-text("Publicar")\') to be visible');
+        
+        if (isPublishTimeoutError && attempt >= maxRetries) {
+          // 🔥 FALLBACK: Se deu timeout no Publish, voltar para etapa de template
+          logger.warning('⚠️ Erro de timeout no botão Publish detectado. Fazendo fallback para template...');
+          throw new Error('PUBLISH_TIMEOUT_FALLBACK_TO_TEMPLATE');
+        }
+        
         if (attempt < maxRetries) {
           logger.warning(`⚠️ Botão Publish não encontrado na tentativa ${attempt}, tentando refresh...`);
           // Fazer refresh da página
@@ -871,7 +880,100 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
 
     return { success: true, executionTime };
   } catch (error) {
+    // Verificar se é o erro específico que requer fallback para template
+    const isPublishTimeoutError = error.message && (
+      error.message.includes('waiting for locator(\'button:has-text("Publish"), button:has-text("Publicar")\') to be visible') ||
+      error.message === 'PUBLISH_TIMEOUT_FALLBACK_TO_TEMPLATE'
+    );
+    
+    if (isPublishTimeoutError) {
+      logger.warning('⚠️ Timeout no Publish detectado. Fazendo fallback para etapa de template...');
+      
+      try {
+        // 🔥 FALLBACK: Voltar para etapa de template
+        const fallbackTemplateUrl = 'https://lovable.dev/dashboard/templates/websites/blog/perspective-lifestyle';
+        logger.info(`📍 Navegando para template fallback: ${fallbackTemplateUrl}`);
+        
+        await page.goto(fallbackTemplateUrl, { 
+          waitUntil: 'domcontentloaded', 
+          timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) 
+        });
+        await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
+        
+        // Aguardar e clicar em "Use template"
+        logger.info('📍 Procurando botão "Use template" (fallback do publish)...');
+        await page.waitForSelector('button:has-text("Use template")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+        
+        const useTemplateButton = await page.locator('button:has-text("Use template")').first();
+        await useTemplateButton.click();
+        logger.success('✅ Clicou em "Use template" (fallback do publish)');
+        
+        await page.waitForTimeout(getDelay(1500, usingProxy));
+        
+        // Aguardar e clicar em "REMIX" (popup que aparece)
+        logger.info('⏳ Aguardando popup "Remix" (fallback do publish)...');
+        await page.waitForSelector('button:has-text("Remix"), button:has-text("remix")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+        
+        const remixButton = await page.locator('button:has-text("Remix"), button:has-text("remix")').first();
+        await remixButton.click();
+        logger.success('✅ Clicou em "Remix" (fallback do publish)');
+        
+        // Aguardar editor começar a carregar
+        logger.info('⏳ Aguardando editor abrir (fallback do publish)...');
+        await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
+        
+        // Tentar publicar novamente após o fallback
+        logger.info('🔄 Tentando publicar novamente após fallback do template...');
+        await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.veryLongDelay, usingProxy));
+        
+        // Tentar encontrar botão Publish novamente
+        await page.waitForSelector('button:has-text("Publish"), button:has-text("Publicar")', { 
+          state: 'visible', 
+          timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy)
+        });
+        logger.success('✅ Botão Publish encontrado após fallback!');
+        
+        // Clicar no PRIMEIRO Publish (abre dropdown)
+        const publishButton = page.locator('button:has-text("Publish"), button:has-text("Publicar")').first();
+        await publishButton.click();
+        logger.success('✅ Clicou no primeiro Publish (após fallback)');
+        
+        await page.waitForTimeout(getDelay(1500, usingProxy));
+        
+        // Clicar no SEGUNDO Publish (dentro do dropdown)
+        const allPublishButtons = await page.locator('button:has-text("Publish"), button:has-text("Publicar")').all();
+        if (allPublishButtons.length > 1) {
+          await allPublishButtons[1].click();
+          logger.success('✅ Clicou no segundo Publish (após fallback)');
+        } else {
+          await allPublishButtons[0].click();
+        }
+        
+        // Aguardar publicação
+        logger.info('⏳ Aguardando publicação processar (após fallback)...');
+        await page.waitForTimeout(getDelay(15000, usingProxy));
+        
+        const executionTime = Date.now() - startTime;
+        logger.success(`✅ Projeto publicado com sucesso após fallback em ${executionTime}ms`);
+        return { success: true, executionTime };
+        
+      } catch (fallbackError) {
+        logger.error('❌ Erro também no fallback do template após publish timeout', fallbackError);
+        const executionTime = Date.now() - startTime;
+        return {
+          success: false,
+          error: `Erro ao publicar: ${error.message}. Fallback também falhou: ${fallbackError.message}`,
+          executionTime
+        };
+      }
+    }
+    
     logger.error('❌ Erro ao publicar', error);
-    throw error;
+    const executionTime = Date.now() - startTime;
+    return {
+      success: false,
+      error: error.message,
+      executionTime
+    };
   }
 }

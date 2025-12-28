@@ -14,6 +14,9 @@ class App {
     this.failures = [];
     this.metrics = null;
     this.basePath = window.BASE_PATH || '';
+    this.timelineZoom = new Map(); // { queueId: zoomLevel }
+    this.timelineScroll = new Map(); // { queueId: scrollPosition }
+    this.timeEstimateInterval = null; // Timer para atualizar tempo restante
     this.init();
   }
 
@@ -25,6 +28,7 @@ class App {
 
   init() {
     console.log('🚀 Inicializando Dashboard...');
+    this.startTimeEstimateTimer(); // Iniciar timer de estimativa regressiva
     console.log('📍 BASE_PATH:', this.basePath || '(raiz)');
     console.log('📍 window.BASE_PATH:', window.BASE_PATH || '(não definido)');
     // Garantir que basePath está definido corretamente
@@ -39,11 +43,21 @@ class App {
     this.fetchFailures(); // Buscar falhas recentes
     this.fetchMetrics(); // Buscar métricas iniciais
     // Iniciar loop de atualização dos timers
-    setInterval(() => this.updateTimers(), 1000);
-    // Atualizar falhas a cada 10 segundos
-    setInterval(() => this.fetchFailures(), 10000);
-    // Atualizar métricas a cada 5 segundos (fallback caso socket.io não funcione)
-    setInterval(() => this.fetchMetrics(), 5000);
+    setInterval(() => {
+      this.updateTimers();
+      // Atualizar timers das filas rodando
+      if (this.queues) {
+        this.queues.forEach(queue => {
+          if (queue.status === 'running' && queue.startedAt) {
+            const startTime = new Date(queue.startedAt).getTime();
+            const now = Date.now();
+            queue.elapsedTime = Math.floor((now - startTime) / 1000);
+          }
+        });
+        this.renderQueues();
+      }
+    }, 1000);
+    // Métricas, histórico e falhas agora são atualizados automaticamente via WebSocket
   }
 
   // Fetch inicial de domínios
@@ -137,14 +151,23 @@ class App {
       this.renderMetrics();
     });
 
+    // History updates (automático)
+    this.socket.on('history:update', (history) => {
+      this.history = history;
+      this.renderHistory();
+    });
+
+    // Failures updates (automático)
+    this.socket.on('failures:update', (failures) => {
+      this.failures = failures;
+      this.renderFailures();
+    });
+
     // Logs do Sistema
     this.socket.on('system:log', (log) => {
       this.addLog(log);
       
-      // Verificar se é um erro crítico de validação de email
-      if (log.level === 'error' && log.message.includes('ERRO DETECTADO NO EMAIL')) {
-        this.showAlert('Erro de Email Detectado', log.message.replace('🚨 ERRO DETECTADO NO EMAIL: ', ''));
-      }
+      // Erros são apenas logados, sem popups
     });
 
     // Individual queue events
@@ -163,7 +186,12 @@ class App {
     this.socket.on('queue:completed', () => {
       this.socket.emit('request:queues');
       this.socket.emit('request:stats');
-      this.fetchHistory(); // Atualizar histórico
+      // Histórico será atualizado automaticamente via WebSocket
+    });
+
+    this.socket.on('queue:deleted', () => {
+      this.socket.emit('request:queues');
+      this.socket.emit('request:stats');
     });
 
     // Execution events
@@ -218,9 +246,7 @@ class App {
   }
 
   async clearMetrics() {
-    if (!confirm('Tem certeza que deseja limpar todas as métricas? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+    // Limpar sem confirmação
 
     try {
       const response = await fetch(this.apiUrl('/api/metrics'), {
@@ -235,13 +261,12 @@ class App {
         if (this.socket) {
           this.socket.emit('request:metrics');
         }
-        this.showAlert('Sucesso', 'Todas as métricas foram limpas com sucesso!');
+        console.log('✅ Métricas limpas com sucesso');
       } else {
-        this.showAlert('Erro', data.error || 'Erro ao limpar métricas');
+        console.error('Erro ao limpar métricas:', data.error);
       }
     } catch (error) {
       console.error('Erro ao limpar métricas:', error);
-      this.showAlert('Erro', 'Erro ao limpar métricas');
     }
   }
 
@@ -395,7 +420,7 @@ class App {
   }
 
   async clearHistory() {
-    if (!confirm('Tem certeza que deseja limpar o histórico?')) return;
+    // Limpar sem confirmação
     
     try {
       await fetch(this.apiUrl('/api/history'), { method: 'DELETE' });
@@ -478,27 +503,7 @@ class App {
     }
   }
 
-  // Alert Management
-  showAlert(title, message) {
-    const container = document.getElementById('alertContainer');
-    const alert = document.createElement('div');
-    alert.className = 'alert-toast';
-    alert.innerHTML = `
-      <div class="alert-icon">🚨</div>
-      <div class="alert-content">
-        <h4>${title}</h4>
-        <p>${message}</p>
-      </div>
-    `;
-    
-    container.appendChild(alert);
-    
-    // Remover após 10 segundos
-    setTimeout(() => {
-      alert.style.opacity = '0';
-      setTimeout(() => alert.remove(), 300);
-    }, 10000);
-  }
+  // Alert Management - Removido (notificações irritantes)
 
   // Timer Management
   updateTimers() {
@@ -566,26 +571,242 @@ class App {
     }
 
     container.innerHTML = this.queues.map(queue => this.renderQueue(queue)).join('');
+    
+    // Restaurar zoom após renderizar
+    this.restoreTimelineZooms();
+  }
+
+  restoreTimelineZooms() {
+    // Restaurar zoom e scroll de todas as timelines após re-render
+    this.queues.forEach(queue => {
+      const timelineId = `timeline-${queue.id}`;
+      const timeline = document.getElementById(timelineId);
+      if (!timeline) return;
+
+      const zoom = this.timelineZoom.get(queue.id) || 1;
+      const savedScroll = this.timelineScroll?.get(queue.id) || 0;
+      
+      if (zoom !== 1) {
+        const inner = timeline.querySelector('.timeline-inner');
+        if (inner) {
+          inner.style.transform = `scaleX(${zoom})`;
+          inner.style.transformOrigin = 'left center';
+          
+          if (zoom > 1) {
+            inner.style.minWidth = `${100 * zoom}%`;
+          }
+        }
+
+        const zoomIndicator = document.getElementById(`${timelineId}-zoom`);
+        if (zoomIndicator) {
+          zoomIndicator.textContent = `${zoom.toFixed(1)}x`;
+        }
+      }
+      
+      // Restaurar scroll position
+      if (savedScroll > 0) {
+        // Usar setTimeout para garantir que o DOM está pronto
+        setTimeout(() => {
+          timeline.scrollLeft = savedScroll;
+        }, 0);
+      }
+    });
   }
 
   renderQueue(queue) {
-    const progress = queue.results.total > 0 
-      ? (queue.results.total / queue.totalUsers) * 100 
-      : 0;
+    const forceCredits = queue.forceCredits || false;
+    
+    // IMPORTANTE: Se forceCredits está ativo, usar sempre totalUsers (meta original)
+    // Se não, usar target dinâmico (que pode ser diferente se houver ajustes)
+    const target = forceCredits ? (queue.totalUsers || 1) : (queue.results?.target || queue.totalUsers || 1);
+    
+    // Debug: verificar se forceCredits está sendo recebido
+    if (queue.id && forceCredits) {
+      console.log(`💰 Fila ${queue.id} (${queue.name}): Meta de Créditos ATIVO - meta original: ${queue.totalUsers}, target dinâmico: ${queue.results?.target}`);
+    }
+    
+    // Se for buscar créditos a todo custo, progresso baseado em sucessos
+    // Se não, progresso baseado em total executado
+    const completed = forceCredits ? queue.results.success : queue.results.total;
+    const progress = target > 0 ? (completed / target) * 100 : 0;
       
-    const canStart = queue.status === 'pending';
-    const isRunning = queue.status === 'running';
+      const canStart = queue.status === 'pending';
+      const isRunning = queue.status === 'running';
+      const isFinalizing = queue.status === 'finalizing';
+    
+    // Calcular estimativa de prazo
+    const estimateRemaining = this.calculateTimeEstimate(queue);
+
+    // Formatar tempo decorrido
+    const formatTime = (seconds) => {
+      if (!seconds && seconds !== 0) return '00:00';
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+      return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const elapsedTime = queue.elapsedTime || 0;
+    const timeline = queue.timeline || { errors: [], successes: [] };
+    const maxTimestamp = Math.max(
+      ...timeline.errors.map(e => e.timestamp || 0),
+      ...timeline.successes.map(s => s.timestamp || 0),
+      elapsedTime || 0,
+      1 // mínimo 1 para evitar divisão por zero
+    );
+
+    // Renderizar timeline
+    const renderTimeline = () => {
+      if (queue.status === 'pending' || (!timeline.errors.length && !timeline.successes.length && !isRunning)) {
+        return '';
+      }
+
+      const timelineHeight = 24; // altura reduzida da timeline (barra mais fina)
+      const timelineId = `timeline-${queue.id}`;
+
+      // Criar pontos para erros e sucessos com posições calculadas
+      const errorPoints = timeline.errors.map(err => ({
+        position: ((err.timestamp || 0) / maxTimestamp) * 100,
+        ...err
+      }));
+
+      const successPoints = timeline.successes.map(suc => ({
+        position: ((suc.timestamp || 0) / maxTimestamp) * 100,
+        ...suc
+      }));
+
+      // Calcular largura da barra azul preenchendo
+      // Se forceCredits: mostra sucessos / meta original (totalUsers)
+      // Se não: mostra completed / target
+      const targetForBar = queue.forceCredits ? (queue.totalUsers || 1) : (queue.results?.target || queue.totalUsers || 1);
+      const completedForBar = queue.forceCredits ? queue.results.success : queue.results.total;
+      const fillWidth = targetForBar > 0 ? Math.min((completedForBar / targetForBar) * 100, 100) : 0;
+
+      return `
+        <div class="queue-timeline-container" style="margin-top: 12px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);">📊 Timeline de Execução</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="font-size: 11px; color: var(--text-secondary);">
+                ✅ ${timeline.successes.length} • ❌ ${timeline.errors.length}
+              </div>
+              <div style="display: flex; gap: 4px; align-items: center;">
+                <button class="btn-timeline-zoom" onclick="app.zoomTimeline('${timelineId}', -0.2)" title="Diminuir zoom" style="width: 20px; height: 20px; padding: 0; font-size: 12px;">−</button>
+                <span style="font-size: 10px; color: var(--text-secondary); min-width: 40px; text-align: center;" id="${timelineId}-zoom">${(this.timelineZoom.get(queue.id) || 1).toFixed(1)}x</span>
+                <button class="btn-timeline-zoom" onclick="app.zoomTimeline('${timelineId}', 0.2)" title="Aumentar zoom" style="width: 20px; height: 20px; padding: 0; font-size: 12px;">+</button>
+                <button class="btn-timeline-zoom" onclick="app.resetTimelineZoom('${timelineId}')" title="Resetar zoom" style="width: 24px; height: 20px; padding: 0; font-size: 10px;">↻</button>
+              </div>
+            </div>
+          </div>
+          <div class="timeline-wrapper" id="${timelineId}" style="position: relative; padding: 8px 0; overflow-x: auto; overflow-y: visible; cursor: grab;" 
+               onmousedown="app.startTimelineDrag(event, '${timelineId}')"
+               onwheel="app.handleTimelineWheel(event, '${timelineId}'); event.preventDefault();"
+               onscroll="app.saveTimelineScroll('${queue.id}', this.scrollLeft)"
+               data-queue-id="${queue.id}">
+            <div class="timeline-inner" style="position: relative; height: ${timelineHeight}px; min-width: 100%; background: var(--bg-darker); border-radius: 4px; border: 1px solid var(--border); transform: scaleX(${this.timelineZoom.get(queue.id) || 1}); transform-origin: left center;">
+              <!-- Barra azul preenchendo conforme finaliza -->
+              ${fillWidth > 0 ? `
+                <div class="queue-timeline-fill" style="position: absolute; top: 0; bottom: 0; left: 0; width: ${fillWidth}%; background: var(--primary); opacity: 0.3; transition: width 0.3s ease; border-radius: 4px 0 0 4px; z-index: 1;"></div>
+              ` : ''}
+              
+              <!-- Linha do tempo atual (indicador azul) -->
+              ${queue.status === 'running' && elapsedTime > 0 ? `
+                <div class="queue-timeline-current" style="position: absolute; top: 0; bottom: 0; left: ${Math.min((elapsedTime / maxTimestamp) * 100, 100)}%; width: 2px; background: var(--primary); z-index: 10; opacity: 0.8; pointer-events: none;"></div>
+              ` : ''}
+              
+              <!-- Pontos de erro (vermelhos) -->
+              ${errorPoints.map((err, idx) => {
+                const pos = Math.min(err.position, 100);
+                return `
+                  <div 
+                    class="queue-timeline-error-point" 
+                    style="position: absolute; left: ${pos}%; top: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: var(--danger); border-radius: 50%; border: 2px solid var(--bg-card); z-index: 20; cursor: pointer; box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);"
+                    data-timestamp="${err.timestamp || 0}"
+                    data-userid="${err.userId || 0}"
+                    data-failedstep="${String(err.failedStep || 'Desconhecida').replace(/"/g, '&quot;')}"
+                    data-error="${String(err.error || '').replace(/"/g, '&quot;').substring(0, 500)}"
+                    onmouseenter="app.showTimelineTooltip(event, this)"
+                    onmouseleave="app.hideTimelineTooltip()"
+                  ></div>
+                `;
+              }).join('')}
+              
+              <!-- Marcadores de sucesso (verdes pequenos) -->
+              ${successPoints.map(suc => {
+                const pos = Math.min(suc.position, 100);
+                const formatTimestamp = (seconds) => {
+                  const mins = Math.floor(seconds / 60);
+                  const secs = seconds % 60;
+                  if (mins > 0) return `${mins}m ${secs}s`;
+                  return `${secs}s`;
+                };
+                return `
+                  <div 
+                    class="queue-timeline-success-point" 
+                    style="position: absolute; left: ${pos}%; top: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; background: var(--success); border-radius: 50%; z-index: 15; opacity: 0.9; box-shadow: 0 0 4px rgba(16, 185, 129, 0.4); cursor: pointer;"
+                    data-timestamp="${suc.timestamp || 0}"
+                    data-userid="${suc.userId || 0}"
+                    onmouseenter="app.showSuccessTooltip(event, this)"
+                    onmouseleave="app.hideTimelineTooltip()"
+                    title="✅ Sucesso no segundo ${suc.timestamp || 0} (Usuário ${suc.userId})"
+                  ></div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+          <!-- Legenda de tempo -->
+          <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
+            <span>0s</span>
+            <span>${maxTimestamp}s</span>
+            <span style="font-size: 9px; opacity: 0.7;">${Math.floor(maxTimestamp / 60)}m ${maxTimestamp % 60}s total</span>
+          </div>
+        </div>
+      `;
+    };
 
     return `
       <div class="queue-item status-${queue.status}">
         <div class="queue-header">
-          <div class="queue-name">${queue.name}</div>
-          <div class="queue-status ${queue.status}">${this.getStatusText(queue.status)}</div>
+          <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+            <div class="queue-name">${queue.name}</div>
+            ${forceCredits ? `
+              <span style="padding: 4px 10px; background: var(--success); color: white; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.4);">💰 Meta de Créditos</span>
+            ` : ''}
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            ${(queue.status === 'running' || queue.status === 'finalizing' || queue.status === 'completed' || queue.status === 'cancelled') && elapsedTime !== undefined ? `
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                <div class="queue-timer" style="font-family: monospace; font-size: 14px; font-weight: 600; color: var(--primary);">
+                  ⏱️ ${formatTime(elapsedTime)}
+                </div>
+                ${estimateRemaining ? `
+                  <div style="font-size: 11px; color: var(--text-secondary); font-family: monospace;">
+                    ⏳ ~${formatTime(estimateRemaining)} restante
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+            <div class="queue-status ${queue.status}">${this.getStatusText(queue.status)}</div>
+          </div>
         </div>
         
         <div style="margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
           🔗 <a href="${queue.referralLink}" target="_blank" style="color: var(--primary);">${queue.referralLink}</a>
         </div>
+        
+        ${forceCredits ? `
+          <div style="margin-bottom: 12px; padding: 12px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%); border: 2px solid var(--success); border-radius: 10px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);">
+            <span style="font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">💰</span>
+            <div style="flex: 1;">
+              <div style="font-weight: 800; color: var(--success); font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">💰 Meta de Créditos</div>
+              <div style="font-size: 12px; color: var(--text-primary); font-weight: 500;">O sistema continuará tentando até atingir a meta de ${queue.totalUsers * 10} créditos (${queue.totalUsers} usuários), mesmo com erros</div>
+            </div>
+            <div style="padding: 4px 12px; background: var(--success); color: white; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap;">ATIVO</div>
+          </div>
+        ` : ''}
         
         ${queue.selectedDomains && queue.selectedDomains.length > 0 ? `
           <div style="margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);">
@@ -607,8 +828,8 @@ class App {
             <div class="queue-stat-label">Falhas</div>
           </div>
           <div class="queue-stat">
-            <div class="queue-stat-value">${queue.results.pending}</div>
-            <div class="queue-stat-label">Pendentes</div>
+            <div class="queue-stat-value">${target - completed}</div>
+            <div class="queue-stat-label">${forceCredits ? 'Meta Restante' : 'Pendentes'}</div>
           </div>
           ${queue.results.total > 0 ? `
             <div class="queue-stat">
@@ -628,6 +849,8 @@ class App {
           <div class="queue-progress-bar" style="width: ${progress}%"></div>
         </div>
         
+        ${renderTimeline()}
+        
         <div class="queue-actions">
           ${canStart ? `
             <button class="btn btn-success" onclick="app.startQueue('${queue.id}')">
@@ -639,6 +862,14 @@ class App {
               ⏹️ Parar
             </button>
           ` : ''}
+          ${isFinalizing ? `
+            <button class="btn btn-danger" style="opacity: 0.6; cursor: not-allowed;" disabled>
+              ⏳ Finalizando...
+            </button>
+          ` : ''}
+          <button class="btn btn-danger btn-small" onclick="app.deleteQueue('${queue.id}')" title="Apagar fila">
+            🗑️ Apagar
+          </button>
           <div style="flex: 1"></div>
           <div style="font-size: 12px; color: var(--text-secondary)">
             ${queue.parallelExecutions}x paralelo • ${queue.totalUsers} usuários
@@ -651,15 +882,306 @@ class App {
   updateQueueInList(queue) {
     const index = this.queues.findIndex(q => q.id === queue.id);
     if (index !== -1) {
+      // Atualizar timer em tempo real para filas rodando
+      if (queue.status === 'running' && queue.startedAt) {
+        const startTime = new Date(queue.startedAt).getTime();
+        const now = Date.now();
+        queue.elapsedTime = Math.floor((now - startTime) / 1000);
+      }
       this.queues[index] = queue;
       this.renderQueues();
     }
+  }
+
+  showTimelineTooltip(event, element) {
+    // Remover tooltip anterior se existir
+    this.hideTimelineTooltip();
+
+    const timestamp = parseInt(element.getAttribute('data-timestamp') || 0);
+    const userId = parseInt(element.getAttribute('data-userid') || 0);
+    const failedStep = element.getAttribute('data-failedstep') || 'Desconhecida';
+    const error = element.getAttribute('data-error') || 'Erro desconhecido';
+
+    // Escapar HTML para segurança
+    const escapeHtml = (text) => {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
+    // Formatar tempo
+    const formatTimestamp = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      if (mins > 0) return `${mins}m ${secs}s`;
+      return `${secs}s`;
+    };
+
+    // Criar tooltip
+    const tooltip = document.createElement('div');
+    tooltip.id = 'timeline-tooltip';
+    tooltip.className = 'timeline-tooltip';
+    tooltip.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 8px; color: var(--danger); font-size: 13px; border-bottom: 2px solid var(--danger); padding-bottom: 4px;">
+        ❌ Erro Detectado
+      </div>
+      <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 12px; margin-bottom: 8px;">
+        <div style="color: var(--text-secondary); font-weight: 600;">Usuário:</div>
+        <div style="color: var(--text-primary);">#${userId}</div>
+        <div style="color: var(--text-secondary); font-weight: 600;">Etapa:</div>
+        <div style="color: var(--warning); font-weight: 600;">${escapeHtml(failedStep)}</div>
+        <div style="color: var(--text-secondary); font-weight: 600;">Tempo:</div>
+        <div style="color: var(--text-primary); font-family: monospace;">${formatTimestamp(timestamp)} (${timestamp}s)</div>
+      </div>
+      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600;">Mensagem de Erro:</div>
+        <div style="font-size: 11px; color: var(--danger); word-break: break-word; max-width: 400px; line-height: 1.5; background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 4px; font-family: monospace; white-space: pre-wrap;">${escapeHtml(error)}</div>
+      </div>
+    `;
+    
+    document.body.appendChild(tooltip);
+    
+    // Posicionar tooltip
+    const rect = element.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+    let top = rect.top - tooltipRect.height - 12;
+    
+    // Ajustar se sair da tela
+    if (left < 10) left = 10;
+    if (left + tooltipRect.width > window.innerWidth - 10) {
+      left = window.innerWidth - tooltipRect.width - 10;
+    }
+    if (top < 10) {
+      top = rect.bottom + 12;
+    }
+    
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  hideTimelineTooltip() {
+    const existingTooltip = document.getElementById('timeline-tooltip');
+    if (existingTooltip) {
+      existingTooltip.remove();
+    }
+  }
+
+  showSuccessTooltip(event, element) {
+    this.hideTimelineTooltip();
+
+    const timestamp = parseInt(element.getAttribute('data-timestamp') || 0);
+    const userId = parseInt(element.getAttribute('data-userid') || 0);
+
+    const formatTimestamp = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      if (mins > 0) return `${mins}m ${secs}s`;
+      return `${secs}s`;
+    };
+
+    const tooltip = document.createElement('div');
+    tooltip.id = 'timeline-tooltip';
+    tooltip.className = 'timeline-tooltip';
+    tooltip.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 8px; color: var(--success); font-size: 13px; border-bottom: 2px solid var(--success); padding-bottom: 4px;">
+        ✅ Sucesso
+      </div>
+      <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 12px;">
+        <div style="color: var(--text-secondary); font-weight: 600;">Usuário:</div>
+        <div style="color: var(--text-primary);">#${userId}</div>
+        <div style="color: var(--text-secondary); font-weight: 600;">Tempo:</div>
+        <div style="color: var(--text-primary); font-family: monospace;">${formatTimestamp(timestamp)} (${timestamp}s)</div>
+        <div style="color: var(--text-secondary); font-weight: 600;">Créditos:</div>
+        <div style="color: var(--success); font-weight: 600;">+10 créditos</div>
+      </div>
+    `;
+    
+    document.body.appendChild(tooltip);
+    
+    const rect = element.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+    let top = rect.top - tooltipRect.height - 12;
+    
+    if (left < 10) left = 10;
+    if (left + tooltipRect.width > window.innerWidth - 10) {
+      left = window.innerWidth - tooltipRect.width - 10;
+    }
+    if (top < 10) {
+      top = rect.bottom + 12;
+    }
+    
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  // Zoom na timeline
+  zoomTimeline(timelineId, delta) {
+    const timeline = document.getElementById(timelineId);
+    if (!timeline) return;
+
+    const queueId = timeline.getAttribute('data-queue-id');
+    if (!queueId) return;
+
+    const inner = timeline.querySelector('.timeline-inner');
+    if (!inner) return;
+
+    const currentZoom = this.timelineZoom.get(queueId) || 1;
+    const newZoom = Math.max(0.5, Math.min(5, currentZoom + delta));
+    
+    // Salvar zoom no estado
+    this.timelineZoom.set(queueId, newZoom);
+    
+    inner.style.transform = `scaleX(${newZoom})`;
+    inner.style.transformOrigin = 'left center';
+    
+    // Atualizar indicador de zoom
+    const zoomIndicator = document.getElementById(`${timelineId}-zoom`);
+    if (zoomIndicator) {
+      zoomIndicator.textContent = `${newZoom.toFixed(1)}x`;
+    }
+
+    // Ajustar largura mínima para permitir scroll
+    if (newZoom > 1) {
+      inner.style.minWidth = `${100 * newZoom}%`;
+      timeline.style.cursor = 'grab';
+    } else {
+      inner.style.minWidth = '100%';
+    }
+  }
+
+  resetTimelineZoom(timelineId) {
+    const timeline = document.getElementById(timelineId);
+    if (!timeline) return;
+
+    const queueId = timeline.getAttribute('data-queue-id');
+    if (!queueId) return;
+
+    const inner = timeline.querySelector('.timeline-inner');
+    if (!inner) return;
+
+    // Resetar zoom no estado
+    this.timelineZoom.set(queueId, 1);
+    this.timelineScroll.set(queueId, 0);
+
+    inner.style.transform = 'scaleX(1)';
+    inner.style.minWidth = '100%';
+    timeline.scrollLeft = 0;
+
+    const zoomIndicator = document.getElementById(`${timelineId}-zoom`);
+    if (zoomIndicator) {
+      zoomIndicator.textContent = '1x';
+    }
+  }
+
+  saveTimelineScroll(queueId, scrollLeft) {
+    if (queueId) {
+      this.timelineScroll.set(queueId, scrollLeft);
+    }
+  }
+
+  calculateTimeEstimate(queue) {
+    if (queue.status !== 'running' || !queue.executionTimes || queue.executionTimes.length === 0) {
+      return null;
+    }
+
+    // IMPORTANTE: Se forceCredits está ativo, usar sempre totalUsers (meta original)
+    // Se não, usar target dinâmico
+    const target = queue.forceCredits ? (queue.totalUsers || 1) : (queue.results?.target || queue.totalUsers || 1);
+    const completed = queue.forceCredits ? queue.results.success : queue.results.total;
+    const remaining = Math.max(0, target - completed);
+
+    if (remaining === 0) return null;
+
+    // Calcular tempo médio por execução (apenas dos últimos tempos para ser mais preciso)
+    const recentTimes = queue.executionTimes.slice(-10); // Últimos 10 tempos
+    const avgTime = recentTimes.reduce((sum, t) => sum + t, 0) / recentTimes.length;
+    const parallel = queue.parallelExecutions || 1;
+    
+    // Tempo estimado = (restantes / paralelo) * tempo médio
+    const estimatedSeconds = Math.ceil((remaining / parallel) * avgTime);
+    
+    return estimatedSeconds;
+  }
+  
+  // Timer para atualizar tempo restante regressivamente
+  startTimeEstimateTimer() {
+    if (this.timeEstimateInterval) {
+      clearInterval(this.timeEstimateInterval);
+    }
+    
+    this.timeEstimateInterval = setInterval(() => {
+      // Re-renderizar apenas filas rodando para atualizar tempo restante regressivo
+      const runningQueues = this.queues.filter(q => q.status === 'running');
+      if (runningQueues.length > 0) {
+        this.renderQueues();
+      }
+    }, 1000); // Atualizar a cada segundo
+  }
+
+  handleTimelineWheel(event, timelineId) {
+    const timeline = document.getElementById(timelineId);
+    if (!timeline) return;
+    
+    const queueId = timeline.getAttribute('data-queue-id');
+    
+    if (event.ctrlKey || event.metaKey) {
+      // Zoom com Ctrl/Cmd + Wheel
+      const delta = event.deltaY > 0 ? -0.1 : 0.1;
+      this.zoomTimeline(timelineId, delta);
+    } else {
+      // Scroll horizontal com Shift + Wheel ou apenas Wheel
+      timeline.scrollLeft += event.deltaY;
+      
+      // Salvar scroll position
+      if (queueId) {
+        this.timelineScroll.set(queueId, timeline.scrollLeft);
+      }
+    }
+  }
+
+  startTimelineDrag(event, timelineId) {
+    if (event.target.classList.contains('queue-timeline-error-point') || 
+        event.target.classList.contains('queue-timeline-success-point')) {
+      return; // Não arrastar quando clicar nos pontos
+    }
+
+    const timeline = document.getElementById(timelineId);
+    if (!timeline) return;
+
+    const queueId = timeline.getAttribute('data-queue-id');
+    const startX = event.pageX - timeline.offsetLeft;
+    const scrollLeft = timeline.scrollLeft;
+    timeline.style.cursor = 'grabbing';
+
+    const onMouseMove = (e) => {
+      e.preventDefault();
+      const x = e.pageX - timeline.offsetLeft;
+      const walk = (x - startX) * 2;
+      timeline.scrollLeft = scrollLeft - walk;
+      
+      // Salvar scroll position
+      if (queueId) {
+        this.timelineScroll.set(queueId, timeline.scrollLeft);
+      }
+    };
+
+    const onMouseUp = () => {
+      timeline.style.cursor = 'grab';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   }
 
   getStatusText(status) {
     const texts = {
       pending: 'Pendente',
       running: 'Executando',
+      finalizing: 'Finalizando...',
       completed: 'Concluído',
       failed: 'Falhou'
     };
@@ -734,19 +1256,19 @@ class App {
 
     // Validar link de indicação
     if (!referralLink) {
-      alert('Link de indicação é obrigatório');
+      console.error('❌ Link de indicação é obrigatório');
       return;
     }
     
     // Validar número de usuários
     if (!usersStr || isNaN(users) || users < 1) {
-      alert('Número de usuários inválido. Deve ser um número maior que 0.');
+      console.error('❌ Número de usuários inválido. Deve ser um número maior que 0.');
       return;
     }
     
     // Validar execuções paralelas
     if (isNaN(parallel) || parallel < 1 || parallel > 5) {
-      alert('Número de execuções paralelas inválido. Deve estar entre 1 e 5.');
+      console.error('❌ Número de execuções paralelas inválido. Deve estar entre 1 e 5.');
       return;
     }
 
@@ -764,9 +1286,10 @@ class App {
 
     console.log('🌐 Proxies selecionados:', selectedProxies.length);
     
-    // Validar seleção de domínios (sem confirmação)
+    // Validar seleção de domínios - OBRIGATÓRIO pelo menos 1
     if (selectedDomains.length === 0) {
-      console.log('⚠️ Nenhum domínio selecionado. Usando rotação global.');
+      console.error('❌ É necessário selecionar pelo menos 1 domínio para criar uma fila.');
+      return;
     }
     
     // Validar seleção de proxies (sem confirmação)
@@ -779,13 +1302,17 @@ class App {
     const errorCheckboxes = document.querySelectorAll('#queueErrorSimulation input[type="checkbox"]:checked');
     errorCheckboxes.forEach(cb => simulatedErrors.push(cb.value));
 
+    // Capturar opção "buscar créditos a todo custo"
+    const forceCredits = document.getElementById('queueForceCredits').checked;
+
     console.log('🧪 Erros simulados:', simulatedErrors);
+    console.log('💰 Buscar créditos a todo custo:', forceCredits);
 
     try {
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors })
+        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits })
       });
 
       const data = await response.json();
@@ -798,15 +1325,18 @@ class App {
         document.getElementById('queueName').value = '';
         document.getElementById('queueUsers').value = '3';
         document.getElementById('queueParallel').value = '1';
+        document.getElementById('queueForceCredits').checked = false;
+        
+        // Resetar preview de créditos
+        this.updateCreditsPreview('3');
         
         this.hideCreateQueueModal();
         this.socket.emit('request:queues');
       } else {
-        alert('Erro ao criar fila: ' + data.error);
+        console.error('Erro ao criar fila:', data.error);
       }
     } catch (error) {
       console.error('Erro ao criar fila:', error);
-      alert('Erro ao criar fila');
     }
   }
 
@@ -822,16 +1352,15 @@ class App {
         console.log('✅ Fila iniciada:', queueId);
         this.socket.emit('request:queues');
       } else {
-        alert('Erro ao iniciar fila: ' + data.error);
+        console.error('Erro ao iniciar fila:', data.error);
       }
     } catch (error) {
       console.error('Erro ao iniciar fila:', error);
-      alert('Erro ao iniciar fila');
     }
   }
 
   async stopQueue(queueId) {
-    if (!confirm('Tem certeza que deseja parar esta fila?')) return;
+    // Parar sem confirmação
 
     try {
       const response = await fetch(this.apiUrl(`/api/queues/${queueId}/stop`), {
@@ -843,13 +1372,39 @@ class App {
       if (data.success) {
         console.log('✅ Fila parada:', queueId);
         this.socket.emit('request:queues');
-        alert('Fila será parada (execuções em andamento continuarão até finalizar)');
       } else {
-        alert('Erro ao parar fila: ' + data.error);
+        console.error('Erro ao parar fila:', data.error);
       }
     } catch (error) {
       console.error('Erro ao parar fila:', error);
-      alert('Erro ao parar fila');
+    }
+  }
+
+  async deleteQueue(queueId) {
+    // Apagar sem confirmação
+
+    try {
+      const response = await fetch(this.apiUrl(`/api/queues/${queueId}`), {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ Fila apagada:', queueId);
+        // Remover da lista local
+        this.queues = this.queues.filter(q => q.id !== queueId);
+        // Remover zoom e scroll salvos
+        if (this.timelineZoom) this.timelineZoom.delete(queueId);
+        if (this.timelineScroll) this.timelineScroll.delete(queueId);
+        // Re-renderizar lista
+        this.renderQueues();
+        // Não precisa fazer request:queues aqui, o evento queue:deleted já faz isso
+      } else {
+        console.error('Erro ao apagar fila:', data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao apagar fila:', error);
     }
   }
 
@@ -873,16 +1428,15 @@ class App {
         input.value = '';
         this.socket.emit('request:domains');
       } else {
-        alert('Erro ao adicionar domínio: ' + data.error);
+        console.error('Erro ao adicionar domínio:', data.error);
       }
     } catch (error) {
       console.error('Erro ao adicionar domínio:', error);
-      alert('Erro ao adicionar domínio');
     }
   }
 
   async removeDomain(domain) {
-    if (!confirm(`Remover domínio ${domain}?`)) return;
+    // Remover sem confirmação
 
     try {
       const response = await fetch(this.apiUrl(`/api/domains/${encodeURIComponent(domain)}`), {
@@ -895,11 +1449,10 @@ class App {
         console.log('✅ Domínio removido:', domain);
         this.socket.emit('request:domains');
       } else {
-        alert('Erro ao remover domínio: ' + data.error);
+        console.error('Erro ao remover domínio:', data.error);
       }
     } catch (error) {
       console.error('Erro ao remover domínio:', error);
-      alert('Erro ao remover domínio');
     }
   }
 
@@ -914,13 +1467,20 @@ class App {
       if (data.success) {
         console.log('✅ Índice de domínios resetado');
         this.socket.emit('request:domains');
-        alert('Índice de alternância resetado!');
       } else {
-        alert('Erro ao resetar índice: ' + data.error);
+        console.error('Erro ao resetar índice:', data.error);
       }
     } catch (error) {
       console.error('Erro ao resetar índice:', error);
-      alert('Erro ao resetar índice');
+    }
+  }
+
+  updateCreditsPreview(value) {
+    const credits = parseInt(value) || 0;
+    const totalCredits = credits * 10;
+    const preview = document.getElementById('creditsPreview');
+    if (preview) {
+      preview.textContent = `${totalCredits} créditos`;
     }
   }
 

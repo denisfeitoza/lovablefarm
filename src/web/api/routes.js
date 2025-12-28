@@ -197,7 +197,7 @@ router.get('/queues/:id', (req, res) => {
  */
 router.post('/queues', (req, res) => {
   try {
-    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors } = req.body; // Capturar selectedDomains, selectedProxies e simulatedErrors
+    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors, forceCredits } = req.body; // Capturar selectedDomains, selectedProxies, simulatedErrors e forceCredits
     
     // Validar link de indicação
     if (!referralLink) {
@@ -243,7 +243,8 @@ router.post('/queues', (req, res) => {
       referralLink: normalizedLink, // Usar link normalizado
       selectedDomains: selectedDomains || [], // Passar selectedDomains
       selectedProxies: selectedProxies || [], // Passar selectedProxies
-      simulatedErrors: simulatedErrors || [] // Passar erros simulados
+      simulatedErrors: simulatedErrors || [], // Passar erros simulados
+      forceCredits: forceCredits === true || forceCredits === 'true' // Passar forceCredits (buscar créditos a todo custo)
     };
     
     const queue = queueManager.createQueue(config); // Agora retorna o objeto completo
@@ -303,6 +304,36 @@ router.post('/queues/:id/stop', (req, res) => {
   } catch (error) {
     logger.error('Erro ao parar fila', error);
     res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/queues/:id - Deletar uma fila
+ */
+router.delete('/queues/:id', (req, res) => {
+  try {
+    const queueId = req.params.id;
+    
+    if (!queueId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID da fila é obrigatório'
+      });
+    }
+    
+    queueManager.deleteQueue(queueId);
+    
+    res.json({
+      success: true,
+      message: `Fila ${queueId} deletada`
+    });
+  } catch (error) {
+    logger.error('Erro ao deletar fila', error);
+    const statusCode = error.message.includes('não encontrada') ? 404 : 400;
+    res.status(statusCode).json({
       success: false,
       error: error.message
     });

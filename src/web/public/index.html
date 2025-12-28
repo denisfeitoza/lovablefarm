@@ -95,9 +95,6 @@
         <div class="panel-header">
           <h2>📊 Métricas (Sucessos e Erros)</h2>
           <div style="display: flex; gap: 8px;">
-            <button class="btn btn-small btn-secondary" onclick="app.fetchMetrics()">
-              🔄 Atualizar
-            </button>
             <button class="btn btn-small btn-danger" onclick="app.clearMetrics()" title="Limpar todas as métricas">
               🗑️ Limpar
             </button>
@@ -112,9 +109,6 @@
       <section class="panel panel-failures">
         <div class="panel-header">
           <h2>❌ Falhas Recentes</h2>
-          <button class="btn btn-small btn-secondary" onclick="app.fetchFailures()">
-            🔄 Atualizar
-          </button>
         </div>
         <div class="failures-list" id="failuresList">
           <div class="loading">Carregando falhas...</div>
@@ -184,137 +178,187 @@
     </div>
   </div>
 
-  <!-- Error Alert Container -->
-  <div id="alertContainer" class="alert-container"></div>
-
   <!-- Modal: Create Queue -->
   <div class="modal" id="createQueueModal">
-    <div class="modal-content">
+    <div class="modal-content modal-large">
       <div class="modal-header">
         <h2>🚀 Nova Fila de Execução</h2>
         <button class="modal-close" onclick="app.hideCreateQueueModal()">×</button>
       </div>
       
-      <form onsubmit="app.createQueue(event)">
-        <div class="form-group">
-          <label for="queueReferralLink">🔗 Link de Indicação</label>
-          <input 
-            type="url" 
-            id="queueReferralLink" 
-            placeholder="https://lovable.dev/invite/XXXXXXX"
-            required
-          >
-          <small>O link de indicação da Lovable (obrigatório)</small>
-        </div>
-
-        <div class="form-group">
-          <label for="queueName">Nome da Fila</label>
-          <input 
-            type="text" 
-            id="queueName" 
-            placeholder="Ex: Teste 10 indicações"
-            required
-          >
-        </div>
-        
-        <div class="form-group">
-          <label for="queueUsers">Número de Usuários (Indicações)</label>
-          <input 
-            type="number" 
-            id="queueUsers" 
-            min="1" 
-            max="1000" 
-            value="3"
-            required
-          >
-          <small>Cada usuário gera 10 créditos</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="queueParallel">Execuções Paralelas</label>
-          <input 
-            type="number" 
-            id="queueParallel" 
-            min="1" 
-            max="5" 
-            value="1"
-            required
-          >
-          <small>Máximo: 5 sessões simultâneas (cada uma com fingerprint único)</small>
-        </div>
-
-        <div class="form-group">
-          <label>Domínios para esta Fila</label>
-          <small style="margin-bottom: 8px;">Selecione quais domínios usar. Se nenhum for marcado, usa rotação global.</small>
-          <div style="margin-bottom: 8px; display: flex; gap: 8px;">
-            <button type="button" class="btn btn-small btn-secondary" onclick="app.selectAllDomains()">
-              ✓ Todos
-            </button>
-            <button type="button" class="btn btn-small btn-secondary" onclick="app.clearDomainSelection()">
-              ✗ Nenhum
-            </button>
+      <div class="modal-body">
+        <form onsubmit="app.createQueue(event)" class="modal-form">
+          <!-- Seção Principal -->
+          <div class="form-section">
+          <div class="form-group">
+            <label for="queueReferralLink">🔗 Link de Indicação</label>
+            <input 
+              type="url" 
+              id="queueReferralLink" 
+              placeholder="https://lovable.dev/invite/XXXXXXX"
+              required
+            >
+            <small>O link de indicação da Lovable (obrigatório)</small>
           </div>
-          <div id="queueDomainSelection" class="domain-selection-list">
-            <!-- Checkboxes serão inseridos via JS -->
-          </div>
-        </div>
 
-        <div class="form-group">
-          <label>Proxies para esta Fila (Opcional)</label>
-          <small style="margin-bottom: 8px; display: block; color: var(--warning); font-weight: 500;">
-            ⚠️ Recomendado usar proxies apenas em muitas operações paralelas e preferencialmente no modo Random.
-            Para poucas execuções paralelas, usar IP local é mais rápido e eficiente.
-          </small>
-          <small style="margin-bottom: 8px; display: block;">Selecione quais proxies usar. Se nenhum for marcado, usa IP local ou proxy global.</small>
-          <div style="margin-bottom: 8px; display: flex; gap: 8px;">
-            <button type="button" class="btn btn-small btn-secondary" onclick="app.selectAllProxies()">
-              ✓ Todos
-            </button>
-            <button type="button" class="btn btn-small btn-secondary" onclick="app.clearProxySelection()">
-              ✗ Nenhum
-            </button>
+          <div class="form-group">
+            <label for="queueName">📝 Nome da Fila</label>
+            <input 
+              type="text" 
+              id="queueName" 
+              placeholder="Ex: Teste 10 indicações"
+              required
+            >
           </div>
-          <div id="queueProxySelection" class="domain-selection-list">
-            <!-- Checkboxes serão inseridos via JS -->
+          
+          <div class="form-row">
+            <div class="form-group form-group-half">
+              <label for="queueUsers">👥 Número de Usuários</label>
+              <input 
+                type="number" 
+                id="queueUsers" 
+                min="1" 
+                max="1000" 
+                value="3"
+                oninput="app.updateCreditsPreview(this.value)"
+                required
+              >
+              <small>Indicações a criar</small>
+            </div>
+            
+            <div class="form-group form-group-half">
+              <label for="queueParallel">⚡ Execuções Paralelas</label>
+              <input 
+                type="number" 
+                id="queueParallel" 
+                min="1" 
+                max="5" 
+                value="1"
+                required
+              >
+              <small>Máximo: 5 simultâneas</small>
+            </div>
+          </div>
+          
+          <div class="credits-preview-box">
+            <div class="credits-preview-icon">💰</div>
+            <div class="credits-preview-content">
+              <div class="credits-preview-label">Créditos que serão gerados</div>
+              <div class="credits-preview-value" id="creditsPreview">30 créditos</div>
+            </div>
           </div>
         </div>
 
-        <div class="form-group" style="border-top: 2px solid var(--border); padding-top: 16px; margin-top: 16px;">
-          <label>🧪 Simular Erros (Para Testar Fallbacks)</label>
-          <small style="margin-bottom: 8px; display: block; color: var(--text-secondary);">
-            Selecione quais erros simular para testar os fallbacks do sistema. Útil para validar a resiliência.
-          </small>
-          <div id="queueErrorSimulation" class="domain-selection-list">
+        <!-- Seção: Opções Avançadas -->
+        <div class="form-section form-section-divider">
+          <h3 class="form-section-title">⚙️ Opções Avançadas</h3>
+          
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="queueForceCredits" class="checkbox-input">
+              <span class="checkbox-custom"></span>
+              <div class="checkbox-content">
+                <div class="checkbox-title">💰 Meta de Créditos</div>
+                <div class="checkbox-description">
+                  O sistema continuará tentando até atingir a meta, criando novas tentativas automaticamente mesmo em caso de erros.
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Seção: Configurações de Email e Proxy -->
+        <div class="form-section form-section-divider">
+          <h3 class="form-section-title">📧 Configurações de Email</h3>
+          
+          <div class="form-group">
+            <div class="form-group-header">
+              <label>Domínios para esta Fila</label>
+              <div class="form-group-actions">
+                <button type="button" class="btn btn-tiny btn-secondary" onclick="app.selectAllDomains()">
+                  ✓ Todos
+                </button>
+                <button type="button" class="btn btn-tiny btn-secondary" onclick="app.clearDomainSelection()">
+                  ✗ Nenhum
+                </button>
+              </div>
+            </div>
+            <small>Selecione quais domínios usar. Se nenhum for marcado, usa rotação global.</small>
+            <div id="queueDomainSelection" class="domain-selection-list">
+              <!-- Checkboxes serão inseridos via JS -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-group-header">
+              <label>🌐 Proxies para esta Fila <span class="optional-badge">Opcional</span></label>
+              <div class="form-group-actions">
+                <button type="button" class="btn btn-tiny btn-secondary" onclick="app.selectAllProxies()">
+                  ✓ Todos
+                </button>
+                <button type="button" class="btn btn-tiny btn-secondary" onclick="app.clearProxySelection()">
+                  ✗ Nenhum
+                </button>
+              </div>
+            </div>
+            <small class="warning-text">
+              ⚠️ Recomendado usar proxies apenas em muitas operações paralelas. Para poucas execuções, usar IP local é mais rápido.
+            </small>
+            <div id="queueProxySelection" class="domain-selection-list">
+              <!-- Checkboxes serão inseridos via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção: Testes -->
+        <div class="form-section form-section-divider">
+          <h3 class="form-section-title">🧪 Simular Erros (Para Testar)</h3>
+          <small class="form-section-description">Selecione quais erros simular para testar os fallbacks do sistema.</small>
+          
+          <div id="queueErrorSimulation" class="error-simulation-list">
             <div class="error-checkbox">
               <input type="checkbox" id="simulate-template-error" value="template_error">
               <label for="simulate-template-error">
-                ❌ Erro de Template (testa fallback para template específico)
+                <span class="error-checkbox-icon">❌</span>
+                <div class="error-checkbox-content">
+                  <div class="error-checkbox-title">Erro de Template</div>
+                  <div class="error-checkbox-desc">Testa fallback para template específico</div>
+                </div>
               </label>
             </div>
             <div class="error-checkbox">
               <input type="checkbox" id="simulate-publish-error" value="publish_error">
               <label for="simulate-publish-error">
-                ❌ Erro de Publish (testa retry com refresh)
+                <span class="error-checkbox-icon">❌</span>
+                <div class="error-checkbox-content">
+                  <div class="error-checkbox-title">Erro de Publish</div>
+                  <div class="error-checkbox-desc">Testa retry com refresh</div>
+                </div>
               </label>
             </div>
             <div class="error-checkbox">
               <input type="checkbox" id="simulate-email-error" value="email_error">
               <label for="simulate-email-error">
-                ❌ Erro de Email (testa detecção de domínio cansado)
+                <span class="error-checkbox-icon">❌</span>
+                <div class="error-checkbox-content">
+                  <div class="error-checkbox-title">Erro de Email</div>
+                  <div class="error-checkbox-desc">Testa detecção de domínio cansado</div>
+                </div>
               </label>
             </div>
           </div>
         </div>
         
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="app.hideCreateQueueModal()">
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-primary">
-            Criar Fila
-          </button>
-        </div>
-      </form>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="app.hideCreateQueueModal()">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary btn-large">
+              ✅ Criar Fila
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -366,7 +410,7 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="footer-content">
-      <p>Lovable Referral Tester - Versão <strong>1.1</strong></p>
+      <p>Lovable Referral Tester - Versão <strong>1.2</strong></p>
     </div>
   </footer>
 

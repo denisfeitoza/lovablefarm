@@ -33,10 +33,21 @@ class QueueManager {
   }
 
   /**
+   * Remove listener para eventos
+   */
+  removeListener(callback) {
+    const index = this.listeners.indexOf(callback);
+    if (index > -1) {
+      this.listeners.splice(index, 1);
+    }
+  }
+
+  /**
    * Emite evento para todos os listeners
    */
   emit(event, data) {
-    this.listeners.forEach(listener => {
+    // Usar slice para criar uma cópia, evitando problemas se listeners forem removidos durante a iteração
+    this.listeners.slice().forEach(listener => {
       try {
         listener(event, data);
       } catch (error) {
@@ -66,25 +77,31 @@ class QueueManager {
       selectedDomains: config.selectedDomains || [], // Domínios selecionados para esta fila
       selectedProxies: config.selectedProxies || [], // Proxies selecionados para esta fila
       simulatedErrors: config.simulatedErrors || [], // Erros simulados para testar fallbacks
+      forceCredits: config.forceCredits || false, // Buscar créditos a todo custo
       totalUsers: config.users,
       parallelExecutions: config.parallel || 1,
       status: 'pending', // pending, running, completed, failed
       createdAt: new Date().toISOString(),
       startedAt: null,
       completedAt: null,
+      elapsedTime: 0, // Tempo decorrido em segundos
+      executionTimes: [], // Array de tempos de execução (sucessos e falhas) para calcular média
       results: {
         total: 0,
         success: 0,
         failed: 0,
-        pending: config.users,
+        target: config.users, // Meta (pode ser dinâmica se forceCredits)
         credits: 0
       },
-      config: config
+      timeline: {
+        errors: [], // Array de { timestamp: número de segundos desde o início, error: mensagem, userId: número, failedStep: string }
+        successes: [] // Array de { timestamp: número de segundos desde o início, userId: número }
+      }
     };
 
     this.queues.set(queueId, queue);
     
-    this.emit('queue:created', { queueId, queue });
+    this.emit('queue:created', { queueId, queue: this.serializeQueue(queue) });
     logger.info(`📋 Fila criada: ${queueId} (${config.users} usuários, ${queue.parallelExecutions} paralelo)`);
     
     return queue; // Retornar o objeto completo, não apenas o ID
@@ -107,41 +124,65 @@ class QueueManager {
     queue.status = 'running';
     queue.cancelled = false; // Flag para cancelamento
     queue.startedAt = new Date().toISOString();
+    queue.elapsedTime = 0;
+    queue.timeline.errors = [];
+    queue.timeline.successes = [];
+    queue.executionTimes = []; // Inicializar array de tempos de execução
     
-    this.emit('queue:started', { queueId, queue });
-    logger.info(`🚀 Iniciando fila: ${queueId}`);
+    // Iniciar timer para atualizar elapsedTime a cada segundo
+    queue.timerInterval = setInterval(() => {
+      if (queue.status === 'running' && queue.startedAt) {
+        const startTime = new Date(queue.startedAt).getTime();
+        const now = Date.now();
+        queue.elapsedTime = Math.floor((now - startTime) / 1000);
+        this.emit('queue:updated', { queueId, queue: this.serializeQueue(queue) });
+      }
+    }, 1000);
+    
+    this.emit('queue:started', { queueId, queue: this.serializeQueue(queue) });
+    logger.info(`🚀 Iniciando fila: ${queueId}${queue.forceCredits ? ' (Modo: Buscar créditos a todo custo)' : ''}`);
 
     try {
       // Criar limite de concorrência
       const limit = pLimit(queue.parallelExecutions);
 
-      // Criar promessas para todos os usuários
-      const promises = [];
-      
-      for (let i = 1; i <= queue.totalUsers; i++) {
-        // Verificar se foi cancelado antes de criar nova execução
-        if (queue.cancelled) {
-          logger.warning(`⚠️ Fila ${queueId} foi cancelada, não iniciando usuário ${i}`);
-          break;
-        }
+      if (queue.forceCredits) {
+        // Modo "buscar créditos a todo custo": continuar tentando até atingir a meta
+        await this.executeQueueWithRetry(queueId, limit);
+      } else {
+        // Modo normal: executar apenas o número especificado de usuários
+        const promises = [];
         
-        promises.push(
-          limit(() => {
-            // Verificar novamente no momento de executar
-            if (queue.cancelled) {
-              logger.warning(`⚠️ Fila ${queueId} cancelada, pulando usuário ${i}`);
-              return Promise.resolve({ cancelled: true });
-            }
-            return this.executeUser(queueId, i);
-          })
-        );
+        for (let i = 1; i <= queue.totalUsers; i++) {
+          // Verificar se foi cancelado antes de criar nova execução
+          if (queue.cancelled) {
+            logger.warning(`⚠️ Fila ${queueId} foi cancelada, não iniciando usuário ${i}`);
+            break;
+          }
+          
+          promises.push(
+            limit(() => {
+              // Verificar novamente no momento de executar
+              if (queue.cancelled) {
+                logger.warning(`⚠️ Fila ${queueId} cancelada, pulando usuário ${i}`);
+                return Promise.resolve({ cancelled: true });
+              }
+              return this.executeUser(queueId, i);
+            })
+          );
+        }
+
+        // Aguardar todas as execuções
+        await Promise.allSettled(promises);
       }
 
-      // Aguardar todas as execuções
-      await Promise.allSettled(promises);
-
+      // Parar timer
+      if (queue.timerInterval) {
+        clearInterval(queue.timerInterval);
+      }
+      
       // Verificar status final
-      if (queue.cancelled) {
+      if (queue.cancelled || queue.status === 'finalizing') {
         queue.status = 'cancelled';
         logger.warning(`⚠️ Fila cancelada: ${queueId}`);
       } else {
@@ -150,20 +191,39 @@ class QueueManager {
       
       queue.completedAt = new Date().toISOString();
       
+      // Calcular tempo final
+      if (queue.startedAt) {
+        const startTime = new Date(queue.startedAt).getTime();
+        const endTime = new Date(queue.completedAt).getTime();
+        queue.elapsedTime = Math.floor((endTime - startTime) / 1000);
+      }
+      
       // Salvar no histórico
       historyManager.addQueueRecord(queue);
       
-      this.emit('queue:completed', { queueId, queue });
+      this.emit('queue:completed', { queueId, queue: this.serializeQueue(queue) });
       logger.success(`✅ Fila concluída: ${queueId} (${queue.results.success}/${queue.totalUsers} sucessos)`);
 
     } catch (error) {
+      // Parar timer
+      if (queue.timerInterval) {
+        clearInterval(queue.timerInterval);
+      }
+      
       queue.status = 'failed';
       queue.error = error.message;
+      
+      // Calcular tempo final
+      if (queue.startedAt) {
+        const startTime = new Date(queue.startedAt).getTime();
+        const endTime = Date.now();
+        queue.elapsedTime = Math.floor((endTime - startTime) / 1000);
+      }
       
       // Salvar no histórico mesmo se falhar
       historyManager.addQueueRecord(queue);
       
-      this.emit('queue:failed', { queueId, queue, error: error.message });
+      this.emit('queue:failed', { queueId, queue: this.serializeQueue(queue), error: error.message });
       logger.error(`❌ Fila falhou: ${queueId}`, error);
     }
 
@@ -185,18 +245,173 @@ class QueueManager {
     }
 
     queue.cancelled = true;
+    queue.status = 'finalizing'; // Mudar status para 'finalizing' ao parar
+    
+    // Parar timer ao cancelar
+    if (queue.timerInterval) {
+      clearInterval(queue.timerInterval);
+    }
+    
     logger.warning(`⚠️ Solicitado cancelamento da fila: ${queueId}`);
     
-    this.emit('queue:stop_requested', { queueId, queue });
+    this.emit('queue:stop_requested', { queueId, queue: this.serializeQueue(queue) });
+    this.emit('queue:updated', { queueId, queue: this.serializeQueue(queue) });
     
     return queue;
   }
 
   /**
+   * Deleta uma fila
+   */
+  deleteQueue(queueId) {
+    const queue = this.queues.get(queueId);
+    
+    if (!queue) {
+      throw new Error(`Fila ${queueId} não encontrada`);
+    }
+
+    try {
+      // Se a fila estiver rodando, cancelar primeiro
+      if (queue.status === 'running') {
+        queue.cancelled = true;
+        if (queue.timerInterval) {
+          clearInterval(queue.timerInterval);
+          queue.timerInterval = null;
+        }
+      }
+
+      // Remover execuções ativas relacionadas a esta fila primeiro
+      const executionsToRemove = [];
+      for (const [executionId, execution] of this.activeExecutions.entries()) {
+        if (execution.queueId === queueId) {
+          executionsToRemove.push(executionId);
+        }
+      }
+      executionsToRemove.forEach(id => this.activeExecutions.delete(id));
+
+      // Limpar timer se ainda existir
+      if (queue.timerInterval) {
+        clearInterval(queue.timerInterval);
+      }
+
+      // Remover da lista de filas
+      this.queues.delete(queueId);
+      
+      logger.info(`🗑️ Fila deletada: ${queueId}`);
+      
+      // Emitir evento após remover completamente
+      this.emit('queue:deleted', { queueId });
+      
+      return true;
+    } catch (error) {
+      logger.error(`Erro ao deletar fila ${queueId}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Executa fila com retry infinito (modo buscar créditos a todo custo)
+   */
+  async executeQueueWithRetry(queueId, limit) {
+    const queue = this.queues.get(queueId);
+    if (!queue) return;
+
+    let nextUserId = 1; // Contador para userIds únicos
+    const runningPromises = new Set(); // Controlar execuções em andamento
+    const originalTarget = queue.totalUsers; // Meta original (não aumenta com erros)
+    
+    // Continuar até atingir a meta original ou ser cancelado
+    // IMPORTANTE: Comparar com totalUsers (meta original), não com target (que pode ter sido aumentado)
+    while (queue.results.success < originalTarget && !queue.cancelled) {
+      // Verificar se já atingiu a meta ANTES de criar novas execuções
+      if (queue.results.success >= originalTarget) {
+        break;
+      }
+      
+      // Manter sempre o número máximo de execuções paralelas rodando
+      while (runningPromises.size < queue.parallelExecutions && 
+             queue.results.success < originalTarget && 
+             !queue.cancelled) {
+        
+        // Verificar novamente antes de criar cada nova promise
+        if (queue.results.success >= originalTarget || queue.cancelled) {
+          break;
+        }
+        
+        const userId = nextUserId++;
+        
+        const promise = limit(async () => {
+          // IMPORTANTE: Verificar meta original ANTES de executar
+          if (queue.cancelled || queue.results.success >= originalTarget) {
+            runningPromises.delete(promise);
+            return { cancelled: true };
+          }
+          
+          try {
+            const result = await this.executeUser(queueId, userId);
+            
+            // Verificar DEPOIS de executar - se já atingiu a meta, retornar cancelled
+            // Isso é importante porque executeUser incrementa success dentro dele
+            if (queue.results.success > originalTarget) {
+              // Se ultrapassou, ajustar para não ultrapassar muito
+              logger.warning(`⚠️ Meta atingida (${queue.results.success}/${originalTarget}), parando execução`);
+              runningPromises.delete(promise);
+              return { cancelled: true };
+            }
+            
+            return result;
+          } catch (error) {
+            // Em caso de erro, verificar se já atingiu meta
+            if (queue.results.success >= originalTarget) {
+              runningPromises.delete(promise);
+              return { cancelled: true };
+            }
+            throw error;
+          } finally {
+            runningPromises.delete(promise);
+            // Verificar novamente após limpar a promise
+            if (queue.results.success >= originalTarget && runningPromises.size === 0) {
+              // Se atingiu a meta e não há mais execuções rodando, quebrar o loop
+              queue.cancelled = true;
+            }
+          }
+        });
+        
+        runningPromises.add(promise);
+      }
+      
+      // Aguardar pelo menos uma execução completar antes de criar novas
+      if (runningPromises.size > 0) {
+        await Promise.race(Array.from(runningPromises));
+        
+        // Verificar novamente após uma execução completar - CRÍTICO para parar
+        if (queue.results.success >= originalTarget) {
+          // Cancelar todas as execuções pendentes
+          queue.cancelled = true;
+          break;
+        }
+      } else {
+        // Se não há execuções rodando mas ainda não atingimos a meta, criar uma
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+    
+    // Aguardar todas as execuções remanescentes terminarem
+    if (runningPromises.size > 0) {
+      await Promise.allSettled(Array.from(runningPromises));
+    }
+  }
+
+  /**
    * Executa um usuário individual
+   * @returns {Promise} Resultado da execução
    */
   async executeUser(queueId, userId) {
     const queue = this.queues.get(queueId);
+    if (!queue) {
+      throw new Error(`Fila ${queueId} não encontrada`);
+    }
+    
     const executionId = `exec-${this.nextExecutionId++}`;
     
     logger.info(`▶️  Executando usuário ${userId} (${executionId}) com link: ${queue.referralLink}`);
@@ -253,10 +468,14 @@ class QueueManager {
       };
 
       this.activeExecutions.set(executionId, execution);
-      this.emit('execution:started', { executionId, execution });
+      this.emit('execution:started', { executionId, execution: this.serializeExecution(execution) });
 
+      const executionStartTime = Date.now();
+      
       // Executar fluxo do usuário passando o link de indicação, domínio, proxy e erros simulados
       const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || []);
+      
+      const executionTime = Math.floor((Date.now() - executionStartTime) / 1000); // em segundos
 
       // Atualizar execução
       execution.status = result.success ? 'success' : 'failed';
@@ -270,11 +489,31 @@ class QueueManager {
 
       // Atualizar estatísticas da fila
       queue.results.total++;
-      queue.results.pending--;
       
+      // Registrar tempo de execução (para calcular média)
+      queue.executionTimes.push(executionTime);
+      // Manter apenas os últimos 100 tempos para cálculo
+      if (queue.executionTimes.length > 100) {
+        queue.executionTimes.shift();
+      }
+      
+      // Calcular timestamp relativo ao início da fila
+      const getRelativeTimestamp = () => {
+        if (!queue.startedAt) return 0;
+        const startTime = new Date(queue.startedAt).getTime();
+        const now = Date.now();
+        return Math.floor((now - startTime) / 1000); // em segundos
+      };
+
       if (result.success) {
         queue.results.success++;
         queue.results.credits += result.creditsEarned || 0;
+        
+        // Adicionar sucesso na timeline
+        queue.timeline.successes.push({
+          timestamp: getRelativeTimestamp(),
+          userId: userId
+        });
         
         // Registrar sucesso no histórico
         historyManager.addSuccess({
@@ -289,6 +528,22 @@ class QueueManager {
         queue.results.failed++;
         execution.error = result.error;
         
+        // Se estiver no modo "buscar créditos a todo custo" e ainda não atingiu a meta original,
+        // aumentar a meta dinamicamente para compensar o erro
+        // IMPORTANTE: Só aumentar se ainda não atingiu a meta original (totalUsers)
+        if (queue.forceCredits && queue.results.success < queue.totalUsers) {
+          queue.results.target++;
+          logger.info(`💰 Meta aumentada para ${queue.results.target} (erro no usuário ${userId}, ainda precisa de ${queue.totalUsers - queue.results.success} sucessos)`);
+        }
+        
+        // Adicionar erro na timeline
+        queue.timeline.errors.push({
+          timestamp: getRelativeTimestamp(),
+          error: result.error || 'Erro desconhecido',
+          userId: userId,
+          failedStep: result.failedStep || 'Desconhecida'
+        });
+        
         // Registrar falha no histórico
         historyManager.addFailure({
           email: result.credentials?.email || result.email || 'N/A',
@@ -301,8 +556,8 @@ class QueueManager {
         });
       }
 
-      this.emit('execution:completed', { executionId, execution });
-      this.emit('queue:updated', { queueId, queue });
+      this.emit('execution:completed', { executionId, execution: this.serializeExecution(execution) });
+      this.emit('queue:updated', { queueId, queue: this.serializeQueue(queue) });
       
       logger.success(`✅ Usuário ${userId} concluído (${executionId})`);
 
@@ -312,8 +567,31 @@ class QueueManager {
       execution.error = error.message;
 
       queue.results.total++;
-      queue.results.pending--;
       queue.results.failed++;
+      
+      // Calcular tempo de execução mesmo em caso de erro
+      const executionStartTime = execution.startedAt ? new Date(execution.startedAt).getTime() : Date.now();
+      const executionTime = Math.floor((Date.now() - executionStartTime) / 1000);
+      queue.executionTimes.push(executionTime);
+      if (queue.executionTimes.length > 100) {
+        queue.executionTimes.shift();
+      }
+
+      // Calcular timestamp relativo ao início da fila
+      const getRelativeTimestamp = () => {
+        if (!queue.startedAt) return 0;
+        const startTime = new Date(queue.startedAt).getTime();
+        const now = Date.now();
+        return Math.floor((now - startTime) / 1000); // em segundos
+      };
+      
+      // Se estiver no modo "buscar créditos a todo custo" e ainda não atingiu a meta original,
+      // aumentar a meta dinamicamente para compensar o erro
+      // IMPORTANTE: Só aumentar se ainda não atingiu a meta original (totalUsers)
+      if (queue.forceCredits && queue.results.success < queue.totalUsers) {
+        queue.results.target++;
+        logger.info(`💰 Meta aumentada para ${queue.results.target} (erro exceção no usuário ${userId}, ainda precisa de ${queue.totalUsers - queue.results.success} sucessos)`);
+      }
 
       // Registrar falha no histórico
       const email = execution.credentials?.email || 'N/A';
@@ -330,6 +608,14 @@ class QueueManager {
         failedStep = 'Verificação de Email';
       }
       
+      // Adicionar erro na timeline
+      queue.timeline.errors.push({
+        timestamp: getRelativeTimestamp(),
+        error: error.message,
+        userId: userId,
+        failedStep: failedStep
+      });
+      
       historyManager.addFailure({
         email: email,
         error: error.message,
@@ -340,8 +626,8 @@ class QueueManager {
         referralLink: queue.referralLink
       });
 
-      this.emit('execution:failed', { executionId, execution, error: error.message });
-      this.emit('queue:updated', { queueId, queue });
+      this.emit('execution:failed', { executionId, execution: this.serializeExecution(execution), error: error.message });
+      this.emit('queue:updated', { queueId, queue: this.serializeQueue(queue) });
       
       logger.error(`❌ Usuário ${userId} falhou (${executionId})`, error);
     } finally {
@@ -353,24 +639,103 @@ class QueueManager {
   }
 
   /**
-   * Obtém informações de uma fila
+   * Obtém informações de uma fila (versão serializável para WebSocket)
    */
   getQueue(queueId) {
-    return this.queues.get(queueId);
+    const queue = this.queues.get(queueId);
+    if (!queue) return null;
+    return this.serializeQueue(queue);
   }
 
   /**
-   * Lista todas as filas
+   * Serializa o objeto queue removendo propriedades não serializáveis
+   */
+  serializeQueue(queue) {
+    if (!queue) return null;
+    
+    return {
+      id: queue.id,
+      name: queue.name,
+      referralLink: queue.referralLink,
+      selectedDomains: queue.selectedDomains || [],
+      selectedProxies: queue.selectedProxies || [],
+      simulatedErrors: queue.simulatedErrors || [],
+      totalUsers: queue.totalUsers,
+      parallelExecutions: queue.parallelExecutions,
+      status: queue.status,
+      createdAt: queue.createdAt,
+      startedAt: queue.startedAt,
+      completedAt: queue.completedAt,
+      elapsedTime: queue.elapsedTime || 0,
+      forceCredits: queue.forceCredits || false,
+      executionTimes: Array.isArray(queue.executionTimes) ? queue.executionTimes : [],
+      results: queue.results ? { ...queue.results } : {
+        total: 0,
+        success: 0,
+        failed: 0,
+        target: queue.totalUsers || 0,
+        credits: 0
+      },
+      timeline: queue.timeline ? {
+        errors: Array.isArray(queue.timeline.errors) ? queue.timeline.errors.map(err => ({
+          timestamp: err.timestamp || 0,
+          error: String(err.error || ''),
+          userId: err.userId || 0,
+          failedStep: String(err.failedStep || '')
+        })) : [],
+        successes: Array.isArray(queue.timeline.successes) ? queue.timeline.successes.map(suc => ({
+          timestamp: suc.timestamp || 0,
+          userId: suc.userId || 0
+        })) : []
+      } : {
+        errors: [],
+        successes: []
+      },
+      error: queue.error || null
+    };
+  }
+
+  /**
+   * Serializa o objeto execution removendo propriedades não serializáveis
+   */
+  serializeExecution(execution) {
+    if (!execution) return null;
+    
+    return {
+      id: execution.id,
+      queueId: execution.queueId,
+      userId: execution.userId,
+      status: execution.status,
+      startedAt: execution.startedAt,
+      completedAt: execution.completedAt,
+      result: execution.result ? {
+        success: execution.result.success || false,
+        error: execution.result.error ? String(execution.result.error) : null,
+        failedStep: execution.result.failedStep ? String(execution.result.failedStep) : null,
+        creditsEarned: execution.result.creditsEarned || 0,
+        email: execution.result.email ? String(execution.result.email) : null
+      } : null,
+      error: execution.error ? String(execution.error) : null,
+      credentials: execution.credentials ? {
+        email: String(execution.credentials.email || ''),
+        password: String(execution.credentials.password || '')
+      } : null,
+      domain: execution.domain ? String(execution.domain) : null
+    };
+  }
+
+  /**
+   * Lista todas as filas (versão serializável)
    */
   listQueues() {
-    return Array.from(this.queues.values());
+    return Array.from(this.queues.values()).map(queue => this.serializeQueue(queue));
   }
 
   /**
-   * Lista execuções ativas
+   * Lista execuções ativas (versão serializável)
    */
   listActiveExecutions() {
-    return Array.from(this.activeExecutions.values());
+    return Array.from(this.activeExecutions.values()).map(exec => this.serializeExecution(exec));
   }
 
   /**
