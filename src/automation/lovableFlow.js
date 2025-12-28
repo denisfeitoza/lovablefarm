@@ -5,6 +5,39 @@ import { getTimeout, getDelay, DEFAULT_TIMEOUTS } from '../utils/timeouts.js';
 /**
  * Função helper para fazer fallback para o template quando houver erros
  */
+/**
+ * Helper para aguardar botão "Use template" com fallback de refresh
+ */
+async function waitForUseTemplateButtonWithRefresh(page, usingProxy, context = '') {
+  try {
+    logger.info(`Procurando botão "Use template"${context ? ` (${context})` : ''}...`);
+    await page.waitForSelector('button:has-text("Use template")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+    return true;
+  } catch (error) {
+    // Se der timeout, fazer refresh uma vez e tentar novamente
+    if (error.message && error.message.includes('Timeout')) {
+      logger.warning('⚠️ Timeout ao procurar botão "Use template". Fazendo refresh e tentando novamente...');
+      const currentUrl = page.url();
+      
+      // Fazer refresh apenas uma vez
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) });
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
+      
+      // Tentar novamente
+      logger.info('Tentando novamente após refresh...');
+      try {
+        await page.waitForSelector('button:has-text("Use template")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+        logger.success('✅ Botão "Use template" encontrado após refresh');
+        return true;
+      } catch (retryError) {
+        logger.error(`❌ Botão "Use template" ainda não encontrado após refresh. URL: ${currentUrl}`);
+        throw retryError; // Lançar erro se ainda não aparecer
+      }
+    }
+    throw error; // Re-lançar se não for timeout
+  }
+}
+
 export async function fallbackToTemplate(page, userId, usingProxy) {
   const fallbackTemplateUrl = config.templateProjectUrl;
   logger.warning('⚠️ Fazendo fallback para template específico...');
@@ -16,9 +49,8 @@ export async function fallbackToTemplate(page, userId, usingProxy) {
   });
   await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
   
-  // Aguardar e clicar em "Use template"
-  logger.info('Procurando botão "Use template" (fallback)...');
-  await page.waitForSelector('button:has-text("Use template")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+  // Aguardar e clicar em "Use template" com fallback de refresh
+  await waitForUseTemplateButtonWithRefresh(page, usingProxy, 'fallback');
   
   const useTemplateButton = await page.locator('button:has-text("Use template")').first();
   await useTemplateButton.click();
@@ -802,9 +834,8 @@ export async function selectTemplate(page, userId = 1, usingProxy = false, simul
     
     await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
 
-    // Aguardar e clicar em "Use template"
-    logger.info('Procurando botão "Use template"...');
-    await page.waitForSelector('button:has-text("Use template")', { timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+    // Aguardar e clicar em "Use template" com fallback de refresh
+    await waitForUseTemplateButtonWithRefresh(page, usingProxy);
     
     const useTemplateButton = await page.locator('button:has-text("Use template")').first();
     await useTemplateButton.click();
