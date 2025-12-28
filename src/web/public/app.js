@@ -1030,15 +1030,15 @@ class App {
     
     // Atualizar o indicador de tempo atual na timeline
     const timelineId = `timeline-${queue.id}`;
-    const timeline = document.getElementById(timelineId);
-    if (timeline && queue.status === 'running' && queue.elapsedTime > 0) {
-      const timelineInner = timeline.querySelector('.timeline-inner');
+    const timelineElement = document.getElementById(timelineId);
+    if (timelineElement && queue.status === 'running' && queue.elapsedTime > 0) {
+      const timelineInner = timelineElement.querySelector('.timeline-inner');
       if (timelineInner) {
         // Calcular maxTimestamp baseado nos erros e sucessos
-        const timeline = queue.timeline || { errors: [], successes: [] };
+        const timelineData = queue.timeline || { errors: [], successes: [] };
         const maxTimestamp = Math.max(
-          ...timeline.errors.map(e => e.timestamp || 0),
-          ...timeline.successes.map(s => s.timestamp || 0),
+          ...timelineData.errors.map(e => e.timestamp || 0),
+          ...timelineData.successes.map(s => s.timestamp || 0),
           queue.elapsedTime || 0,
           1
         );
