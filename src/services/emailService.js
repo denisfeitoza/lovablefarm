@@ -62,9 +62,10 @@ class EmailService {
       
       // Gerar username aleatório até encontrar um não usado
       let email;
+      let username;
       let attempts = 0;
       do {
-        const username = generateRandomUsername();
+        username = generateRandomUsername();
         email = `${username}@${domain}`;
         attempts++;
         
@@ -88,9 +89,6 @@ class EmailService {
       });
       
       logger.info(`✅ Email gerado e pronto para uso: ${email}`);
-      
-      // Extrair username do email para retorno
-      const username = email.split('@')[0];
       
       return {
         email,
