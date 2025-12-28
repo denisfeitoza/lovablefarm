@@ -28,30 +28,31 @@ class EmailService {
 
   /**
    * Gera um novo email usando domínio customizado (com alternância global ou específica)
-   * Recria até ser confirmado/validado pela API
+   * No Inbound.new, emails são criados automaticamente quando o primeiro email chega
    */
-  async generateEmail(userId, specificDomain = null, attempt = 1, maxAttempts = 10) {
+  async generateEmail(userId, specificDomain = null) {
     try {
       await this.initialize();
       
       // Obter domínio: Específico (da fila) ou Próximo (alternância global)
       const domain = specificDomain || domainManager.getNextDomain();
       
-      // Gerar username aleatório
-      const username = generateRandomUsername();
-      const email = `${username}@${domain}`;
+      // Gerar username aleatório até encontrar um não usado
+      let email;
+      let attempts = 0;
+      do {
+        const username = generateRandomUsername();
+        email = `${username}@${domain}`;
+        attempts++;
+        
+        // Proteção contra loop infinito
+        if (attempts > 100) {
+          throw new Error('Não foi possível gerar email único após 100 tentativas');
+        }
+      } while (this.usedEmails.has(email));
       
-      logger.info(`Gerando email (tentativa ${attempt}/${maxAttempts}): ${email} (domínio: ${domain}${specificDomain ? ' - específico' : ' - global'})`);
-      
-      // Garantir que não reutilizamos
-      if (this.usedEmails.has(email)) {
-        logger.warning('Email já usado, gerando novo');
-        return this.generateEmail(userId, specificDomain, 1, maxAttempts); // Resetar tentativas
-      }
-
-      // No Inbound.new, emails são criados automaticamente quando o primeiro email chega
-      // Não precisamos validar antes de usar - apenas garantir que o email seja único
-      logger.info(`📧 Email gerado: ${email} (será criado automaticamente quando o primeiro email chegar)`);
+      logger.info(`📧 Email gerado: ${email} (domínio: ${domain}${specificDomain ? ' - específico' : ' - global'})`);
+      logger.info(`ℹ️  No Inbound.new, o email será criado automaticamente quando o primeiro email chegar`);
 
       this.usedEmails.add(email);
       
@@ -65,18 +66,15 @@ class EmailService {
       
       logger.info(`✅ Email gerado e pronto para uso: ${email}`);
       
+      // Extrair username do email para retorno
+      const username = email.split('@')[0];
+      
       return {
         email,
         username,
         domain: domain
       };
     } catch (error) {
-      // Se for erro de validação crítica, já foi tratado acima
-      if (error.message.includes('Não foi possível gerar email confirmado') || 
-          error.message.includes('Email não foi confirmado')) {
-        throw error;
-      }
-      
       logger.error(`Erro ao gerar email`, error);
       throw new Error(`Falha ao gerar email: ${error.message}`);
     }
