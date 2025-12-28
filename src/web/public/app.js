@@ -1875,6 +1875,8 @@ class App {
     setTimeout(() => {
       this.renderQueueDomainSelection();
       this.renderQueueProxySelection();
+      // Garantir que o checkbox do banner está habilitado (turbo mode está marcado por padrão)
+      this.onTurboModeChange();
     }, 100);
   }
 
