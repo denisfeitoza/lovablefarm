@@ -608,15 +608,15 @@ body {
 
 /* Logs Panel */
 .logs-panel {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   height: 300px;
   background: var(--log-bg);
   color: #ccc;
   border-top: 1px solid var(--border);
-  z-index: 900;
+  z-index: 9999 !important;
   display: flex;
   flex-direction: column;
   box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.5);

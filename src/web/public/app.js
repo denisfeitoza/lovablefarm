@@ -1361,14 +1361,17 @@ class App {
     const container = document.getElementById('executionsList');
     const count = document.getElementById('activeExecutionsCount');
     
-    count.textContent = executions.length;
+    // Filtrar apenas execuções que estão realmente rodando (status 'running')
+    const activeOnly = executions.filter(exec => exec.status === 'running');
+    
+    count.textContent = activeOnly.length;
 
-    if (executions.length === 0) {
+    if (activeOnly.length === 0) {
       container.innerHTML = '<div class="empty-state-small">Nenhuma execução ativa</div>';
       return;
     }
 
-    container.innerHTML = executions.map(exec => {
+    container.innerHTML = activeOnly.map(exec => {
       const startTime = exec.startedAt;
       const completedAt = exec.completedAt; // Adicionado para controle do timer
       const credentials = exec.credentials || {};
