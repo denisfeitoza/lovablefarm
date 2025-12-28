@@ -172,9 +172,12 @@
           <button class="btn btn-small" onclick="app.toggleLogs()">Fechar</button>
         </div>
       </div>
-      <div class="logs-content" id="systemLogs">
+      <div class="logs-content" id="systemLogs" onscroll="app.checkLogsScrollPosition()">
         <!-- Logs serão inseridos aqui -->
       </div>
+      <button id="scrollLogsDownBtn" class="scroll-down-btn" onclick="app.scrollLogsToBottom()" title="Ir para o final">
+        ↓
+      </button>
     </div>
   </div>
 

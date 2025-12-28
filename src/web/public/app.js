@@ -18,6 +18,7 @@ class App {
     this.timelineScroll = new Map(); // { queueId: scrollPosition }
     this.timeEstimateInterval = null; // Timer para atualizar tempo restante
     this.timeEstimates = new Map(); // { queueId: { seconds: number, lastUpdate: timestamp } }
+    this.logsAutoScroll = true; // Flag para controlar auto-scroll dos logs
     this.init();
   }
 
@@ -466,6 +467,8 @@ class App {
   // Log Management
   addLog(log) {
     const container = document.getElementById('systemLogs');
+    if (!container) return;
+    
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     
@@ -483,7 +486,48 @@ class App {
     `;
     
     container.appendChild(entry);
+    
+    // Só fazer auto-scroll se estiver ativo e o usuário estiver no final
+    if (this.logsAutoScroll) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  // Verificar se o usuário está no final do scroll dos logs
+  checkLogsScrollPosition() {
+    const container = document.getElementById('systemLogs');
+    if (!container) return;
+    
+    const threshold = 50; // Margem de 50px do final
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+    
+    // Atualizar auto-scroll baseado na posição
+    this.logsAutoScroll = isNearBottom;
+    
+    // Atualizar visibilidade do botão "ir para baixo"
+    const scrollDownBtn = document.getElementById('scrollLogsDownBtn');
+    if (scrollDownBtn) {
+      scrollDownBtn.style.display = isNearBottom ? 'none' : 'block';
+    }
+  }
+
+  // Ir para o final dos logs e ativar auto-scroll
+  scrollLogsToBottom() {
+    const container = document.getElementById('systemLogs');
+    if (!container) return;
+    
     container.scrollTop = container.scrollHeight;
+    this.logsAutoScroll = true;
+    
+    // Esconder botão após um pequeno delay para garantir que o scroll foi aplicado
+    setTimeout(() => {
+      const scrollDownBtn = document.getElementById('scrollLogsDownBtn');
+      if (scrollDownBtn) {
+        scrollDownBtn.style.display = 'none';
+      }
+      // Verificar posição novamente
+      this.checkLogsScrollPosition();
+    }, 100);
   }
 
   toggleLogs() {
