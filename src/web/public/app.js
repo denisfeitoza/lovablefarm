@@ -284,6 +284,7 @@ class App {
     // Nomes amigáveis para categorias
     const categoryNames = {
       popup_not_found: 'Popup não encontrado',
+      banner_editor_not_found: 'Banner no Editor não encontrado',
       email_error: 'Erros de Email',
       template_error: 'Erros de Template',
       other_error: 'Outros Erros'

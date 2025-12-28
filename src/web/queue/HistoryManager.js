@@ -105,7 +105,14 @@ class HistoryManager {
     const errorLower = (error || '').toLowerCase();
     const stepLower = (failedStep || '').toLowerCase();
     
-    // Popup não encontrado
+    // Banner de créditos não encontrado no editor (específico - precisa verificar primeiro)
+    if (stepLower.includes('banner de créditos no editor') || 
+        errorLower.includes('banner de crédito não encontrado na etapa final') ||
+        errorLower.includes('banner de credito nao encontrado na etapa final')) {
+      return 'banner_editor_not_found';
+    }
+    
+    // Popup não encontrado (verificação geral de banner/popup de créditos)
     if (errorLower.includes('popup') || errorLower.includes('banner') || 
         errorLower.includes('créditos') || errorLower.includes('credits') ||
         stepLower.includes('créditos') || stepLower.includes('credits')) {
