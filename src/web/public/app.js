@@ -972,7 +972,35 @@ class App {
 
   updateQueueInList(queue) {
     const index = this.queues.findIndex(q => q.id === queue.id);
-    if (index !== -1) {
+    if (index === -1) return;
+    
+    const oldQueue = this.queues[index];
+    
+    // Verificar se apenas o elapsedTime mudou (atualização de timer)
+    const onlyTimerChanged = 
+      oldQueue.status === queue.status &&
+      oldQueue.results?.success === queue.results?.success &&
+      oldQueue.results?.failed === queue.results?.failed &&
+      oldQueue.results?.total === queue.results?.total &&
+      oldQueue.timeline?.errors?.length === queue.timeline?.errors?.length &&
+      oldQueue.timeline?.successes?.length === queue.timeline?.successes?.length &&
+      oldQueue.elapsedTime !== queue.elapsedTime;
+    
+    // Atualizar timer em tempo real para filas rodando
+    if (queue.status === 'running' && queue.startedAt) {
+      const startTime = new Date(queue.startedAt).getTime();
+      const now = Date.now();
+      queue.elapsedTime = Math.floor((now - startTime) / 1000);
+    }
+    
+    // Atualizar o objeto da fila
+    this.queues[index] = queue;
+    
+    // Se apenas o timer mudou, atualizar apenas o timer e o indicador na timeline
+    if (onlyTimerChanged) {
+      this.updateQueueTimerOnly(queue);
+    } else {
+      // Se houver mudanças reais, re-renderizar tudo
       // Salvar scroll atual ANTES de re-renderizar para evitar "zig zag"
       const timelineId = `timeline-${queue.id}`;
       const timeline = document.getElementById(timelineId);
@@ -980,15 +1008,51 @@ class App {
         // Salvar o scroll atual antes de re-renderizar
         this.timelineScroll.set(queue.id, timeline.scrollLeft);
       }
-      
-      // Atualizar timer em tempo real para filas rodando
-      if (queue.status === 'running' && queue.startedAt) {
-        const startTime = new Date(queue.startedAt).getTime();
-        const now = Date.now();
-        queue.elapsedTime = Math.floor((now - startTime) / 1000);
-      }
-      this.queues[index] = queue;
       this.renderQueues();
+    }
+  }
+
+  // Atualizar apenas o timer e o indicador de tempo na timeline, sem re-renderizar tudo
+  updateQueueTimerOnly(queue) {
+    // Atualizar o timer no header da fila
+    const queueElement = document.querySelector(`[data-queue-id="${queue.id}"]`);
+    if (queueElement) {
+      const timerElement = queueElement.querySelector('.queue-timer');
+      if (timerElement && queue.elapsedTime !== undefined) {
+        const formatTime = (seconds) => {
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        };
+        timerElement.textContent = `⏱️ ${formatTime(queue.elapsedTime)}`;
+      }
+    }
+    
+    // Atualizar o indicador de tempo atual na timeline
+    const timelineId = `timeline-${queue.id}`;
+    const timeline = document.getElementById(timelineId);
+    if (timeline && queue.status === 'running' && queue.elapsedTime > 0) {
+      const timelineInner = timeline.querySelector('.timeline-inner');
+      if (timelineInner) {
+        // Calcular maxTimestamp baseado nos erros e sucessos
+        const timeline = queue.timeline || { errors: [], successes: [] };
+        const maxTimestamp = Math.max(
+          ...timeline.errors.map(e => e.timestamp || 0),
+          ...timeline.successes.map(s => s.timestamp || 0),
+          queue.elapsedTime || 0,
+          1
+        );
+        
+        // Atualizar ou criar o indicador de tempo atual
+        let currentIndicator = timelineInner.querySelector('.queue-timeline-current');
+        if (!currentIndicator) {
+          currentIndicator = document.createElement('div');
+          currentIndicator.className = 'queue-timeline-current';
+          timelineInner.appendChild(currentIndicator);
+        }
+        const position = Math.min((queue.elapsedTime / maxTimestamp) * 100, 100);
+        currentIndicator.style.left = `${position}%`;
+      }
     }
   }
 
