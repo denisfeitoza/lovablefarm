@@ -1,0 +1,10 @@
+142.111.48.253:7030:pjlfqbvb:ox1i9cpek5xf
+23.95.150.145:6114:pjlfqbvb:ox1i9cpek5xf
+198.23.239.134:6540:pjlfqbvb:ox1i9cpek5xf
+107.172.163.27:6543:pjlfqbvb:ox1i9cpek5xf
+198.105.121.200:6462:pjlfqbvb:ox1i9cpek5xf
+64.137.96.74:6641:pjlfqbvb:ox1i9cpek5xf
+84.247.60.125:6095:pjlfqbvb:ox1i9cpek5xf
+216.10.27.159:6837:pjlfqbvb:ox1i9cpek5xf
+23.26.71.145:5628:pjlfqbvb:ox1i9cpek5xf
+23.27.208.120:5830:pjlfqbvb:ox1i9cpek5xf
