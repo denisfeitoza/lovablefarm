@@ -2135,39 +2135,45 @@ class App {
       
       // Baixar CSV de contas
       const accountsResponse = await fetch(this.apiUrl('/api/csv/accounts'));
-      if (accountsResponse.ok) {
-        const accountsBlob = await accountsResponse.blob();
-        const accountsUrl = window.URL.createObjectURL(accountsBlob);
-        const accountsLink = document.createElement('a');
-        accountsLink.href = accountsUrl;
-        accountsLink.download = `accounts-${dateStr}.csv`;
-        document.body.appendChild(accountsLink);
-        accountsLink.click();
-        document.body.removeChild(accountsLink);
-        window.URL.revokeObjectURL(accountsUrl);
+      if (!accountsResponse.ok) {
+        throw new Error(`Erro ao baixar CSV de contas: ${accountsResponse.status} ${accountsResponse.statusText}`);
       }
+      
+      const accountsText = await accountsResponse.text();
+      const accountsBlob = new Blob([accountsText], { type: 'text/csv;charset=utf-8;' });
+      const accountsUrl = window.URL.createObjectURL(accountsBlob);
+      const accountsLink = document.createElement('a');
+      accountsLink.href = accountsUrl;
+      accountsLink.download = `accounts-${dateStr}.csv`;
+      document.body.appendChild(accountsLink);
+      accountsLink.click();
+      document.body.removeChild(accountsLink);
+      window.URL.revokeObjectURL(accountsUrl);
       
       // Aguardar um pouco antes de baixar o segundo arquivo
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Baixar CSV de histórico de execuções
       const executionsResponse = await fetch(this.apiUrl('/api/csv/executions'));
-      if (executionsResponse.ok) {
-        const executionsBlob = await executionsResponse.blob();
-        const executionsUrl = window.URL.createObjectURL(executionsBlob);
-        const executionsLink = document.createElement('a');
-        executionsLink.href = executionsUrl;
-        executionsLink.download = `execution_history-${dateStr}.csv`;
-        document.body.appendChild(executionsLink);
-        executionsLink.click();
-        document.body.removeChild(executionsLink);
-        window.URL.revokeObjectURL(executionsUrl);
+      if (!executionsResponse.ok) {
+        throw new Error(`Erro ao baixar CSV de execuções: ${executionsResponse.status} ${executionsResponse.statusText}`);
       }
       
-      console.log('✅ CSV baixado com sucesso');
+      const executionsText = await executionsResponse.text();
+      const executionsBlob = new Blob([executionsText], { type: 'text/csv;charset=utf-8;' });
+      const executionsUrl = window.URL.createObjectURL(executionsBlob);
+      const executionsLink = document.createElement('a');
+      executionsLink.href = executionsUrl;
+      executionsLink.download = `execution_history-${dateStr}.csv`;
+      document.body.appendChild(executionsLink);
+      executionsLink.click();
+      document.body.removeChild(executionsLink);
+      window.URL.revokeObjectURL(executionsUrl);
+      
+      console.log('✅ CSVs baixados com sucesso');
     } catch (error) {
       console.error('❌ Erro ao baixar CSV:', error);
-      alert('Erro ao baixar CSV. Verifique o console para mais detalhes.');
+      alert(`Erro ao baixar CSV: ${error.message}`);
     }
   }
 
