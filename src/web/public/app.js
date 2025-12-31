@@ -190,6 +190,24 @@ class App {
       this.autoStartNextQueue();
     });
 
+    // Auto-parar fila e iniciar próxima quando meta é atingida
+    this.socket.on('queue:target_reached', (data) => {
+      const { queueId } = data;
+      console.log(`🎯 Meta atingida na fila ${queueId}. Parando e iniciando próxima...`);
+      
+      // Parar fila atual
+      this.stopQueue(queueId);
+      
+      // Atualizar interface
+      this.socket.emit('request:queues');
+      this.socket.emit('request:stats');
+      
+      // Iniciar próxima fila após pequeno delay
+      setTimeout(() => {
+        this.autoStartNextQueue();
+      }, 500);
+    });
+
     this.socket.on('queue:deleted', () => {
       this.socket.emit('request:queues');
       this.socket.emit('request:stats');

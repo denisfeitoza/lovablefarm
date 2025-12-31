@@ -611,7 +611,16 @@ class QueueManager {
         if (queue.forceCredits && queue.results.success >= queue.totalUsers) {
           queue.cancelled = true;
           queue.status = 'finalizing';
-          logger.info(`🎯 Meta de créditos atingida após sucesso do usuário ${userId}! Finalizando fila ${queueId}.`);
+          this.emit('queue:target_reached', { queueId, queue: this.serializeQueue(queue) });
+          logger.info(`🎯 Meta de créditos atingida após sucesso do usuário ${userId}! Finalizando fila ${queueId} e iniciando próxima...`);
+        }
+        
+        // Verificar se meta foi atingida (modo normal) - parar e iniciar próxima
+        if (!queue.forceCredits && queue.results.success >= queue.totalUsers) {
+          queue.cancelled = true;
+          queue.status = 'finalizing';
+          this.emit('queue:target_reached', { queueId, queue: this.serializeQueue(queue) });
+          logger.info(`🎯 Meta de inscrições atingida (${queue.results.success}/${queue.totalUsers})! Parando fila ${queueId} e iniciando próxima...`);
         }
         
         // Adicionar sucesso na timeline
