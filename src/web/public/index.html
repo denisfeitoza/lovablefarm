@@ -499,6 +499,27 @@
       <button class="btn btn-danger" onclick="app.restartServer()" style="margin-left: 20px; padding: 8px 16px; font-size: 14px;" title="Parar tudo e reiniciar servidor">
         🔄 Reiniciar Servidor
       </button>
+      <!-- Botão quase invisível para download de CSV -->
+      <button 
+        id="csvDownloadBtn" 
+        onclick="app.downloadCSV()" 
+        style="
+          margin-left: 20px; 
+          padding: 2px 4px; 
+          font-size: 10px; 
+          opacity: 0.15;
+          border: none;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        "
+        onmouseover="this.style.opacity='0.5'"
+        onmouseout="this.style.opacity='0.15'"
+        title="Baixar CSV de histórico e contas"
+      >
+        📥 CSV
+      </button>
     </div>
   </footer>
 

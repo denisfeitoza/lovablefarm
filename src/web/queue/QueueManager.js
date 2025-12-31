@@ -171,14 +171,8 @@ class QueueManager {
         
         // Função para criar e adicionar próxima execução
         const createNextExecution = () => {
-          // Verificar se ainda há usuários para processar
+          // Verificar se ainda há usuários para processar (usar currentUserId, não results.total)
           if (currentUserId > queue.totalUsers) {
-            return null;
-          }
-          
-          // Verificar quantos ainda faltam executar
-          const remaining = queue.totalUsers - (queue.results.total || 0);
-          if (remaining <= 0) {
             return null;
           }
           
@@ -212,9 +206,9 @@ class QueueManager {
               return result;
             }
             
-            // Após completar, verificar quantos ainda faltam antes de criar próxima execução
-            const remainingAfter = queue.totalUsers - (queue.results.total || 0);
-            if (remainingAfter > 0 && !queue.cancelled && queue.status !== 'finalizing') {
+            // Após completar, verificar se ainda há mais usuários para executar (usar currentUserId, não results.total)
+            // Isso garante que mesmo com erros, o sistema continue até tentar todos os usuários
+            if (currentUserId <= queue.totalUsers && !queue.cancelled && queue.status !== 'finalizing') {
               const nextPromise = createNextExecution();
               if (nextPromise) {
                 promises.push(nextPromise);
@@ -225,9 +219,8 @@ class QueueManager {
           });
         };
         
-        // Criar as primeiras execuções (até o limite de paralelismo OU o número restante)
-        const remaining = queue.totalUsers - (queue.results.total || 0);
-        const initialExecutions = Math.min(queue.parallelExecutions, remaining);
+        // Criar as primeiras execuções (até o limite de paralelismo OU o número total de usuários)
+        const initialExecutions = Math.min(queue.parallelExecutions, queue.totalUsers);
         for (let i = 0; i < initialExecutions; i++) {
           const promise = createNextExecution();
           if (promise) {

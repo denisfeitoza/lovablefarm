@@ -5,6 +5,8 @@ import { historyManager } from '../queue/HistoryManager.js';
 import { proxyService } from '../../services/proxyService.js';
 import { normalizeReferralLink } from '../../utils/referralLink.js';
 import { logger } from '../../utils/logger.js';
+import path from 'path';
+import fs from 'fs';
 
 const router = express.Router();
 
@@ -565,6 +567,66 @@ router.post('/server/restart', async (req, res) => {
     
   } catch (error) {
     logger.error('Erro ao reiniciar servidor', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/csv/accounts - Download do CSV de contas criadas
+ */
+router.get('/csv/accounts', (req, res) => {
+  try {
+    const csvPath = path.join(__dirname, '../../../data/accounts.csv');
+    
+    if (!fs.existsSync(csvPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Arquivo CSV de contas não encontrado'
+      });
+    }
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="accounts-${new Date().toISOString().split('T')[0]}.csv"`);
+    
+    const fileContent = fs.readFileSync(csvPath, 'utf8');
+    res.send(fileContent);
+    
+    logger.info('📥 CSV de contas baixado');
+  } catch (error) {
+    logger.error('Erro ao baixar CSV de contas', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/csv/executions - Download do CSV de histórico de execuções
+ */
+router.get('/csv/executions', (req, res) => {
+  try {
+    const csvPath = path.join(__dirname, '../../../data/execution_history.csv');
+    
+    if (!fs.existsSync(csvPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Arquivo CSV de execuções não encontrado'
+      });
+    }
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="execution_history-${new Date().toISOString().split('T')[0]}.csv"`);
+    
+    const fileContent = fs.readFileSync(csvPath, 'utf8');
+    res.send(fileContent);
+    
+    logger.info('📥 CSV de histórico de execuções baixado');
+  } catch (error) {
+    logger.error('Erro ao baixar CSV de execuções', error);
     res.status(500).json({
       success: false,
       error: error.message

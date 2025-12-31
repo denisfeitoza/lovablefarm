@@ -2129,6 +2129,48 @@ class App {
     checkboxes.forEach(cb => cb.checked = false);
   }
 
+  async downloadCSV() {
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      
+      // Baixar CSV de contas
+      const accountsResponse = await fetch(this.apiUrl('/api/csv/accounts'));
+      if (accountsResponse.ok) {
+        const accountsBlob = await accountsResponse.blob();
+        const accountsUrl = window.URL.createObjectURL(accountsBlob);
+        const accountsLink = document.createElement('a');
+        accountsLink.href = accountsUrl;
+        accountsLink.download = `accounts-${dateStr}.csv`;
+        document.body.appendChild(accountsLink);
+        accountsLink.click();
+        document.body.removeChild(accountsLink);
+        window.URL.revokeObjectURL(accountsUrl);
+      }
+      
+      // Aguardar um pouco antes de baixar o segundo arquivo
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Baixar CSV de histórico de execuções
+      const executionsResponse = await fetch(this.apiUrl('/api/csv/executions'));
+      if (executionsResponse.ok) {
+        const executionsBlob = await executionsResponse.blob();
+        const executionsUrl = window.URL.createObjectURL(executionsBlob);
+        const executionsLink = document.createElement('a');
+        executionsLink.href = executionsUrl;
+        executionsLink.download = `execution_history-${dateStr}.csv`;
+        document.body.appendChild(executionsLink);
+        executionsLink.click();
+        document.body.removeChild(executionsLink);
+        window.URL.revokeObjectURL(executionsUrl);
+      }
+      
+      console.log('✅ CSV baixado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao baixar CSV:', error);
+      alert('Erro ao baixar CSV. Verifique o console para mais detalhes.');
+    }
+  }
+
   async restartServer() {
     if (!confirm('⚠️ ATENÇÃO: Isso irá parar TODAS as filas e reiniciar o servidor. Deseja continuar?')) {
       return;
