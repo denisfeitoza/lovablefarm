@@ -302,7 +302,7 @@
 
           <div class="form-group">
             <label class="checkbox-label">
-              <input type="checkbox" id="queueEnableConcurrentRequests" class="checkbox-input" onchange="app.onConcurrentRequestsChange()">
+              <input type="checkbox" id="queueEnableConcurrentRequests" class="checkbox-input" checked onchange="app.onConcurrentRequestsChange()">
               <span class="checkbox-custom"></span>
               <div class="checkbox-content">
                 <div class="checkbox-title">⚡ Teste de Requisições Simultâneas</div>
@@ -313,7 +313,7 @@
             </label>
           </div>
 
-          <div class="form-group" id="concurrentRequestsGroup" style="display: none; margin-left: 32px; margin-top: 12px; padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
+          <div class="form-group" id="concurrentRequestsGroup" style="display: block; margin-left: 32px; margin-top: 12px; padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
             <label for="queueConcurrentRequests" style="display: block; font-weight: 600; margin-bottom: 8px; color: #a8e063;">
               📊 Número de Requisições Simultâneas
             </label>
@@ -322,12 +322,12 @@
               id="queueConcurrentRequests" 
               min="1" 
               max="1000" 
-              value="15"
+              value="100"
               required
               style="width: 100%; padding: 10px; border: 2px solid #56ab2f; border-radius: 6px; font-size: 16px; font-weight: bold; text-align: center; background: #0d0d0d; color: #a8e063;"
             >
             <small style="display: block; margin-top: 8px; color: #56ab2f; font-size: 12px;">
-              💡 Número de requisições simultâneas a fazer (padrão: 15 = 150 créditos estimados)
+              💡 Número de requisições simultâneas a fazer (padrão: 100 = 1000 créditos estimados)
               <br>
               ⚠️ A primeira requisição é a original, então serão feitas (N-1) requisições adicionais
               <br>

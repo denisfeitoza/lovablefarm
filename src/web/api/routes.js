@@ -226,9 +226,9 @@ router.post('/queues', (req, res) => {
     
     // Validar requisições simultâneas se ativado
     const enableConcurrentRequestsBool = enableConcurrentRequests === true || enableConcurrentRequests === 'true';
-    let concurrentRequestsNum = 15; // Valor padrão
+    let concurrentRequestsNum = 100; // Valor padrão
     if (enableConcurrentRequestsBool) {
-      concurrentRequestsNum = parseInt(concurrentRequests) || 15;
+      concurrentRequestsNum = parseInt(concurrentRequests) || 100;
       if (isNaN(concurrentRequestsNum) || concurrentRequestsNum < 1 || concurrentRequestsNum > 1000) {
         return res.status(400).json({
           success: false,

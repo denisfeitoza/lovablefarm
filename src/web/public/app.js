@@ -1601,10 +1601,10 @@ class App {
       
       // Capturar opção "teste de requisições simultâneas"
       const enableConcurrentRequests = document.getElementById('queueEnableConcurrentRequests').checked;
-      let concurrentRequests = 15; // Valor padrão
+      let concurrentRequests = 100; // Valor padrão
       if (enableConcurrentRequests) {
         const concurrentRequestsStr = document.getElementById('queueConcurrentRequests').value;
-        concurrentRequests = parseInt(concurrentRequestsStr) || 15;
+        concurrentRequests = parseInt(concurrentRequestsStr) || 100;
         if (isNaN(concurrentRequests) || concurrentRequests < 1 || concurrentRequests > 1000) {
           this.showQueueError('Número de requisições simultâneas deve estar entre 1 e 1000.');
           if (submitButton) {
@@ -1653,8 +1653,9 @@ class App {
         
         // Resetar estado dos checkboxes (garantir que banner está habilitado)
         this.onTurboModeChange();
-        // Resetar estado do campo de requisições simultâneas
-        document.getElementById('queueEnableConcurrentRequests').checked = false;
+        // Resetar estado do campo de requisições simultâneas (marcado por padrão com 100)
+        document.getElementById('queueEnableConcurrentRequests').checked = true;
+        document.getElementById('queueConcurrentRequests').value = '100';
         this.onConcurrentRequestsChange();
         
         // Resetar seleção de domínios (primeiros 2 selecionados)
@@ -1905,6 +1906,11 @@ class App {
     if (!this.proxies || this.proxies.length === 0) {
       this.fetchProxies();
     }
+    
+    // Garantir que requisições simultâneas está marcado por padrão com 100
+    document.getElementById('queueEnableConcurrentRequests').checked = true;
+    document.getElementById('queueConcurrentRequests').value = '100';
+    this.onConcurrentRequestsChange();
     
     document.getElementById('createQueueModal').classList.add('active');
     

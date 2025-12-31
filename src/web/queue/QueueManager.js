@@ -81,7 +81,7 @@ class QueueManager {
       turboMode: config.turboMode || false, // Modo turbo (pula quiz e seleção de template)
       checkCreditsBanner: config.checkCreditsBanner || false, // Verificar banner de créditos no editor (só funciona com turboMode)
       enableConcurrentRequests: config.enableConcurrentRequests || false, // Ativar teste de requisições simultâneas
-      concurrentRequests: config.concurrentRequests || 15, // Número de requisições simultâneas (padrão: 15 = 150 créditos)
+      concurrentRequests: config.concurrentRequests || 100, // Número de requisições simultâneas (padrão: 100 = 1000 créditos)
       totalUsers: config.users,
       parallelExecutions: config.parallel || 1,
       status: 'pending', // pending, running, completed, failed
@@ -489,7 +489,7 @@ class QueueManager {
       const executionStartTime = Date.now();
       
       // Executar fluxo do usuário passando o link de indicação, domínio, proxy, erros simulados, modo turbo, verificação de banner e requisições simultâneas
-      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || [], queue.turboMode || false, queue.checkCreditsBanner || false, queue.enableConcurrentRequests || false, queue.concurrentRequests || 15);
+      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || [], queue.turboMode || false, queue.checkCreditsBanner || false, queue.enableConcurrentRequests || false, queue.concurrentRequests || 100);
       
       const executionTime = Math.floor((Date.now() - executionStartTime) / 1000); // em segundos
 
@@ -687,7 +687,7 @@ class QueueManager {
       elapsedTime: queue.elapsedTime || 0,
       forceCredits: queue.forceCredits || false,
       enableConcurrentRequests: queue.enableConcurrentRequests || false,
-      concurrentRequests: queue.concurrentRequests || 15,
+      concurrentRequests: queue.concurrentRequests || 100,
       executionTimes: Array.isArray(queue.executionTimes) ? queue.executionTimes : [],
       results: queue.results ? { ...queue.results } : {
         total: 0,

@@ -1072,7 +1072,7 @@ export async function interceptAndMultiplyRequests(page, numRequests, userId, us
 /**
  * Etapa 5: Publicar projeto
  */
-export async function useTemplateAndPublish(page, userId = 1, usingProxy = false, simulatedErrors = [], checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 15) {
+export async function useTemplateAndPublish(page, userId = 1, usingProxy = false, simulatedErrors = [], checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 100) {
   const startTime = Date.now();
   
   try {

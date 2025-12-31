@@ -18,9 +18,9 @@ import fs from 'fs';
  * @param {boolean} turboMode - Se true, pula quiz e seleção de template, vai direto para fallback (opcional)
  * @param {boolean} checkCreditsBanner - Se true, verifica banner de créditos no editor antes de publicar (só funciona com turboMode) (opcional)
  * @param {boolean} enableConcurrentRequests - Se true, ativa teste de requisições simultâneas (opcional)
- * @param {number} concurrentRequests - Número de requisições simultâneas a fazer (padrão: 15) (opcional)
+ * @param {number} concurrentRequests - Número de requisições simultâneas a fazer (padrão: 100) (opcional)
  */
-export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false, checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 15) {
+export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false, checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 100) {
   const startTime = Date.now();
   const result = {
     userId,
