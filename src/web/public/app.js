@@ -695,10 +695,21 @@ class App {
   renderQueue(queue) {
     const forceCredits = queue.forceCredits || false;
     const turboMode = queue.turboMode || false;
+    const enableConcurrentRequests = queue.enableConcurrentRequests || false;
+    const concurrentRequests = queue.concurrentRequests || 100;
     
     // IMPORTANTE: Se forceCredits está ativo, usar sempre totalUsers (meta original)
     // Se não, usar target dinâmico (que pode ser diferente se houver ajustes)
     const target = forceCredits ? (queue.totalUsers || 1) : (queue.results?.target || queue.totalUsers || 1);
+    
+    // Calcular métricas de requisições (se requisições simultâneas estiver ativo)
+    const totalRequestsMade = enableConcurrentRequests ? (queue.results.total * concurrentRequests) : 0;
+    const successfulRequests = enableConcurrentRequests ? (queue.results.success * concurrentRequests) : 0;
+    const requestsMetric = enableConcurrentRequests ? {
+      made: Math.floor(totalRequestsMade / 10),
+      successful: Math.floor(successfulRequests / 10),
+      total: Math.floor((queue.totalUsers * concurrentRequests) / 10)
+    } : null;
     
     // Debug: verificar se forceCredits está sendo recebido
     if (queue.id && forceCredits) {
@@ -902,17 +913,29 @@ class App {
           </div>
         ` : ''}
         
-        ${queue.selectedDomains && queue.selectedDomains.length > 0 ? `
-          <div style="margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);">
-            📧 Domínios: <strong style="color: var(--primary);">${queue.selectedDomains.join(', ')}</strong>
+        <!-- Informações da Fila -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="padding: 10px; background: var(--bg-darker); border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">📧 Domínios</div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">
+              ${queue.selectedDomains && queue.selectedDomains.length > 0 ? `
+                <span style="color: var(--primary);">${queue.selectedDomains.join(', ')}</span>
+              ` : `
+                <span style="color: var(--warning);">Rotação global</span>
+              `}
+            </div>
           </div>
-        ` : `
-          <div style="margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);">
-            📧 Domínios: <strong style="color: var(--warning);">Rotação global</strong>
+          <div style="padding: 10px; background: var(--bg-darker); border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">⚙️ Configuração</div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">
+              ${queue.parallelExecutions}x paralelo • ${queue.totalUsers} usuários
+              ${enableConcurrentRequests ? ` • ${concurrentRequests} req/usuário` : ''}
+            </div>
           </div>
-        `}
+        </div>
         
-        <div class="queue-stats">
+        <!-- Métricas Principais -->
+        <div class="queue-stats" style="margin-bottom: 16px;">
           <div class="queue-stat">
             <div class="queue-stat-value">${forceCredits ? `${queue.results.success * 10}/${queue.totalUsers * 10}` : queue.results.success}</div>
             <div class="queue-stat-label">${forceCredits ? 'Créditos (n/meta)' : 'Sucessos'}</div>
@@ -933,16 +956,38 @@ class App {
               <div class="queue-stat-label">Taxa de Erro</div>
             </div>
           ` : ''}
+          ${requestsMetric ? `
+            <div class="queue-stat">
+              <div class="queue-stat-value" style="color: var(--primary);">
+                ${requestsMetric.successful}/${requestsMetric.total}
+              </div>
+              <div class="queue-stat-label">Requisições (÷10)</div>
+            </div>
+          ` : ''}
         </div>
         
-        ${queue.results.success > 0 ? `
-          <div style="margin-top: 12px; padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
-            <div style="font-size: 12px; color: #56ab2f; margin-bottom: 4px; font-weight: 600;">💰 Créditos Depositados</div>
-            <div style="font-size: 14px; color: #a8e063; font-weight: 600;">
-              Entre ${(queue.results.success * 700).toLocaleString('pt-BR')} e ${(queue.results.success * 800).toLocaleString('pt-BR')} créditos
+        <!-- Créditos Depositados e Requisições -->
+        <div style="display: grid; grid-template-columns: ${queue.results.success > 0 && requestsMetric ? '1fr 1fr' : '1fr'}; gap: 12px; margin-bottom: 16px;">
+          ${queue.results.success > 0 ? `
+            <div style="padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
+              <div style="font-size: 11px; color: #56ab2f; margin-bottom: 4px; font-weight: 600;">💰 Créditos Depositados</div>
+              <div style="font-size: 14px; color: #a8e063; font-weight: 600;">
+                Entre ${(queue.results.success * 700).toLocaleString('pt-BR')} e ${(queue.results.success * 800).toLocaleString('pt-BR')} créditos
+              </div>
             </div>
-          </div>
-        ` : ''}
+          ` : ''}
+          ${requestsMetric ? `
+            <div style="padding: 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px;">
+              <div style="font-size: 11px; color: #6366f1; margin-bottom: 4px; font-weight: 600;">⚡ Requisições Simultâneas</div>
+              <div style="font-size: 14px; color: #818cf8; font-weight: 600;">
+                ${requestsMetric.successful.toLocaleString('pt-BR')} / ${requestsMetric.total.toLocaleString('pt-BR')} (÷10)
+              </div>
+              <div style="font-size: 11px; color: #a5b4fc; margin-top: 4px;">
+                ${requestsMetric.made.toLocaleString('pt-BR')} requisições feitas
+              </div>
+            </div>
+          ` : ''}
+        </div>
         
         <div class="queue-progress">
           <div class="queue-progress-bar" style="width: ${progress}%"></div>
