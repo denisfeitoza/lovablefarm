@@ -1642,8 +1642,8 @@ class App {
         // Limpar formulário (mantendo valores padrão)
         document.getElementById('queueReferralLink').value = '';
         document.getElementById('queueName').value = '';
-        document.getElementById('queueUsers').value = '1000';
-        document.getElementById('queueParallel').value = '4';
+        document.getElementById('queueUsers').value = '10';
+        document.getElementById('queueParallel').value = '3';
         document.getElementById('queueForceCredits').checked = true;
         document.getElementById('queueTurboMode').checked = true;
         const checkCreditsBannerElReset = document.getElementById('queueCheckCreditsBanner');
@@ -1662,7 +1662,7 @@ class App {
         this.renderQueueDomainSelection();
         
         // Resetar preview de créditos
-        this.updateCreditsPreview('1000');
+        this.updateCreditsPreview('10');
         
         this.hideCreateQueueModal();
         this.socket.emit('request:queues');
@@ -1942,8 +1942,8 @@ class App {
       this.renderQueueProxySelection();
       // Garantir que o checkbox do banner está habilitado (turbo mode está marcado por padrão)
       this.onTurboModeChange();
-      // Atualizar preview de créditos com o valor padrão (1000 usuários)
-      const defaultUsers = document.getElementById('queueUsers').value || '1000';
+      // Atualizar preview de créditos com o valor padrão (10 usuários)
+      const defaultUsers = document.getElementById('queueUsers').value || '10';
       this.updateCreditsPreview(defaultUsers);
     }, 100);
   }
