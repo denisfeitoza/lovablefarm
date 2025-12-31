@@ -202,8 +202,10 @@ class QueueManager {
           });
         };
         
-        // Criar as primeiras execuções (até o limite de paralelismo)
-        for (let i = 0; i < Math.min(queue.parallelExecutions, queue.totalUsers); i++) {
+        // Criar as primeiras execuções (até o limite de paralelismo OU o número restante)
+        const remaining = queue.totalUsers - (queue.results.total || 0);
+        const initialExecutions = Math.min(queue.parallelExecutions, remaining);
+        for (let i = 0; i < initialExecutions; i++) {
           const promise = createNextExecution();
           if (promise) {
             promises.push(promise);
@@ -393,14 +395,23 @@ class QueueManager {
         break;
       }
       
-      // Criar promises até atingir o limite de paralelismo
-      // IMPORTANTE: Criar apenas até parallelExecutions promises de uma vez
-      while (activePromises.size < queue.parallelExecutions && 
+      // Criar promises até atingir o limite de paralelismo OU o número restante
+      // IMPORTANTE: Não criar mais promises que o número restante
+      const remaining = originalTarget - (queue.results.total || 0);
+      const maxToCreate = Math.min(queue.parallelExecutions, remaining);
+      
+      while (activePromises.size < maxToCreate && 
              queue.results.success < originalTarget && 
              !queue.cancelled && queue.status !== 'finalizing') {
         
         // Verificar novamente antes de criar cada promise
         if (queue.results.success >= originalTarget || queue.cancelled || queue.status === 'finalizing') {
+          break;
+        }
+        
+        // Verificar restante novamente antes de criar
+        const currentRemaining = originalTarget - (queue.results.total || 0);
+        if (currentRemaining <= 0) {
           break;
         }
         
@@ -461,7 +472,8 @@ class QueueManager {
         if (queue.results.success >= originalTarget) {
           queue.cancelled = true;
           queue.status = 'finalizing';
-          logger.info(`🎯 Meta de créditos atingida! Parando fila ${queueId} imediatamente.`);
+          this.emit('queue:target_reached', { queueId, queue: this.serializeQueue(queue) });
+          logger.info(`🎯 Meta de créditos atingida! Parando fila ${queueId} imediatamente e iniciando próxima...`);
           break;
         }
         
