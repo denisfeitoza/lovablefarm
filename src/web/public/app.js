@@ -1598,16 +1598,34 @@ class App {
       // Capturar opção "verificar banner de créditos" (só disponível se turboMode estiver ativo)
       const checkCreditsBannerEl = document.getElementById('queueCheckCreditsBanner');
       const checkCreditsBanner = checkCreditsBannerEl ? (checkCreditsBannerEl.checked && turboMode) : false;
+      
+      // Capturar opção "teste de requisições simultâneas"
+      const enableConcurrentRequests = document.getElementById('queueEnableConcurrentRequests').checked;
+      let concurrentRequests = 15; // Valor padrão
+      if (enableConcurrentRequests) {
+        const concurrentRequestsStr = document.getElementById('queueConcurrentRequests').value;
+        concurrentRequests = parseInt(concurrentRequestsStr) || 15;
+        if (isNaN(concurrentRequests) || concurrentRequests < 1 || concurrentRequests > 1000) {
+          this.showQueueError('Número de requisições simultâneas deve estar entre 1 e 1000.');
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+          }
+          return;
+        }
+      }
 
       console.log('🧪 Erros simulados:', simulatedErrors);
       console.log('💰 Buscar créditos a todo custo:', forceCredits);
       console.log('⚡ Modo Turbo:', turboMode);
       console.log('🔍 Verificar Banner de Créditos:', checkCreditsBanner);
+      console.log('⚡ Teste de Requisições Simultâneas:', enableConcurrentRequests);
+      console.log('📊 Número de Requisições:', concurrentRequests);
 
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner })
+        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner, enableConcurrentRequests, concurrentRequests })
       });
 
       const data = await response.json();
@@ -1629,6 +1647,9 @@ class App {
         
         // Resetar estado dos checkboxes (garantir que banner está habilitado)
         this.onTurboModeChange();
+        // Resetar estado do campo de requisições simultâneas
+        document.getElementById('queueEnableConcurrentRequests').checked = false;
+        this.onConcurrentRequestsChange();
         
         // Resetar seleção de domínios (primeiros 2 selecionados)
         this.renderQueueDomainSelection();
@@ -1838,6 +1859,16 @@ class App {
       if (!turboMode) {
         checkCreditsBanner.checked = false;
       }
+    }
+  }
+
+  onConcurrentRequestsChange() {
+    const enableConcurrentRequests = document.getElementById('queueEnableConcurrentRequests').checked;
+    const concurrentRequestsGroup = document.getElementById('concurrentRequestsGroup');
+    
+    // Mostrar/ocultar campo numérico baseado no checkbox
+    if (concurrentRequestsGroup) {
+      concurrentRequestsGroup.style.display = enableConcurrentRequests ? 'block' : 'none';
     }
   }
 

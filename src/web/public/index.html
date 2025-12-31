@@ -299,6 +299,41 @@
               </div>
             </label>
           </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="queueEnableConcurrentRequests" class="checkbox-input" onchange="app.onConcurrentRequestsChange()">
+              <span class="checkbox-custom"></span>
+              <div class="checkbox-content">
+                <div class="checkbox-title">⚡ Teste de Requisições Simultâneas</div>
+                <div class="checkbox-description">
+                  Intercepta a requisição de publicação e faz múltiplas requisições simultâneas para testar bugs. Segue a mesma lógica da extensão Chrome.
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <div class="form-group" id="concurrentRequestsGroup" style="display: none; margin-left: 32px; margin-top: 12px; padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
+            <label for="queueConcurrentRequests" style="display: block; font-weight: 600; margin-bottom: 8px; color: #a8e063;">
+              📊 Número de Requisições Simultâneas
+            </label>
+            <input 
+              type="number" 
+              id="queueConcurrentRequests" 
+              min="1" 
+              max="1000" 
+              value="15"
+              required
+              style="width: 100%; padding: 10px; border: 2px solid #56ab2f; border-radius: 6px; font-size: 16px; font-weight: bold; text-align: center; background: #0d0d0d; color: #a8e063;"
+            >
+            <small style="display: block; margin-top: 8px; color: #56ab2f; font-size: 12px;">
+              💡 Número de requisições simultâneas a fazer (padrão: 15 = 150 créditos estimados)
+              <br>
+              ⚠️ A primeira requisição é a original, então serão feitas (N-1) requisições adicionais
+              <br>
+              📊 Máximo: 1000 requisições (999 adicionais + 1 original)
+            </small>
+          </div>
         </div>
 
         <!-- Seção: Configurações de Email e Proxy -->

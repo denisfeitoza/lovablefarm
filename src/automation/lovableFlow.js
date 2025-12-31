@@ -877,9 +877,202 @@ export async function selectTemplate(page, userId = 1, usingProxy = false, simul
 }
 
 /**
+ * Intercepta requisição de publicação e faz múltiplas requisições simultâneas
+ * Segue a mesma lógica da extensão Chrome
+ */
+export async function interceptAndMultiplyRequests(page, numRequests, userId, usingProxy) {
+  const startTime = Date.now();
+  let projectId = null;
+  let authToken = null;
+  let requestIntercepted = false;
+  let interceptionResolve = null;
+  let interceptionPromise = new Promise((resolve) => {
+    interceptionResolve = resolve;
+  });
+  
+  const results = {
+    sucessos: 0,
+    falhas: 0,
+    completadas: 0,
+    total: numRequests - 1 // Número de requisições adicionais (a primeira já acontece)
+  };
+
+  logger.info(`🔧 Configurando interceptação: ${numRequests} requisições totais (${results.total} adicionais)`);
+
+  // Configurar interceptação usando page.route()
+  // Usar função para verificar URL completa incluindo query string
+  await page.route('**/projects/*/deployments**', async (route) => {
+    const request = route.request();
+    const url = request.url();
+    const method = request.method();
+    
+    // Verificar se é POST e se a URL contém async=true
+    if (method !== 'POST' || !url.includes('async=true')) {
+      await route.continue();
+      return;
+    }
+
+    // Se já interceptamos, apenas continuar
+    if (requestIntercepted) {
+      await route.continue();
+      return;
+    }
+
+    logger.info(`🎯 Requisição de publicação detectada! Project ID: ${projectId}`);
+    requestIntercepted = true;
+
+    // Extrair projectId da URL (já temos a URL da verificação acima)
+    const projectIdMatch = url.match(/projects\/([^\/]+)/);
+    if (projectIdMatch) {
+      projectId = projectIdMatch[1];
+    } else {
+      logger.error(`❌ Não foi possível extrair projectId da URL`);
+      await route.continue();
+      interceptionResolve({
+        success: false,
+        error: 'Não foi possível extrair projectId'
+      });
+      return;
+    }
+
+    // Extrair token Authorization dos headers
+    const headers = request.headers();
+    authToken = headers['authorization'] || headers['Authorization'];
+    
+    if (!authToken) {
+      logger.error(`❌ Token de autorização não encontrado nos headers`);
+      await route.continue();
+      interceptionResolve({
+        success: false,
+        error: 'Token de autorização não encontrado'
+      });
+      return;
+    }
+
+    // Continuar a requisição original normalmente
+    await route.continue();
+
+    // Fazer requisições adicionais simultâneas em paralelo - MÁXIMA VELOCIDADE
+    logger.info(`⚡ Disparando ${results.total} requisições simultâneas (máxima velocidade)...`);
+    
+    // Criar todas as requisições instantaneamente, sem delays
+    const additionalRequests = [];
+    
+    for (let i = 0; i < results.total; i++) {
+      // Fazer requisição usando fetch dentro do contexto do navegador - SEM LOGS INDIVIDUAIS
+      const requestPromise = page.evaluate(async ({ projectId, authToken }) => {
+        try {
+          const response = await fetch(`https://api.lovable.dev/projects/${projectId}/deployments?async=true`, {
+            method: 'POST',
+            headers: {
+              'accept': '*/*',
+              'accept-language': 'pt-BR,pt;q=0.9',
+              'authorization': authToken,
+              'content-type': 'application/json',
+              'origin': 'https://lovable.dev',
+              'referer': 'https://lovable.dev/',
+              'sec-fetch-dest': 'empty',
+              'sec-fetch-mode': 'cors',
+              'sec-fetch-site': 'same-site'
+            },
+            credentials: 'include'
+          });
+
+          return {
+            success: response.ok,
+            status: response.status
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error.message
+          };
+        }
+      }, { projectId, authToken });
+
+      additionalRequests.push(requestPromise);
+    }
+
+    // Aguardar todas as requisições adicionais e processar resultados - SEM LOGS INDIVIDUAIS
+    Promise.allSettled(additionalRequests).then((responses) => {
+      // Processar resultados rapidamente, sem logs individuais
+      responses.forEach((result) => {
+        results.completadas++;
+        
+        if (result.status === 'fulfilled') {
+          const data = result.value;
+          if (data.success) {
+            results.sucessos++;
+          } else {
+            results.falhas++;
+          }
+        } else {
+          results.falhas++;
+        }
+      });
+
+      const tempoTotal = Date.now() - startTime;
+      const creditosEstimados = (results.sucessos + 1) * 10; // +1 pela requisição original
+      const taxaSucesso = results.total > 0 ? ((results.sucessos / results.total) * 100).toFixed(2) : 0;
+
+      // Log resumido apenas
+      logger.info(`✅ Requisições concluídas: ${results.sucessos + 1} sucessos, ${results.falhas} falhas (${tempoTotal}ms, ${taxaSucesso}% sucesso, ${creditosEstimados} créditos)`);
+
+      interceptionResolve({
+        success: true,
+        projectId,
+        sucessos: results.sucessos + 1,
+        falhas: results.falhas,
+        creditosEstimados,
+        tempoTotal
+      });
+    }).catch((error) => {
+      logger.error('❌ Erro ao processar requisições adicionais:', error);
+      interceptionResolve({
+        success: false,
+        error: error.message
+      });
+    });
+  });
+
+  // Retornar função para limpar a interceptação e promise para aguardar
+  return {
+    cleanup: () => page.unroute('**/projects/*/deployments**').catch(() => {}),
+    waitForCompletion: async () => {
+      // Aguardar até que a interceptação aconteça (máximo 60 segundos) - SEM LOGS EXCESSIVOS
+      const maxWait = 60000;
+      const checkInterval = 500; // Verificar a cada 500ms para resposta mais rápida
+      let waited = 0;
+      
+      while (!requestIntercepted && waited < maxWait) {
+        await page.waitForTimeout(checkInterval);
+        waited += checkInterval;
+      }
+
+      if (!requestIntercepted) {
+        logger.warning(`⚠️ Interceptação não foi acionada após ${(waited / 1000).toFixed(1)}s`);
+        await page.unroute('**/projects/*/deployments**').catch(() => {});
+        return {
+          success: false,
+          error: 'Interceptação não foi acionada'
+        };
+      }
+
+      // Aguardar conclusão das requisições adicionais
+      const result = await interceptionPromise;
+      
+      // Limpar interceptação imediatamente
+      await page.unroute('**/projects/*/deployments**').catch(() => {});
+      
+      return result;
+    }
+  };
+}
+
+/**
  * Etapa 5: Publicar projeto
  */
-export async function useTemplateAndPublish(page, userId = 1, usingProxy = false, simulatedErrors = [], checkCreditsBanner = false) {
+export async function useTemplateAndPublish(page, userId = 1, usingProxy = false, simulatedErrors = [], checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 15) {
   const startTime = Date.now();
   
   try {
@@ -982,50 +1175,86 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
       throw new Error('Botão Publish não encontrado após refresh');
     }
 
+    // Configurar interceptação de requisições simultâneas ANTES de clicar (para máxima velocidade)
+    let interceptionHandler = null;
+    if (enableConcurrentRequests) {
+      interceptionHandler = await interceptAndMultiplyRequests(page, concurrentRequests, userId, usingProxy);
+    }
+
     // 1️⃣ Clicar no PRIMEIRO Publish (abre dropdown)
     const publishButton = page.locator('button:has-text("Publish"), button:has-text("Publicar")').first();
     await publishButton.click();
     logger.success('✅ Clicou no primeiro Publish (abrindo dropdown)');
 
-    await page.waitForTimeout(getDelay(1500, usingProxy));
+    // Delay mínimo apenas para o dropdown aparecer
+    await page.waitForTimeout(100); // Delay mínimo de 100ms
 
-    // 2️⃣ Clicar no SEGUNDO Publish (dentro do dropdown)
-    logger.info('⏳ Procurando segundo botão Publish no dropdown...');
-    
-    // Buscar todos os botões Publish visíveis
+    // 2️⃣ Clicar no SEGUNDO Publish (dentro do dropdown) - MÁXIMA VELOCIDADE
     const allPublishButtons = await page.locator('button:has-text("Publish"), button:has-text("Publicar")').all();
-    logger.info(`📋 Encontrados ${allPublishButtons.length} botões Publish`);
     
     if (allPublishButtons.length > 1) {
       await allPublishButtons[1].click();
       logger.success('✅ Clicou no segundo Publish (confirmação)');
     } else {
-      logger.warning('⚠️ Apenas 1 botão Publish - tentando clicar novamente');
       await allPublishButtons[0].click();
     }
 
-    // Aguardar publicação começar
-    logger.info('⏳ Aguardando publicação processar...');
-    await page.waitForTimeout(getDelay(15000, usingProxy));
-    
-    // Verificar se há popup de confirmação ou status "publicado"
-    logger.info('⏳ Verificando confirmação de publicação...');
-    const hasConfirmation = await page.evaluate(() => {
-      const body = document.body.innerText.toLowerCase();
-      return body.includes('publicado') || 
-             body.includes('published') || 
-             body.includes('success') || 
-             body.includes('live');
-    });
-    
-    if (hasConfirmation) {
-      logger.success('🎉 Publicação confirmada!');
-    } else {
-      logger.warning('⚠️ Confirmação não detectada, mas seguindo em frente...');
+    // Se interceptação estiver ativa, aguardar conclusão
+    if (interceptionHandler) {
+      logger.info('⏳ Aguardando conclusão das requisições simultâneas...');
+      const interceptionResult = await interceptionHandler.waitForCompletion();
+      
+      if (interceptionResult.success) {
+        logger.success(`✅ Requisições simultâneas concluídas: ${interceptionResult.sucessos} sucessos, ${interceptionResult.falhas} falhas`);
+        logger.info(`💰 Créditos estimados: ${interceptionResult.creditosEstimados}`);
+      } else {
+        logger.warning(`⚠️ Interceptação não completou: ${interceptionResult.error || 'Erro desconhecido'}`);
+      }
+      
+      // Limpar interceptação
+      interceptionHandler.cleanup();
     }
 
-    await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.actionDelay, usingProxy)); // Segurança
-    logger.success('✅ Publicação concluída!');
+    // Aguardar popup "You just shipped!" aparecer (verificar a cada 500ms, máximo 1 minuto)
+    logger.info('⏳ Aguardando popup "You just shipped!" aparecer...');
+    
+    const maxWait = 60000; // 1 minuto máximo
+    const checkInterval = 500; // Verificar a cada 500ms
+    let waited = 0;
+    let popupDetected = false;
+    
+    while (!popupDetected && waited < maxWait) {
+      // Verificar se popup apareceu
+      popupDetected = await page.evaluate(() => {
+        const bodyText = document.body.innerText || '';
+        const lowerText = bodyText.toLowerCase();
+        
+        // Procurar por "You just shipped!" ou variações
+        return lowerText.includes('you just shipped') ||
+               lowerText.includes('just shipped') ||
+               lowerText.includes('publicado') ||
+               lowerText.includes('published') ||
+               lowerText.includes('success') ||
+               lowerText.includes('live') ||
+               // Procurar também em elementos específicos de popup/modal
+               document.querySelector('[class*="shipped"], [class*="success"], [class*="published"]') !== null;
+      });
+      
+      if (popupDetected) {
+        logger.success('🎉 Popup "You just shipped!" detectado! Encerrando sessão imediatamente...');
+        break;
+      }
+      
+      // Aguardar antes da próxima verificação
+      await page.waitForTimeout(checkInterval);
+      waited += checkInterval;
+    }
+    
+    if (!popupDetected) {
+      logger.warning(`⚠️ Popup não detectado após ${(waited / 1000).toFixed(1)}s, mas encerrando sessão...`);
+    }
+    
+    logger.success('✅ Publicação concluída! Encerrando sessão...');
 
     const executionTime = Date.now() - startTime;
     

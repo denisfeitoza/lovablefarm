@@ -197,7 +197,7 @@ router.get('/queues/:id', (req, res) => {
  */
 router.post('/queues', (req, res) => {
   try {
-    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner } = req.body; // Capturar todas as opções
+    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner, enableConcurrentRequests, concurrentRequests } = req.body; // Capturar todas as opções
     
     // Validar link de indicação
     if (!referralLink) {
@@ -224,6 +224,19 @@ router.post('/queues', (req, res) => {
       });
     }
     
+    // Validar requisições simultâneas se ativado
+    const enableConcurrentRequestsBool = enableConcurrentRequests === true || enableConcurrentRequests === 'true';
+    let concurrentRequestsNum = 15; // Valor padrão
+    if (enableConcurrentRequestsBool) {
+      concurrentRequestsNum = parseInt(concurrentRequests) || 15;
+      if (isNaN(concurrentRequestsNum) || concurrentRequestsNum < 1 || concurrentRequestsNum > 1000) {
+        return res.status(400).json({
+          success: false,
+          error: 'Número de requisições simultâneas deve estar entre 1 e 1000'
+        });
+      }
+    }
+    
     // Normalizar link de indicação para formato padrão
     let normalizedLink;
     try {
@@ -246,7 +259,9 @@ router.post('/queues', (req, res) => {
       simulatedErrors: simulatedErrors || [], // Passar erros simulados
       forceCredits: forceCredits === true || forceCredits === 'true', // Passar forceCredits (buscar créditos a todo custo)
       turboMode: turboMode === true || turboMode === 'true', // Passar turboMode (modo turbo)
-      checkCreditsBanner: (checkCreditsBanner === true || checkCreditsBanner === 'true') && (turboMode === true || turboMode === 'true') // Só ativo se turboMode estiver ativo
+      checkCreditsBanner: (checkCreditsBanner === true || checkCreditsBanner === 'true') && (turboMode === true || turboMode === 'true'), // Só ativo se turboMode estiver ativo
+      enableConcurrentRequests: enableConcurrentRequestsBool, // Ativar teste de requisições simultâneas
+      concurrentRequests: concurrentRequestsNum // Número de requisições simultâneas
     };
     
     const queue = queueManager.createQueue(config); // Agora retorna o objeto completo

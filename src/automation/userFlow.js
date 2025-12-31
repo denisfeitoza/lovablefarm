@@ -17,8 +17,10 @@ import fs from 'fs';
  * @param {Array} simulatedErrors - Lista de erros a simular para testar fallbacks (opcional)
  * @param {boolean} turboMode - Se true, pula quiz e seleção de template, vai direto para fallback (opcional)
  * @param {boolean} checkCreditsBanner - Se true, verifica banner de créditos no editor antes de publicar (só funciona com turboMode) (opcional)
+ * @param {boolean} enableConcurrentRequests - Se true, ativa teste de requisições simultâneas (opcional)
+ * @param {number} concurrentRequests - Número de requisições simultâneas a fazer (padrão: 15) (opcional)
  */
-export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false, checkCreditsBanner = false) {
+export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false, checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 15) {
   const startTime = Date.now();
   const result = {
     userId,
@@ -201,7 +203,7 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
       
       // 9. Usar template e publicar (já estamos no template após o fallback)
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo)');
-      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
+      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner, enableConcurrentRequests, concurrentRequests);
       result.steps.useTemplateAndPublish = publishResult.executionTime;
       
       // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
@@ -227,7 +229,7 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
 
       // 9. Usar template e publicar
       logger.info('\n🚀 Etapa 6: Usando Template e Publicando');
-      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false); // checkCreditsBanner só funciona com turboMode
+      const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false, enableConcurrentRequests, concurrentRequests); // checkCreditsBanner só funciona com turboMode
       result.steps.useTemplateAndPublish = publishResult.executionTime;
       
       // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
