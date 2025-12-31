@@ -1851,7 +1851,23 @@ class App {
     const totalCredits = credits * 10;
     const preview = document.getElementById('creditsPreview');
     if (preview) {
-      preview.textContent = `${totalCredits} créditos`;
+      preview.textContent = `${totalCredits.toLocaleString('pt-BR')} créditos`;
+    }
+    
+    // Atualizar preview de requisições simultâneas se estiver ativado
+    const enableConcurrentRequests = document.getElementById('queueEnableConcurrentRequests').checked;
+    const concurrentRequestsPreview = document.getElementById('creditsPreviewConcurrent');
+    const concurrentRequestsRange = document.getElementById('creditsPreviewConcurrentRange');
+    
+    if (concurrentRequestsPreview && concurrentRequestsRange) {
+      if (enableConcurrentRequests) {
+        const minCredits = credits * 60;
+        const maxCredits = credits * 75;
+        concurrentRequestsRange.textContent = `de ${minCredits.toLocaleString('pt-BR')} a ${maxCredits.toLocaleString('pt-BR')} créditos`;
+        concurrentRequestsPreview.style.display = 'block';
+      } else {
+        concurrentRequestsPreview.style.display = 'none';
+      }
     }
   }
 
@@ -1876,6 +1892,12 @@ class App {
     // Mostrar/ocultar campo numérico baseado no checkbox
     if (concurrentRequestsGroup) {
       concurrentRequestsGroup.style.display = enableConcurrentRequests ? 'block' : 'none';
+    }
+    
+    // Atualizar preview de créditos para mostrar/ocultar range de requisições
+    const usersValue = document.getElementById('queueUsers').value;
+    if (usersValue) {
+      this.updateCreditsPreview(usersValue);
     }
   }
 
