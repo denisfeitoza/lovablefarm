@@ -1968,15 +1968,16 @@ class App {
 
     // Tempo base: (totalUsers / parallel) * 90 segundos (1:30 por execução)
     // Se paralelo = 3, então 3 inscrições levam 1:30 (não 3 * 1:30)
-    const baseTimeSeconds = Math.ceil((totalUsers / parallel) * 90);
+    const baseTimeSeconds = (totalUsers / parallel) * 90;
 
     // Margem de erro: 25% das execuções podem falhar
     // Cada erro leva em média 30 segundos
-    const expectedErrors = Math.ceil(totalUsers * 0.25);
+    // Usar valor exato (não arredondar para cima)
+    const expectedErrors = totalUsers * 0.25;
     const errorTimeSeconds = expectedErrors * 30;
 
-    // Tempo total estimado
-    const totalTimeSeconds = baseTimeSeconds + errorTimeSeconds;
+    // Tempo total estimado (arredondar apenas no final)
+    const totalTimeSeconds = Math.ceil(baseTimeSeconds + errorTimeSeconds);
 
     // Formatar tempo
     const formatTime = (seconds) => {
