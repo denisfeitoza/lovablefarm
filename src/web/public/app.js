@@ -951,12 +951,21 @@ class App {
               <div class="queue-stat-label">Taxa de Erro</div>
             </div>
           ` : ''}
+          <!-- Métrica de Requisições Feitas (quero/deram certo) -->
           <div class="queue-stat">
             <div class="queue-stat-value" style="color: var(--primary);">
               ${inscricoesQuero}/${inscricoesDeramCerto}
             </div>
             <div class="queue-stat-label">⚡ Requisições Feitas</div>
           </div>
+          <!-- Métrica de inscrições temporariamente desativada
+          <div class="queue-stat" style="display: none;">
+            <div class="queue-stat-value" style="color: var(--primary);">
+              ${totalInscricoesSucesso}/${totalInscricoesPedidas}
+            </div>
+            <div class="queue-stat-label">Inscrições (sucesso/pedidas)</div>
+          </div>
+          -->
         </div>
         
         <!-- Créditos Depositados -->
