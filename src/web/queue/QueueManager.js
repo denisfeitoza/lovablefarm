@@ -427,18 +427,22 @@ class QueueManager {
           try {
             const result = await this.executeUser(queueId, userId);
             
-            // Verificar DEPOIS de executar
+            // Verificar DEPOIS de executar - se meta foi atingida, cancelar imediatamente
             if (queue.results.success >= originalTarget) {
+              queue.cancelled = true;
+              queue.status = 'finalizing';
               activePromises.delete(promise);
-              return { cancelled: true };
+              return { cancelled: true, metaAtingida: true };
             }
             
             return result;
           } catch (error) {
             // Em caso de erro, verificar se já atingiu meta
             if (queue.results.success >= originalTarget) {
+              queue.cancelled = true;
+              queue.status = 'finalizing';
               activePromises.delete(promise);
-              return { cancelled: true };
+              return { cancelled: true, metaAtingida: true };
             }
             throw error;
           } finally {
@@ -451,11 +455,18 @@ class QueueManager {
       
       // Aguardar pelo menos uma promise completar antes de criar novas
       if (activePromises.size > 0) {
-        await Promise.race(Array.from(activePromises));
+        const completedPromise = await Promise.race(Array.from(activePromises));
         
-        // Verificar novamente após uma execução completar - CRÍTICO para parar
-        if (queue.results.success >= originalTarget || queue.cancelled || queue.status === 'finalizing') {
+        // Verificar se a meta foi atingida após completar uma execução
+        if (queue.results.success >= originalTarget) {
           queue.cancelled = true;
+          queue.status = 'finalizing';
+          logger.info(`🎯 Meta de créditos atingida! Parando fila ${queueId} imediatamente.`);
+          break;
+        }
+        
+        // Verificar se foi cancelado
+        if (queue.cancelled || queue.status === 'finalizing') {
           break;
         }
       } else {
@@ -464,8 +475,15 @@ class QueueManager {
       }
     }
     
-    // Aguardar todas as execuções remanescentes terminarem
-    if (activePromises.size > 0) {
+    // Se a meta foi atingida, não esperar execuções remanescentes - finalizar imediatamente
+    if (queue.results.success >= originalTarget) {
+      logger.info(`✅ Meta atingida! Finalizando fila ${queueId} sem aguardar execuções remanescentes.`);
+      // Cancelar todas as promises ativas restantes
+      for (const promise of activePromises) {
+        activePromises.delete(promise);
+      }
+    } else if (activePromises.size > 0) {
+      // Se não atingiu a meta mas foi cancelado, aguardar execuções terminarem
       await Promise.allSettled(Array.from(activePromises));
     }
   }
@@ -576,6 +594,13 @@ class QueueManager {
       if (result.success) {
         queue.results.success++;
         queue.results.credits += result.creditsEarned || 0;
+        
+        // Verificar se meta foi atingida (modo forceCredits) - parar imediatamente
+        if (queue.forceCredits && queue.results.success >= queue.totalUsers) {
+          queue.cancelled = true;
+          queue.status = 'finalizing';
+          logger.info(`🎯 Meta de créditos atingida após sucesso do usuário ${userId}! Finalizando fila ${queueId}.`);
+        }
         
         // Adicionar sucesso na timeline
         queue.timeline.successes.push({
