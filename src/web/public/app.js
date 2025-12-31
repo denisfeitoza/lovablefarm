@@ -1861,8 +1861,8 @@ class App {
     
     if (concurrentRequestsPreview && concurrentRequestsRange) {
       if (enableConcurrentRequests) {
-        const minCredits = credits * 60;
-        const maxCredits = credits * 75;
+        const minCredits = credits * 600; // (N*10) × 60
+        const maxCredits = credits * 750; // (N*10) × 75
         concurrentRequestsRange.textContent = `de ${minCredits.toLocaleString('pt-BR')} a ${maxCredits.toLocaleString('pt-BR')} créditos`;
         concurrentRequestsPreview.style.display = 'block';
       } else {
