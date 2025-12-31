@@ -126,6 +126,15 @@ class QueueManager {
       throw new Error(`Fila ${queueId} já está em execução`);
     }
 
+    // Verificar se já existe outra fila rodando
+    const runningQueue = Array.from(this.queues.values()).find(
+      q => q.id !== queueId && (q.status === 'running' || q.status === 'finalizing')
+    );
+    
+    if (runningQueue) {
+      throw new Error(`Já existe uma fila em execução (${runningQueue.id}: ${runningQueue.name}). Pare a fila atual antes de iniciar outra.`);
+    }
+
     queue.status = 'running';
     queue.cancelled = false; // Flag para cancelamento
     queue.startedAt = new Date().toISOString();

@@ -19,6 +19,7 @@ class App {
     this.timeEstimateInterval = null; // Timer para atualizar tempo restante
     this.timeEstimates = new Map(); // { queueId: { seconds: number, lastUpdate: timestamp } }
     this.logsAutoScroll = true; // Flag para controlar auto-scroll dos logs
+    this.autoStartingQueue = false; // Flag para evitar múltiplas chamadas simultâneas de autoStartNextQueue
     this.init();
   }
 
