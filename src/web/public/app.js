@@ -2133,44 +2133,37 @@ class App {
     try {
       const dateStr = new Date().toISOString().split('T')[0];
       
+      // Função auxiliar para baixar um arquivo
+      const downloadFile = async (url, filename) => {
+        const response = await fetch(this.apiUrl(url));
+        if (!response.ok) {
+          throw new Error(`Erro ao baixar ${filename}: ${response.status} ${response.statusText}`);
+        }
+        const text = await response.text();
+        const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        // Aguardar um pouco antes de remover para garantir que o download iniciou
+        await new Promise(resolve => setTimeout(resolve, 100));
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      };
+      
       // Baixar CSV de contas
-      const accountsResponse = await fetch(this.apiUrl('/api/csv/accounts'));
-      if (!accountsResponse.ok) {
-        throw new Error(`Erro ao baixar CSV de contas: ${accountsResponse.status} ${accountsResponse.statusText}`);
-      }
+      await downloadFile('/api/csv/accounts', `accounts-${dateStr}.csv`);
       
-      const accountsText = await accountsResponse.text();
-      const accountsBlob = new Blob([accountsText], { type: 'text/csv;charset=utf-8;' });
-      const accountsUrl = window.URL.createObjectURL(accountsBlob);
-      const accountsLink = document.createElement('a');
-      accountsLink.href = accountsUrl;
-      accountsLink.download = `accounts-${dateStr}.csv`;
-      document.body.appendChild(accountsLink);
-      accountsLink.click();
-      document.body.removeChild(accountsLink);
-      window.URL.revokeObjectURL(accountsUrl);
-      
-      // Aguardar um pouco antes de baixar o segundo arquivo
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Aguardar mais tempo entre downloads para evitar bloqueio do navegador
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Baixar CSV de histórico de execuções
-      const executionsResponse = await fetch(this.apiUrl('/api/csv/executions'));
-      if (!executionsResponse.ok) {
-        throw new Error(`Erro ao baixar CSV de execuções: ${executionsResponse.status} ${executionsResponse.statusText}`);
-      }
+      await downloadFile('/api/csv/executions', `execution_history-${dateStr}.csv`);
       
-      const executionsText = await executionsResponse.text();
-      const executionsBlob = new Blob([executionsText], { type: 'text/csv;charset=utf-8;' });
-      const executionsUrl = window.URL.createObjectURL(executionsBlob);
-      const executionsLink = document.createElement('a');
-      executionsLink.href = executionsUrl;
-      executionsLink.download = `execution_history-${dateStr}.csv`;
-      document.body.appendChild(executionsLink);
-      executionsLink.click();
-      document.body.removeChild(executionsLink);
-      window.URL.revokeObjectURL(executionsUrl);
-      
-      console.log('✅ CSVs baixados com sucesso');
+      console.log('✅ Ambos os CSVs baixados com sucesso');
     } catch (error) {
       console.error('❌ Erro ao baixar CSV:', error);
       alert(`Erro ao baixar CSV: ${error.message}`);
