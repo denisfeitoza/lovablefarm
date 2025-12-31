@@ -702,14 +702,10 @@ class App {
     // Se não, usar target dinâmico (que pode ser diferente se houver ajustes)
     const target = forceCredits ? (queue.totalUsers || 1) : (queue.results?.target || queue.totalUsers || 1);
     
-    // Calcular métricas de requisições (se requisições simultâneas estiver ativo)
-    const totalRequestsMade = enableConcurrentRequests ? (queue.results.total * concurrentRequests) : 0;
-    const successfulRequests = enableConcurrentRequests ? (queue.results.success * concurrentRequests) : 0;
-    const requestsMetric = enableConcurrentRequests ? {
-      made: Math.floor(totalRequestsMade / 10),
-      successful: Math.floor(successfulRequests / 10),
-      total: Math.floor((queue.totalUsers * concurrentRequests) / 10)
-    } : null;
+    // Calcular métricas de inscrições (pedidas vs sucessos)
+    const totalInscricoesPedidas = queue.results.total || 0;
+    const totalInscricoesSucesso = queue.results.success || 0;
+    const totalInscricoesEsperadas = queue.totalUsers || 0;
     
     // Debug: verificar se forceCredits está sendo recebido
     if (queue.id && forceCredits) {
@@ -956,38 +952,23 @@ class App {
               <div class="queue-stat-label">Taxa de Erro</div>
             </div>
           ` : ''}
-          ${requestsMetric ? `
-            <div class="queue-stat">
-              <div class="queue-stat-value" style="color: var(--primary);">
-                ${requestsMetric.successful}/${requestsMetric.total}
-              </div>
-              <div class="queue-stat-label">Requisições (÷10)</div>
+          <div class="queue-stat">
+            <div class="queue-stat-value" style="color: var(--primary);">
+              ${totalInscricoesSucesso}/${totalInscricoesPedidas}
             </div>
-          ` : ''}
+            <div class="queue-stat-label">Inscrições (sucesso/pedidas)</div>
+          </div>
         </div>
         
-        <!-- Créditos Depositados e Requisições -->
-        <div style="display: grid; grid-template-columns: ${queue.results.success > 0 && requestsMetric ? '1fr 1fr' : '1fr'}; gap: 12px; margin-bottom: 16px;">
-          ${queue.results.success > 0 ? `
-            <div style="padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
-              <div style="font-size: 11px; color: #56ab2f; margin-bottom: 4px; font-weight: 600;">💰 Créditos Depositados</div>
-              <div style="font-size: 14px; color: #a8e063; font-weight: 600;">
-                Entre ${(queue.results.success * 700).toLocaleString('pt-BR')} e ${(queue.results.success * 800).toLocaleString('pt-BR')} créditos
-              </div>
+        <!-- Créditos Depositados -->
+        ${queue.results.success > 0 ? `
+          <div style="margin-bottom: 16px; padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
+            <div style="font-size: 11px; color: #56ab2f; margin-bottom: 4px; font-weight: 600;">💰 Créditos Depositados</div>
+            <div style="font-size: 14px; color: #a8e063; font-weight: 600;">
+              Entre ${(queue.results.success * 700).toLocaleString('pt-BR')} e ${(queue.results.success * 800).toLocaleString('pt-BR')} créditos
             </div>
-          ` : ''}
-          ${requestsMetric ? `
-            <div style="padding: 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px;">
-              <div style="font-size: 11px; color: #6366f1; margin-bottom: 4px; font-weight: 600;">⚡ Requisições Simultâneas</div>
-              <div style="font-size: 14px; color: #818cf8; font-weight: 600;">
-                ${requestsMetric.successful.toLocaleString('pt-BR')} / ${requestsMetric.total.toLocaleString('pt-BR')} (÷10)
-              </div>
-              <div style="font-size: 11px; color: #a5b4fc; margin-top: 4px;">
-                ${requestsMetric.made.toLocaleString('pt-BR')} requisições feitas
-              </div>
-            </div>
-          ` : ''}
-        </div>
+          </div>
+        ` : ''}
         
         <div class="queue-progress">
           <div class="queue-progress-bar" style="width: ${progress}%"></div>
