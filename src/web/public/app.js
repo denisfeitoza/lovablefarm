@@ -1362,6 +1362,7 @@ class App {
       : Math.ceil((remaining / parallel) * 60); // Fallback: 60s por execução
     
     // Armazenar a nova estimativa com timestamp atual
+    // IMPORTANTE: Sempre atualizar quando recalcular para que o tempo restante mude
     if (queue.id) {
       this.timeEstimates.set(queue.id, {
         seconds: estimatedSeconds,
@@ -1369,6 +1370,9 @@ class App {
         lastTotalExecutions: queue.executionTimes.length,
         lastRecalculationAt: queue.executionTimes.length // Armazenar quando foi recalculado
       });
+      
+      // Forçar atualização da interface quando recalcular
+      this.renderQueues();
     }
     
     return estimatedSeconds;

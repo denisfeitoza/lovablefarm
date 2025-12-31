@@ -223,7 +223,7 @@
                 min="1" 
                 max="10000" 
                 value="10"
-                oninput="app.updateCreditsPreview(this.value)"
+                oninput="app.updateCreditsPreview(this.value); app.updateTimeEstimate();"
                 required
               >
               <small>Indicações a criar</small>
@@ -237,6 +237,7 @@
                 min="1" 
                 max="10" 
                 value="3"
+                oninput="app.updateTimeEstimate()"
                 required
               >
               <small>Máximo: 10 simultâneas</small>
@@ -251,6 +252,17 @@
               <div class="credits-preview-concurrent" id="creditsPreviewConcurrent" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(86, 171, 47, 0.3);">
                 <div style="font-size: 11px; color: #56ab2f; margin-bottom: 4px;">Com requisições ativadas:</div>
                 <div style="font-size: 13px; color: #a8e063; font-weight: 600;" id="creditsPreviewConcurrentRange">de 600 a 750 créditos</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="credits-preview-box" style="margin-top: 12px; background: rgba(33, 150, 243, 0.1); border-color: rgba(33, 150, 243, 0.3);">
+            <div class="credits-preview-icon" style="background: rgba(33, 150, 243, 0.2);">⏱️</div>
+            <div class="credits-preview-content">
+              <div class="credits-preview-label" style="color: #2196f3;">Tempo estimado de execução</div>
+              <div class="credits-preview-value" id="timeEstimatePreview" style="color: #64b5f6;">Calculando...</div>
+              <div style="font-size: 10px; color: rgba(33, 150, 243, 0.7); margin-top: 4px;">
+                Base: 1:30 por execução • Margem de erro: 25% (30s por erro)
               </div>
             </div>
           </div>
