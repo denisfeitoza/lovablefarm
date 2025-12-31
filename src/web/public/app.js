@@ -931,9 +931,17 @@ class App {
         
         <!-- Métricas Principais -->
         <div class="queue-stats" style="margin-bottom: 16px;">
+          <!-- Métrica de Créditos temporariamente desativada
           <div class="queue-stat">
             <div class="queue-stat-value">${forceCredits ? `${queue.results.success * 10}/${queue.totalUsers * 10}` : queue.results.success}</div>
             <div class="queue-stat-label">${forceCredits ? 'Créditos (n/meta)' : 'Sucessos'}</div>
+          </div>
+          -->
+          <div class="queue-stat">
+            <div class="queue-stat-value" style="color: var(--primary);">
+              ${inscricoesQuero}/${inscricoesDeramCerto}
+            </div>
+            <div class="queue-stat-label">⚡ Requisições Feitas</div>
           </div>
           <div class="queue-stat">
             <div class="queue-stat-value">${queue.results.failed}</div>
@@ -951,21 +959,6 @@ class App {
               <div class="queue-stat-label">Taxa de Erro</div>
             </div>
           ` : ''}
-          <!-- Métrica de Requisições Feitas (quero/deram certo) -->
-          <div class="queue-stat">
-            <div class="queue-stat-value" style="color: var(--primary);">
-              ${inscricoesQuero}/${inscricoesDeramCerto}
-            </div>
-            <div class="queue-stat-label">⚡ Requisições Feitas</div>
-          </div>
-          <!-- Métrica de inscrições temporariamente desativada
-          <div class="queue-stat" style="display: none;">
-            <div class="queue-stat-value" style="color: var(--primary);">
-              ${totalInscricoesSucesso}/${totalInscricoesPedidas}
-            </div>
-            <div class="queue-stat-label">Inscrições (sucesso/pedidas)</div>
-          </div>
-          -->
         </div>
         
         <!-- Créditos Depositados -->
