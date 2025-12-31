@@ -2,7 +2,7 @@
 FROM node:20-slim
 
 # Instalar dependências do sistema para Playwright
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -29,7 +29,7 @@ WORKDIR /app
 # Copiar arquivos de dependências
 COPY package*.json ./
 
-# Instalar dependências (incluindo dev para playwright)
+# Instalar dependências (precisa das devDependencies para playwright)
 RUN npm ci
 
 # Instalar navegadores do Playwright
