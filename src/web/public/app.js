@@ -1633,6 +1633,12 @@ class App {
       if (data.success) {
         console.log('✅ Fila criada:', data.queueId);
         
+        // REABILITAR BOTÃO ANTES DE QUALQUER OUTRA COISA
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalButtonText;
+        }
+        
         // Limpar formulário (mantendo valores padrão)
         document.getElementById('queueReferralLink').value = '';
         document.getElementById('queueName').value = '';
