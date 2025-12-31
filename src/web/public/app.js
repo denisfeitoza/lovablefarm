@@ -1761,14 +1761,30 @@ class App {
   }
 
   async autoStartNextQueue() {
+    // Verificar se já está processando
+    if (this.autoStartingQueue) {
+      console.log('⏸️ Auto-start já está processando, ignorando chamada duplicada');
+      return;
+    }
+
     // Aguardar um pouco para garantir que as filas foram atualizadas
     setTimeout(async () => {
+      // Marcar como processando
+      this.autoStartingQueue = true;
+      
       try {
         // Buscar todas as filas
         const response = await fetch(this.apiUrl('/api/queues'));
         const data = await response.json();
         
         if (data.success && data.queues) {
+          // Verificar se já existe uma fila rodando
+          const runningQueue = data.queues.find(q => q.status === 'running' || q.status === 'finalizing');
+          if (runningQueue) {
+            console.log(`⏸️ Já existe uma fila rodando (${runningQueue.id}: ${runningQueue.name}), não iniciando nova fila`);
+            return;
+          }
+
           // Encontrar a primeira fila pendente (status: 'pending')
           const pendingQueue = data.queues.find(q => q.status === 'pending');
           
@@ -1781,6 +1797,9 @@ class App {
         }
       } catch (error) {
         console.error('Erro ao auto-iniciar próxima fila:', error);
+      } finally {
+        // Liberar flag após processamento
+        this.autoStartingQueue = false;
       }
     }, 500); // Aguardar 500ms para garantir que as filas foram atualizadas
   }
