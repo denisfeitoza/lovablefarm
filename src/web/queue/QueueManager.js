@@ -167,6 +167,12 @@ class QueueManager {
             return null;
           }
           
+          // Verificar quantos ainda faltam executar
+          const remaining = queue.totalUsers - (queue.results.total || 0);
+          if (remaining <= 0) {
+            return null;
+          }
+          
           // Verificar se foi cancelado
           if (queue.cancelled || queue.status === 'finalizing') {
             logger.warning(`⚠️ Fila ${queueId} foi cancelada, não iniciando mais usuários`);
@@ -192,10 +198,18 @@ class QueueManager {
             
             const result = await this.executeUser(queueId, userId);
             
-            // Após completar, criar próxima execução se ainda houver usuários pendentes
-            const nextPromise = createNextExecution();
-            if (nextPromise) {
-              promises.push(nextPromise);
+            // Verificar se fila foi cancelada após execução (pode ter atingido meta)
+            if (queue.cancelled || queue.status === 'finalizing') {
+              return result;
+            }
+            
+            // Após completar, verificar quantos ainda faltam antes de criar próxima execução
+            const remainingAfter = queue.totalUsers - (queue.results.total || 0);
+            if (remainingAfter > 0 && !queue.cancelled && queue.status !== 'finalizing') {
+              const nextPromise = createNextExecution();
+              if (nextPromise) {
+                promises.push(nextPromise);
+              }
             }
             
             return result;
