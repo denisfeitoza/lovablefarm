@@ -702,10 +702,9 @@ class App {
     // Se não, usar target dinâmico (que pode ser diferente se houver ajustes)
     const target = forceCredits ? (queue.totalUsers || 1) : (queue.results?.target || queue.totalUsers || 1);
     
-    // Calcular métricas de inscrições (pedidas vs sucessos)
-    const totalInscricoesPedidas = queue.results.total || 0;
-    const totalInscricoesSucesso = queue.results.success || 0;
-    const totalInscricoesEsperadas = queue.totalUsers || 0;
+    // Calcular métrica de inscrições: (quantas quero / quantas já deu certo)
+    const inscricoesQuero = queue.totalUsers || 0;
+    const inscricoesDeramCerto = queue.results.success || 0;
     
     // Debug: verificar se forceCredits está sendo recebido
     if (queue.id && forceCredits) {
@@ -954,9 +953,9 @@ class App {
           ` : ''}
           <div class="queue-stat">
             <div class="queue-stat-value" style="color: var(--primary);">
-              ${totalInscricoesSucesso}/${totalInscricoesPedidas}
+              ${inscricoesQuero}/${inscricoesDeramCerto}
             </div>
-            <div class="queue-stat-label">Inscrições (sucesso/pedidas)</div>
+            <div class="queue-stat-label">⚡ Requisições Feitas</div>
           </div>
         </div>
         
