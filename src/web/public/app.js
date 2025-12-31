@@ -2065,6 +2065,8 @@ class App {
     setTimeout(() => {
       this.renderQueueDomainSelection();
       this.renderQueueProxySelection();
+      // Atualizar estimativa de tempo
+      this.updateTimeEstimate();
       // Garantir que o checkbox do banner está habilitado (turbo mode está marcado por padrão)
       this.onTurboModeChange();
       // Atualizar preview de créditos com o valor padrão (10 usuários)
