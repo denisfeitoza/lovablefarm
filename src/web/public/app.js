@@ -702,7 +702,7 @@ class App {
     // Se não, usar target dinâmico (que pode ser diferente se houver ajustes)
     const target = forceCredits ? (queue.totalUsers || 1) : (queue.results?.target || queue.totalUsers || 1);
     
-    // Calcular métrica de inscrições: (quantas quero / quantas já deu certo)
+    // Calcular métrica de inscrições: (quantas já deu certo / quantas quero)
     const inscricoesQuero = queue.totalUsers || 0;
     const inscricoesDeramCerto = queue.results.success || 0;
     
@@ -939,7 +939,7 @@ class App {
           -->
           <div class="queue-stat">
             <div class="queue-stat-value" style="color: var(--primary);">
-              ${inscricoesQuero}/${inscricoesDeramCerto}
+              ${inscricoesDeramCerto}/${inscricoesQuero}
             </div>
             <div class="queue-stat-label">⚡ Requisições Feitas</div>
           </div>
