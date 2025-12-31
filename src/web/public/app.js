@@ -1949,6 +1949,53 @@ class App {
     }
   }
 
+  updateTimeEstimate() {
+    const usersInput = document.getElementById('queueUsers');
+    const parallelInput = document.getElementById('queueParallel');
+    const preview = document.getElementById('timeEstimatePreview');
+    
+    if (!usersInput || !parallelInput || !preview) {
+      return;
+    }
+
+    const totalUsers = parseInt(usersInput.value) || 0;
+    const parallel = parseInt(parallelInput.value) || 1;
+
+    if (totalUsers === 0) {
+      preview.textContent = 'Calculando...';
+      return;
+    }
+
+    // Tempo base: (totalUsers / parallel) * 90 segundos (1:30 por execução)
+    // Se paralelo = 3, então 3 inscrições levam 1:30 (não 3 * 1:30)
+    const baseTimeSeconds = Math.ceil((totalUsers / parallel) * 90);
+
+    // Margem de erro: 25% das execuções podem falhar
+    // Cada erro leva em média 30 segundos
+    const expectedErrors = Math.ceil(totalUsers * 0.25);
+    const errorTimeSeconds = expectedErrors * 30;
+
+    // Tempo total estimado
+    const totalTimeSeconds = baseTimeSeconds + errorTimeSeconds;
+
+    // Formatar tempo
+    const formatTime = (seconds) => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      
+      if (hours > 0) {
+        return `${hours}h ${minutes}m ${secs}s`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+      } else {
+        return `${secs}s`;
+      }
+    };
+
+    preview.textContent = formatTime(totalTimeSeconds);
+  }
+
   onTurboModeChange() {
     const turboMode = document.getElementById('queueTurboMode').checked;
     const checkCreditsBanner = document.getElementById('queueCheckCreditsBanner');
