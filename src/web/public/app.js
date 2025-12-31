@@ -1966,9 +1966,12 @@ class App {
       return;
     }
 
-    // Tempo base: (totalUsers / parallel) * 90 segundos (1:30 por execução)
-    // Se paralelo = 3, então 3 inscrições levam 1:30 (não 3 * 1:30)
-    const baseTimeSeconds = (totalUsers / parallel) * 90;
+    // Tempo base: considerar paralelismo
+    // Se paralelo = 3, então 1, 2 ou 3 inscrições levam 1:30 (todas executam em paralelo)
+    // Fórmula: Math.ceil(totalUsers / parallel) * 90 segundos
+    // Exemplo: 3 paralelos, 1-3 inscrições = 1 rodada = 90s, 4-6 inscrições = 2 rodadas = 180s
+    const rounds = Math.ceil(totalUsers / parallel);
+    const baseTimeSeconds = rounds * 90;
 
     // Margem de erro: 25% das execuções podem falhar
     // Cada erro leva em média 30 segundos
