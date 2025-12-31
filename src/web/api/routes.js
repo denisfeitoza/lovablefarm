@@ -536,5 +536,41 @@ router.get('/proxies', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/server/restart - Reinicia o servidor (para tudo e limpa estado)
+ */
+router.post('/server/restart', async (req, res) => {
+  try {
+    logger.info('🔄 Reiniciando servidor...');
+    
+    // Cancelar todas as filas
+    const cancelledCount = queueManager.cancelAllQueues();
+    
+    // Limpar execuções ativas
+    const activeExecutions = queueManager.listActiveExecutions();
+    logger.info(`🧹 Fechando ${activeExecutions.length} execuções ativas...`);
+    
+    // Responder antes de encerrar
+    res.json({
+      success: true,
+      message: `Servidor reiniciando. ${cancelledCount} fila(s) cancelada(s).`,
+      cancelledQueues: cancelledCount
+    });
+    
+    // Aguardar um pouco para garantir que a resposta foi enviada
+    setTimeout(() => {
+      logger.info('🔄 Encerrando processo...');
+      process.exit(0);
+    }, 1000);
+    
+  } catch (error) {
+    logger.error('Erro ao reiniciar servidor', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 export default router;
 

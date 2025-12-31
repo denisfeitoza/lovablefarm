@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger.js';
 import { logStream } from '../../utils/logStream.js';
 import { historyManager } from './HistoryManager.js';
 import { proxyService } from '../../services/proxyService.js';
+import { csvService } from '../../services/csvService.js';
 import pLimit from 'p-limit';
 
 /**
@@ -155,37 +156,62 @@ class QueueManager {
         await this.executeQueueWithRetry(queueId, limit);
       } else {
         // Modo normal: executar apenas o número especificado de usuários
+        // Criar promises dinamicamente conforme slots ficam disponíveis
+        let currentUserId = 1;
         const promises = [];
         
-        for (let i = 1; i <= queue.totalUsers; i++) {
-          // Verificar se foi cancelado antes de criar nova execução
-          if (queue.cancelled || queue.status === 'finalizing') {
-            logger.warning(`⚠️ Fila ${queueId} foi cancelada, não iniciando usuário ${i}`);
-            break;
+        // Função para criar e adicionar próxima execução
+        const createNextExecution = () => {
+          // Verificar se ainda há usuários para processar
+          if (currentUserId > queue.totalUsers) {
+            return null;
           }
           
-          // Adicionar delay escalonado apenas para as primeiras execuções (até o limite de paralelismo)
-          // Depois disso, as execuções começam imediatamente quando uma termina
-          const delayMs = (i <= queue.parallelExecutions) ? (i - 1) * 2000 : 0;
+          // Verificar se foi cancelado
+          if (queue.cancelled || queue.status === 'finalizing') {
+            logger.warning(`⚠️ Fila ${queueId} foi cancelada, não iniciando mais usuários`);
+            return null;
+          }
           
-          promises.push(
-            limit(async () => {
-              // Aguardar delay escalonado antes de iniciar (apenas nas primeiras execuções)
-              if (delayMs > 0) {
-                await new Promise(resolve => setTimeout(resolve, delayMs));
-              }
-              
-              // Verificar novamente no momento de executar (após o delay)
-              if (queue.cancelled || queue.status === 'finalizing') {
-                logger.warning(`⚠️ Fila ${queueId} cancelada, pulando usuário ${i}`);
-                return { cancelled: true };
-              }
-              return this.executeUser(queueId, i);
-            })
-          );
+          const userId = currentUserId++;
+          
+          // Adicionar delay escalonado apenas para as primeiras execuções (até o limite de paralelismo)
+          const delayMs = (userId <= queue.parallelExecutions) ? (userId - 1) * 2000 : 0;
+          
+          return limit(async () => {
+            // Aguardar delay escalonado antes de iniciar (apenas nas primeiras execuções)
+            if (delayMs > 0) {
+              await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+            
+            // Verificar novamente no momento de executar (após o delay)
+            if (queue.cancelled || queue.status === 'finalizing') {
+              logger.warning(`⚠️ Fila ${queueId} cancelada, pulando usuário ${userId}`);
+              return { cancelled: true };
+            }
+            
+            const result = await this.executeUser(queueId, userId);
+            
+            // Após completar, criar próxima execução se ainda houver usuários pendentes
+            const nextPromise = createNextExecution();
+            if (nextPromise) {
+              promises.push(nextPromise);
+            }
+            
+            return result;
+          });
+        };
+        
+        // Criar as primeiras execuções (até o limite de paralelismo)
+        for (let i = 0; i < Math.min(queue.parallelExecutions, queue.totalUsers); i++) {
+          const promise = createNextExecution();
+          if (promise) {
+            promises.push(promise);
+          }
         }
 
         // Aguardar todas as execuções (pLimit já controla a concorrência)
+        // As execuções subsequentes serão criadas dinamicamente quando slots ficarem disponíveis
         await Promise.allSettled(promises);
       }
 
@@ -241,6 +267,32 @@ class QueueManager {
     }
 
     return queue;
+  }
+
+  /**
+   * Cancela todas as filas ativas
+   */
+  cancelAllQueues() {
+    let cancelledCount = 0;
+    
+    for (const [queueId, queue] of this.queues.entries()) {
+      if (queue.status === 'running' || queue.status === 'pending') {
+        this.stopQueue(queueId);
+        cancelledCount++;
+      }
+    }
+    
+    // Fechar todas as execuções ativas
+    for (const [executionId, execution] of this.activeExecutions.entries()) {
+      if (execution.status === 'running') {
+        execution.status = 'cancelled';
+        execution.completedAt = new Date().toISOString();
+        this.activeExecutions.delete(executionId);
+      }
+    }
+    
+    logger.info(`🛑 ${cancelledCount} fila(s) cancelada(s) e todas as execuções ativas fechadas`);
+    return cancelledCount;
   }
 
   /**
@@ -531,6 +583,28 @@ class QueueManager {
           userId: userId
         });
         
+        // Verificar se houve erro de email
+        const hasEmailError = result.failedStep && (
+          result.failedStep.toLowerCase().includes('email') ||
+          result.failedStep.toLowerCase().includes('verificação') ||
+          result.failedStep.toLowerCase().includes('verification')
+        ) || (result.error && (
+          result.error.toLowerCase().includes('email') ||
+          result.error.toLowerCase().includes('domínio não elegível') ||
+          result.error.toLowerCase().includes('domain')
+        ));
+        
+        // Salvar conta em CSV apenas se não houver erro de email
+        if (!hasEmailError && result.credentials?.email && result.credentials?.password) {
+          csvService.appendAccount(
+            result.credentials.email,
+            result.credentials.password,
+            execution.completedAt || new Date().toISOString(),
+            queueId,
+            userId
+          );
+        }
+        
         // Registrar sucesso no histórico
         historyManager.addSuccess({
           email: result.credentials?.email || result.email || 'N/A',
@@ -571,6 +645,20 @@ class QueueManager {
           referralLink: queue.referralLink
         });
       }
+
+      // Salvar histórico de execução em CSV (sucesso ou falha)
+      csvService.appendExecutionHistory({
+        timestamp: execution.completedAt || new Date().toISOString(),
+        queueId: queueId,
+        userId: userId,
+        status: result.success ? 'success' : 'failed',
+        email: result.credentials?.email || result.email || '',
+        creditsEarned: result.creditsEarned || 0,
+        error: result.error || '',
+        failedStep: result.failedStep || '',
+        domain: domain || '',
+        referralLink: queue.referralLink || ''
+      });
 
       this.emit('execution:completed', { executionId, execution: this.serializeExecution(execution) });
       this.emit('queue:updated', { queueId, queue: this.serializeQueue(queue) });
@@ -625,6 +713,20 @@ class QueueManager {
       } else if (error.message.includes('email') || error.message.includes('verificação')) {
         failedStep = 'Verificação de Email';
       }
+      
+      // Salvar histórico de execução em CSV (erro fatal)
+      csvService.appendExecutionHistory({
+        timestamp: execution.completedAt,
+        queueId: queueId,
+        userId: userId,
+        status: 'failed',
+        email: email,
+        creditsEarned: 0,
+        error: error.message,
+        failedStep: failedStep,
+        domain: domain || '',
+        referralLink: queue.referralLink || ''
+      });
       
       // Adicionar erro na timeline
       queue.timeline.errors.push({

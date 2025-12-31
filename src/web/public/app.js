@@ -935,6 +935,15 @@ class App {
           ` : ''}
         </div>
         
+        ${queue.results.success > 0 ? `
+          <div style="margin-top: 12px; padding: 12px; background: rgba(86, 171, 47, 0.1); border: 1px solid rgba(86, 171, 47, 0.3); border-radius: 8px;">
+            <div style="font-size: 12px; color: #56ab2f; margin-bottom: 4px; font-weight: 600;">💰 Créditos Depositados</div>
+            <div style="font-size: 14px; color: #a8e063; font-weight: 600;">
+              Entre ${(queue.results.success * 700).toLocaleString('pt-BR')} e ${(queue.results.success * 800).toLocaleString('pt-BR')} créditos
+            </div>
+          </div>
+        ` : ''}
+        
         <div class="queue-progress">
           <div class="queue-progress-bar" style="width: ${progress}%"></div>
         </div>
@@ -1861,8 +1870,8 @@ class App {
     
     if (concurrentRequestsPreview && concurrentRequestsRange) {
       if (enableConcurrentRequests) {
-        const minCredits = credits * 600; // (N*10) × 60
-        const maxCredits = credits * 750; // (N*10) × 75
+        const minCredits = credits * 700; // (N*10) × 70
+        const maxCredits = credits * 800; // (N*10) × 80
         concurrentRequestsRange.textContent = `de ${minCredits.toLocaleString('pt-BR')} a ${maxCredits.toLocaleString('pt-BR')} créditos`;
         concurrentRequestsPreview.style.display = 'block';
       } else {
@@ -1996,6 +2005,36 @@ class App {
   clearDomainSelection() {
     const checkboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]');
     checkboxes.forEach(cb => cb.checked = false);
+  }
+
+  async restartServer() {
+    if (!confirm('⚠️ ATENÇÃO: Isso irá parar TODAS as filas e reiniciar o servidor. Deseja continuar?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${window.BASE_PATH}/api/server/restart`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('✅ Servidor reiniciando... A página será recarregada em alguns segundos.');
+        // Recarregar página após 3 segundos
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      } else {
+        alert(`❌ Erro ao reiniciar servidor: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao reiniciar servidor:', error);
+      alert('❌ Erro ao reiniciar servidor. Verifique o console para mais detalhes.');
+    }
   }
 
   renderQueueProxySelection() {
