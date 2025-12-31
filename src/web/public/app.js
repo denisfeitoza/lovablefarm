@@ -1336,25 +1336,24 @@ class App {
 
     // Verificar se já temos uma estimativa armazenada
     const existingEstimate = queue.id ? this.timeEstimates.get(queue.id) : null;
+    const parallel = queue.parallelExecutions || 1;
     
-    // Se temos estimativa armazenada e o número de execuções não mudou,
-    // usar a estimativa existente (que já está sendo decrementada pelo timer)
-    if (existingEstimate && existingEstimate.lastTotalExecutions === queue.executionTimes.length) {
+    // Recalcular apenas a cada X execuções, onde X = número de navegadores paralelos
+    // Exemplo: se paralelo = 3, recalcula na 3ª, 6ª, 9ª, etc.
+    const shouldRecalculate = !existingEstimate || 
+                              queue.executionTimes.length === 0 ||
+                              (queue.executionTimes.length % parallel === 0);
+    
+    // Se não deve recalcular, usar a estimativa existente (que já está sendo decrementada pelo timer)
+    if (existingEstimate && !shouldRecalculate) {
       return existingEstimate.seconds;
     }
 
-    // Recalcular estimativa baseado nos dados atuais (novas execuções completaram)
-    // Usar todos os tempos disponíveis se houver menos de 10, senão usar os últimos 10
-    const recentTimes = queue.executionTimes.length < 10 
-      ? queue.executionTimes 
-      : queue.executionTimes.slice(-10);
-    
-    // Calcular média dos tempos (usar todos disponíveis quando houver menos de 10)
-    const avgTime = recentTimes.length > 0
-      ? recentTimes.reduce((sum, t) => sum + t, 0) / recentTimes.length
+    // Recalcular estimativa baseado nos dados atuais
+    // Usar TODOS os tempos disponíveis (média móvel completa, incluindo erros)
+    const avgTime = queue.executionTimes.length > 0
+      ? queue.executionTimes.reduce((sum, t) => sum + t, 0) / queue.executionTimes.length
       : 0;
-    
-    const parallel = queue.parallelExecutions || 1;
     
     // Tempo estimado = (restantes / paralelo) * tempo médio
     // Se não há tempos disponíveis ainda, usar um valor padrão conservador
@@ -1367,7 +1366,8 @@ class App {
       this.timeEstimates.set(queue.id, {
         seconds: estimatedSeconds,
         lastUpdate: Date.now(),
-        lastTotalExecutions: queue.executionTimes.length
+        lastTotalExecutions: queue.executionTimes.length,
+        lastRecalculationAt: queue.executionTimes.length // Armazenar quando foi recalculado
       });
     }
     
