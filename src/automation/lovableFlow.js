@@ -1106,6 +1106,44 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
   try {
     logger.step(5, 'Publicando projeto');
 
+    // ✅ VERIFICAR SE AINDA ESTÁ NA PÁGINA DO TEMPLATE
+    // Se estiver, precisa clicar em "Use Template" primeiro
+    logger.info('🔍 Verificando se está na página do template...');
+    try {
+      // Tentar encontrar botão "Use Template" (timeout curto para verificação rápida)
+      await page.waitForSelector('button:has-text("Use template"), button:has-text("Use Template")', { 
+        timeout: getTimeout(3000, usingProxy),
+        state: 'visible'
+      });
+      
+      // Se encontrou o botão, está na página do template ainda
+      logger.warning('⚠️ Ainda está na página do template. Clicando em "Use Template" primeiro...');
+      
+      const useTemplateButton = await page.locator('button:has-text("Use template"), button:has-text("Use Template")').first();
+      await useTemplateButton.click();
+      logger.success('✅ Clicou em "Use Template"');
+      
+      await page.waitForTimeout(getDelay(1500, usingProxy));
+      
+      // Aguardar e clicar em "REMIX" (popup que aparece)
+      logger.info('⏳ Aguardando popup "Remix"...');
+      await page.waitForSelector('button:has-text("Remix"), button:has-text("remix")', { 
+        timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) 
+      });
+      
+      const remixButton = await page.locator('button:has-text("Remix"), button:has-text("remix")').first();
+      await remixButton.click();
+      logger.success('✅ Clicou em "Remix"');
+      
+      // Aguardar editor começar a carregar
+      logger.info('⏳ Aguardando editor abrir...');
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
+      
+    } catch (templateError) {
+      // Se não encontrou o botão "Use Template", assume que já está no editor
+      logger.info('✅ Já está no editor (botão "Use Template" não encontrado)');
+    }
+
     // Aguardar editor carregar completamente (após clicar em Remix)
     logger.info('⏳ Aguardando editor carregar completamente...');
     await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.veryLongDelay, usingProxy));
