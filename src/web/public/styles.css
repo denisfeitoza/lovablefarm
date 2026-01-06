@@ -710,7 +710,7 @@ body {
 
 /* Modal */
 .modal {
-  display: none;
+  display: none !important;
   position: fixed;
   top: 0;
   left: 0;
@@ -721,10 +721,16 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .modal.active {
-  display: flex;
+  display: flex !important;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .modal-content {
@@ -735,6 +741,11 @@ body {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 8px 32px var(--shadow);
+  display: none;
+}
+
+.modal.active .modal-content {
+  display: block;
 }
 
 .modal-header {
