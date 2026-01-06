@@ -540,42 +540,10 @@ class QueueManager {
     logger.info(`▶️  Executando usuário ${userId} (${executionId}) com link: ${queue.referralLink}`);
 
     try {
-      // Determinar domínio para este usuário (Round Robin) se houver seleção
+      // Domínios e proxies temporariamente desativados - sempre usar null
       let domain = null;
-      if (queue.selectedDomains && queue.selectedDomains.length > 0) {
-        // userId começa em 1, então (userId - 1) % length dá o índice correto
-        domain = queue.selectedDomains[(userId - 1) % queue.selectedDomains.length];
-        logger.info(`📧 Usuário ${userId} usará domínio específico da fila: ${domain}`);
-      } else {
-        logger.warning(`⚠️ Usuário ${userId} usará rotação global (nenhum domínio foi selecionado para a fila)`);
-        logger.info(`Domínios disponíveis na fila: ${JSON.stringify(queue.selectedDomains)}`);
-      }
-
-      // Determinar proxy para este usuário
       let proxyString = null;
-      if (queue.selectedProxies && queue.selectedProxies.length > 0) {
-        // Verificar se "random" foi selecionado
-        const hasRandom = queue.selectedProxies.includes('random');
-        
-        if (hasRandom) {
-          // Modo random: usar todos os proxies disponíveis de forma aleatória
-          const allProxies = proxyService.getWebshareProxies();
-          if (allProxies.length > 0) {
-            const randomIndex = Math.floor(Math.random() * allProxies.length);
-            proxyString = allProxies[randomIndex];
-            logger.info(`🌐 Usuário ${userId} usará proxy aleatório da fila: ${proxyString ? proxyString.split('@')[1] : 'N/A'}`);
-          } else {
-            logger.warning(`⚠️ Modo random selecionado mas nenhum proxy disponível`);
-          }
-        } else {
-          // Modo normal: Round Robin
-          // userId começa em 1, então (userId - 1) % length dá o índice correto
-          proxyString = proxyService.getProxyFromList(queue.selectedProxies, userId - 1);
-          logger.info(`🌐 Usuário ${userId} usará proxy específico da fila: ${proxyString ? proxyString.split('@')[1] : 'N/A'}`);
-        }
-      } else {
-        logger.info(`🌐 Usuário ${userId} usará IP local ou proxy global (nenhum proxy foi selecionado para a fila)`);
-      }
+      logger.info(`📧 Usuário ${userId} usará IP local (domínios e proxies desativados temporariamente)`);
 
       // Criar execution com informações completas
       const execution = {
@@ -634,6 +602,9 @@ class QueueManager {
         queue.results.success++;
         queue.results.credits += result.creditsEarned || 0;
         
+        // Registrar uso do link de indicação APENAS quando houver sucesso
+        referralLinkTracker.recordUsage(queue.referralLink, queueId, 1);
+        
         // Verificar se meta foi atingida (modo forceCredits) - parar imediatamente
         if (queue.forceCredits && queue.results.success >= queue.totalUsers) {
           queue.cancelled = true;
@@ -687,9 +658,6 @@ class QueueManager {
           creditsEarned: result.creditsEarned || 0,
           referralLink: queue.referralLink
         });
-        
-        // Registrar uso do link de indicação APENAS quando houver sucesso
-        referralLinkTracker.recordUsage(queue.referralLink, queueId, 1);
       } else {
         queue.results.failed++;
         execution.error = result.error;

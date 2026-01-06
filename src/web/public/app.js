@@ -44,8 +44,8 @@ class App {
       console.log('✅ BASE_PATH atualizado do window:', this.basePath);
     }
     this.connectWebSocket();
-    // DESATIVADO TEMPORARIAMENTE: this.fetchDomains(); // Buscar domínios logo no início
-    // DESATIVADO TEMPORARIAMENTE: this.fetchProxies(); // Buscar proxies logo no início
+    this.fetchDomains(); // Buscar domínios logo no início
+    this.fetchProxies(); // Buscar proxies logo no início
     this.fetchHistory();
     this.fetchFailures(); // Buscar falhas recentes
     this.fetchMetrics(); // Buscar métricas iniciais

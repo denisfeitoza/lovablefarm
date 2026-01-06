@@ -416,18 +416,9 @@ router.get('/executions', (req, res) => {
 });
 
 /**
- * GET /api/domains - Listar domínios (DESATIVADO TEMPORARIAMENTE)
+ * GET /api/domains - Listar domínios
  */
 router.get('/domains', (req, res) => {
-  // DESATIVADO TEMPORARIAMENTE - Retornar vazio
-  res.json({
-    success: true,
-    domains: [],
-    currentIndex: 0
-  });
-  return;
-  
-  /* CÓDIGO ORIGINAL DESATIVADO
   try {
     const domains = domainManager.listDomains();
     
@@ -442,7 +433,6 @@ router.get('/domains', (req, res) => {
       error: error.message
     });
   }
-  */
 });
 
 /**
@@ -533,17 +523,9 @@ router.post('/domains/reset', (req, res) => {
 });
 
 /**
- * GET /api/proxies - Listar proxies disponíveis (DESATIVADO TEMPORARIAMENTE)
+ * GET /api/proxies - Listar proxies disponíveis
  */
 router.get('/proxies', async (req, res) => {
-  // DESATIVADO TEMPORARIAMENTE - Retornar vazio
-  res.json({
-    success: true,
-    proxies: []
-  });
-  return;
-  
-  /* CÓDIGO ORIGINAL DESATIVADO
   try {
     // Garantir que proxies estão inicializados
     await proxyService.initialize();
@@ -590,7 +572,6 @@ router.get('/proxies', async (req, res) => {
       error: error.message
     });
   }
-  */
 });
 
 /**
