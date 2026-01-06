@@ -1628,6 +1628,9 @@ class App {
         return;
       }
 
+      // Capturar modo Outlook ANTES de validar domínios
+      const useOutlook = document.getElementById('queueUseOutlook').checked;
+      
       // Capturar domínios selecionados
       const selectedDomains = [];
       const domainCheckboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]:checked');
@@ -1642,9 +1645,10 @@ class App {
 
       console.log('🌐 Proxies selecionados:', selectedProxies.length);
       
-      // Validar seleção de domínios - OBRIGATÓRIO pelo menos 1
-      if (selectedDomains.length === 0) {
-        this.showQueueError('É necessário selecionar pelo menos 1 domínio para criar uma fila.');
+      // Validar seleção de domínios - OBRIGATÓRIO apenas se NÃO estiver usando Outlook
+      // Se usar Outlook, não precisa de domínios (usa credenciais Outlook)
+      if (!useOutlook && selectedDomains.length === 0) {
+        this.showQueueError('É necessário selecionar pelo menos 1 domínio para criar uma fila (ou ativar o modo Outlook).');
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.innerHTML = originalButtonText;
@@ -1686,8 +1690,7 @@ class App {
         }
       }
 
-      // Capturar opção "usar modo Outlook"
-      const useOutlook = document.getElementById('queueUseOutlook').checked;
+      // useOutlook já foi capturado acima, antes da validação de domínios
 
       console.log('🧪 Erros simulados:', simulatedErrors);
       console.log('💰 Buscar créditos a todo custo:', forceCredits);
