@@ -82,6 +82,70 @@ export async function fallbackToTemplate(page, userId, usingProxy) {
   });
   await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
   
+  // CRÍTICO: Verificar se voltou para o quiz após navegar para o template
+  const urlAfterNavigation = page.url();
+  logger.info(`📍 URL após navegar para template: ${urlAfterNavigation}`);
+  
+  if (urlAfterNavigation.includes('/getting-started') || 
+      urlAfterNavigation.includes('/onboarding') || 
+      urlAfterNavigation.includes('/quiz')) {
+    logger.warning('⚠️ Sistema redirecionou para o quiz após tentar ir para o template!');
+    logger.info('📝 Preenchendo o quiz primeiro, depois voltando para o template...');
+    
+    // Preencher o quiz
+    try {
+      const quizResult = await completeOnboardingQuiz(page, userId, null, usingProxy);
+      logger.success(`✅ Quiz preenchido com sucesso! Tempo: ${quizResult.executionTime}ms`);
+      
+      // Aguardar um pouco para o sistema processar
+      await page.waitForTimeout(getDelay(2000, usingProxy));
+      
+      // Verificar URL atual
+      const urlAfterQuiz = page.url();
+      logger.info(`📍 URL após preencher quiz: ${urlAfterQuiz}`);
+      
+      // Se ainda está no quiz, aguardar mais um pouco
+      if (urlAfterQuiz.includes('/getting-started') || 
+          urlAfterQuiz.includes('/onboarding') || 
+          urlAfterQuiz.includes('/quiz')) {
+        logger.warning('⚠️ Ainda está no quiz após preencher. Aguardando redirect...');
+        await page.waitForTimeout(getDelay(3000, usingProxy));
+        
+        // Verificar novamente
+        const urlAfterWait = page.url();
+        if (urlAfterWait.includes('/getting-started') || 
+            urlAfterWait.includes('/onboarding') || 
+            urlAfterWait.includes('/quiz')) {
+          logger.warning('⚠️ Ainda está no quiz. Tentando navegar para o template novamente...');
+        } else {
+          logger.success(`✅ Redirecionado para: ${urlAfterWait}`);
+        }
+      }
+      
+      // Tentar navegar para o template novamente
+      logger.info('🔄 Navegando para o template novamente após preencher o quiz...');
+      await page.goto(fallbackTemplateUrl, { 
+        waitUntil: 'domcontentloaded', 
+        timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) 
+      });
+      await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.mediumDelay, usingProxy));
+      
+      // Verificar se voltou para o quiz novamente
+      const urlAfterRetry = page.url();
+      if (urlAfterRetry.includes('/getting-started') || 
+          urlAfterRetry.includes('/onboarding') || 
+          urlAfterRetry.includes('/quiz')) {
+        logger.error('❌ Sistema redirecionou para o quiz novamente após preencher!');
+        throw new Error('Não foi possível acessar o template - sistema continua redirecionando para o quiz');
+      }
+      
+      logger.success(`✅ Agora está no template. URL: ${urlAfterRetry}`);
+    } catch (quizError) {
+      logger.error(`❌ Erro ao preencher quiz: ${quizError.message}`);
+      throw quizError;
+    }
+  }
+  
   // Aguardar e clicar em "Use template" com fallback de refresh
   await waitForUseTemplateButtonWithRefresh(page, usingProxy, 'fallback');
   
@@ -129,7 +193,7 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await page.goto(referralLink, { waitUntil: 'domcontentloaded', timeout: pageLoadTimeout });
     await page.waitForTimeout(getDelay(2000, usingProxy));
     logger.success('✅ Página carregada');
-    
+
     // Verificar se apareceu tela de Login (conta já existe)
     const isLoginPage = await page.evaluate(() => {
       const bodyText = document.body.innerText || '';
@@ -307,7 +371,7 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await passwordInputLocator.fill(password);
     await page.waitForTimeout(getDelay(400, usingProxy));
     logger.success('✅ Senha preenchida');
-    
+
     // Procurar botão "Criar sua conta" - aguardar aparecer após preencher senha
     logger.info('Procurando botão "Criar sua conta"...');
     await page.waitForTimeout(getDelay(1000, usingProxy)); // Aguardar página estabilizar após preencher senha
@@ -399,13 +463,13 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
         
         // Abordagem 2: JavaScript direto (mais confiável)
         const jsClicked = await page.evaluate(() => {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          const btn = buttons.find(b => {
-            const text = b.textContent.trim();
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const btn = buttons.find(b => {
+              const text = b.textContent.trim();
             return text === 'Criar sua conta' || text === 'Create account';
-          });
+            });
           
-          if (btn) {
+            if (btn) {
             // Remover atributos de desabilitado se existirem
             btn.removeAttribute('disabled');
             btn.classList.remove('disabled');
@@ -417,14 +481,14 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
             setTimeout(() => {
               btn.click();
             }, 200);
-            return true;
-          }
-          return false;
-        });
-        
-        if (jsClicked) {
+              return true;
+            }
+            return false;
+          });
+          
+          if (jsClicked) {
           await page.waitForTimeout(getDelay(800, usingProxy));
-          createButtonClicked = true;
+            createButtonClicked = true;
           logger.success('✅ Clicou em "Criar sua conta" (via JavaScript)');
         }
       }
@@ -451,8 +515,8 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
           createButtonClicked = true;
           logger.success(`✅ Clicou em botão (via seletor: ${selector})`);
           break;
-        } catch (e) {
-          continue;
+      } catch (e) {
+        continue;
         }
       }
     }
@@ -481,7 +545,10 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     logger.info('🔍 Verificando se há notificação de domínio não elegível (após Create)...');
     await page.waitForTimeout(getDelay(2000, usingProxy)); // Aguardar notificação aparecer
     
-    const hasIneligibleNotification = await page.evaluate(() => {
+    // Tentar verificar notificação, mas se houver navegação, tratar como sucesso
+    let hasIneligibleNotification = false;
+    try {
+      hasIneligibleNotification = await page.evaluate(() => {
       // PRIMEIRO: Tentar encontrar o elemento toast específico (mais preciso)
       const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
       if (toastElement) {
@@ -533,40 +600,66 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
         const regex = new RegExp(pattern, 'i');
         return regex.test(bodyText);
       });
-    });
+      });
+    } catch (e) {
+      // Se o evaluate falhou por causa de navegação, assumir que não há notificação
+      // A navegação indica que o cadastro foi aceito
+      if (e.message && e.message.includes('Execution context was destroyed')) {
+        logger.info('✅ Navegação detectada após criar conta - cadastro aceito!');
+        hasIneligibleNotification = false; // Não há notificação, navegação = sucesso
+      } else {
+        // Outro erro, relançar
+        throw e;
+      }
+    }
     
     if (hasIneligibleNotification) {
-      const notificationText = await page.evaluate(() => {
-        // PRIMEIRO: Tentar pegar o texto do elemento toast específico
-        const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
-        if (toastElement) {
-          const toastText = toastElement.innerText || toastElement.textContent || '';
-          if (toastText.toLowerCase().includes('not eligible') || 
-              toastText.toLowerCase().includes('referral program')) {
-            return toastText.trim();
+      let notificationText = 'Notificação de domínio não elegível detectada';
+      try {
+        notificationText = await page.evaluate(() => {
+          // PRIMEIRO: Tentar pegar o texto do elemento toast específico
+          const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
+          if (toastElement) {
+            const toastText = toastElement.innerText || toastElement.textContent || '';
+            if (toastText.toLowerCase().includes('not eligible') || 
+                toastText.toLowerCase().includes('referral program')) {
+              return toastText.trim();
+            }
           }
+          
+          // FALLBACK: Tentar encontrar o texto no body
+          const allText = document.body.innerText;
+          const lines = allText.split('\n');
+          const notificationLine = lines.find(line => 
+            line.toLowerCase().includes('not eligible') || 
+            line.toLowerCase().includes('referral program') ||
+            line.toLowerCase().includes('não elegível')
+          );
+          return notificationLine || 'Notificação de domínio não elegível detectada';
+        });
+      } catch (e) {
+        // Se o evaluate falhou por causa de navegação, usar texto padrão
+        if (e.message && e.message.includes('Execution context was destroyed')) {
+          logger.info('⚠️ Navegação detectada ao verificar notificação - assumindo que não há notificação');
+          hasIneligibleNotification = false; // Se navegou, não há notificação
+        } else {
+          // Outro erro, usar texto padrão mas manter hasIneligibleNotification
+          logger.warning(`⚠️ Erro ao obter texto da notificação: ${e.message}`);
         }
+      }
+      
+      // Só lançar erro se realmente detectou notificação
+      if (hasIneligibleNotification) {
+        logger.error('❌ DOMÍNIO CANSADO DETECTADO (após Create)!');
+        logger.error(`📝 Notificação: ${notificationText}`);
+        logger.error(`📧 Email usado: ${email}`);
         
-        // FALLBACK: Tentar encontrar o texto no body
-        const allText = document.body.innerText;
-        const lines = allText.split('\n');
-        const notificationLine = lines.find(line => 
-          line.toLowerCase().includes('not eligible') || 
-          line.toLowerCase().includes('referral program') ||
-          line.toLowerCase().includes('não elegível')
-        );
-        return notificationLine || 'Notificação de domínio não elegível detectada';
-      });
-      
-      logger.error('❌ DOMÍNIO CANSADO DETECTADO (após Create)!');
-      logger.error(`📝 Notificação: ${notificationText}`);
-      logger.error(`📧 Email usado: ${email}`);
-      
-      // Extrair domínio do email para incluir no erro
-      const emailDomain = email.split('@')[1] || 'unknown';
-      
-      // Lançar erro que será categorizado como email_error (contém "email" e "domínio")
-      throw new Error(`❌ Erro de email - Domínio não elegível para programa de indicação detectado. Email: ${email} | Domínio: ${emailDomain}`);
+        // Extrair domínio do email para incluir no erro
+        const emailDomain = email.split('@')[1] || 'unknown';
+        
+        // Lançar erro que será categorizado como email_error (contém "email" e "domínio")
+        throw new Error(`❌ Erro de email - Domínio não elegível para programa de indicação detectado. Email: ${email} | Domínio: ${emailDomain}`);
+      }
     }
     
     logger.success('✅ Nenhuma notificação de domínio não elegível detectada (após Create)');
@@ -599,7 +692,10 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     logger.info('🔍 Verificando novamente se há notificação de domínio não elegível (após URL mudar)...');
     await page.waitForTimeout(getDelay(2000, usingProxy)); // Aguardar notificação aparecer
     
-    const hasIneligibleNotificationAfter = await page.evaluate(() => {
+    // Tentar verificar notificação, mas se houver navegação, tratar como sucesso
+    let hasIneligibleNotificationAfter = false;
+    try {
+      hasIneligibleNotificationAfter = await page.evaluate(() => {
       // PRIMEIRO: Tentar encontrar o elemento toast específico (mais preciso)
       const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
       if (toastElement) {
@@ -652,10 +748,23 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
         const regex = new RegExp(pattern, 'i');
         return regex.test(bodyText);
       });
-    });
+      });
+    } catch (e) {
+      // Se o evaluate falhou por causa de navegação, assumir que não há notificação
+      // A navegação indica que o cadastro foi aceito
+      if (e.message && e.message.includes('Execution context was destroyed')) {
+        logger.info('✅ Navegação detectada - cadastro aceito!');
+        hasIneligibleNotificationAfter = false; // Não há notificação, navegação = sucesso
+      } else {
+        // Outro erro, relançar
+        throw e;
+      }
+    }
     
     if (hasIneligibleNotificationAfter) {
-      const notificationText = await page.evaluate(() => {
+      let notificationText = 'Notificação de domínio não elegível detectada';
+      try {
+        notificationText = await page.evaluate(() => {
         // PRIMEIRO: Tentar pegar o texto do elemento toast específico
         const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
         if (toastElement) {
@@ -674,18 +783,31 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
           line.toLowerCase().includes('referral program') ||
           line.toLowerCase().includes('não elegível')
         );
-        return notificationLine || 'Notificação de domínio não elegível detectada';
-      });
+          return notificationLine || 'Notificação de domínio não elegível detectada';
+        });
+      } catch (e) {
+        // Se o evaluate falhou por causa de navegação, usar texto padrão
+        if (e.message && e.message.includes('Execution context was destroyed')) {
+          logger.info('⚠️ Navegação detectada ao verificar notificação - assumindo que não há notificação');
+          hasIneligibleNotificationAfter = false; // Se navegou, não há notificação
+        } else {
+          // Outro erro, usar texto padrão mas manter hasIneligibleNotificationAfter
+          logger.warning(`⚠️ Erro ao obter texto da notificação: ${e.message}`);
+        }
+      }
       
-      logger.error('❌ DOMÍNIO CANSADO DETECTADO (após URL mudar)!');
-      logger.error(`📝 Notificação: ${notificationText}`);
-      logger.error(`📧 Email usado: ${email}`);
-      
-      // Extrair domínio do email para incluir no erro
-      const emailDomain = email.split('@')[1] || 'unknown';
-      
-      // Lançar erro que será categorizado como email_error (contém "email" e "domínio")
-      throw new Error(`❌ Erro de email - Domínio não elegível para programa de indicação detectado. Email: ${email} | Domínio: ${emailDomain}`);
+      // Só lançar erro se realmente detectou notificação
+      if (hasIneligibleNotificationAfter) {
+        logger.error('❌ DOMÍNIO CANSADO DETECTADO (após URL mudar)!');
+        logger.error(`📝 Notificação: ${notificationText}`);
+        logger.error(`📧 Email usado: ${email}`);
+        
+        // Extrair domínio do email para incluir no erro
+        const emailDomain = email.split('@')[1] || 'unknown';
+        
+        // Lançar erro que será categorizado como email_error (contém "email" e "domínio")
+        throw new Error(`❌ Erro de email - Domínio não elegível para programa de indicação detectado. Email: ${email} | Domínio: ${emailDomain}`);
+      }
     }
     
     logger.success('✅ Nenhuma notificação de domínio não elegível detectada (após URL mudar)');
@@ -1776,5 +1898,387 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
       error: error.message,
       executionTime
     };
+  }
+}
+
+/**
+ * Faz login no Lovable com email e senha
+ * @param {Page} page - Página do Playwright
+ * @param {string} email - Email para login
+ * @param {string} password - Senha para login
+ * @param {boolean} usingProxy - Se está usando proxy
+ * @returns {Promise<Object>} Resultado do login
+ */
+export async function loginToLovable(page, email, password, usingProxy = false) {
+  const startTime = Date.now();
+  logger.info('🔐 Fazendo login no Lovable...');
+  
+  try {
+    // Navegar para página de login
+    await page.goto('https://lovable.dev/login', { 
+      waitUntil: 'domcontentloaded', 
+      timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) 
+    });
+    await page.waitForTimeout(getDelay(2000, usingProxy));
+    
+    
+    // Preencher email
+    const emailInput = page.locator('#email, input[type="email"]').first();
+    await emailInput.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+    await emailInput.fill(email);
+    await page.waitForTimeout(getDelay(500, usingProxy));
+    logger.success('✅ Email preenchido');
+    
+    // Clicar em Continuar
+    const continueButton = await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const btn = buttons.find(b => {
+        const text = b.textContent.trim();
+        return (text === 'Continuar' || text === 'Continue') && 
+               !text.includes('Google') && !text.includes('Gmail') && !text.includes('GitHub');
+      });
+      if (btn) {
+        btn.click();
+        return true;
+      }
+      return false;
+    });
+    
+    if (!continueButton) {
+      throw new Error('❌ Botão Continuar não encontrado na página de login');
+    }
+    
+    await page.waitForTimeout(getDelay(2000, usingProxy));
+    logger.success('✅ Clicou em Continuar');
+    
+    // Preencher senha
+    const passwordInput = page.locator('input[type="password"]').first();
+    await passwordInput.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementVisible, usingProxy) });
+    await passwordInput.fill(password);
+    await page.waitForTimeout(getDelay(500, usingProxy));
+    logger.success('✅ Senha preenchida');
+    
+    // Clicar em Login/Entrar e aguardar navegação
+    let loginButtonClicked = false;
+    try {
+      loginButtonClicked = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const btn = buttons.find(b => {
+          const text = b.textContent.trim().toLowerCase();
+          return text.includes('entrar') || text.includes('login') || text.includes('sign in');
+        });
+        if (btn) {
+          btn.click();
+          return true;
+        }
+        return false;
+      });
+    } catch (e) {
+      // Se o evaluate falhou por causa de navegação, tentar clicar via locator
+      logger.info('⚠️ Evaluate falhou (navegação), tentando via locator...');
+      try {
+        const loginButtonLocator = page.locator('button').filter({ hasText: /entrar|login|sign in/i }).first();
+        await loginButtonLocator.click();
+        loginButtonClicked = true;
+      } catch (e2) {
+        // Ignorar erro
+      }
+    }
+    
+    if (!loginButtonClicked) {
+      throw new Error('❌ Botão de login não encontrado');
+    }
+    
+    // Aguardar navegação após login (pode ir para dashboard, quiz, etc)
+    logger.info('⏳ Aguardando navegação após login...');
+    try {
+      await page.waitForNavigation({ 
+        waitUntil: 'domcontentloaded', 
+        timeout: getTimeout(10000, usingProxy) 
+      }).catch(() => {
+        // Navegação pode já ter acontecido
+      });
+    } catch (e) {
+      // Navegação pode já ter acontecido, continuar
+    }
+    
+    await page.waitForTimeout(getDelay(2000, usingProxy));
+    
+    // Verificar se login foi bem-sucedido (URL mudou para dashboard, quiz, onboarding, ou raiz)
+    const currentUrl = page.url();
+    logger.info(`📍 URL após login: ${currentUrl}`);
+    
+    // Se ainda está em /login, login falhou (mesmo que tenha redirect como parâmetro)
+    // IMPORTANTE: Verificar se a URL contém '/login' ANTES de qualquer outra verificação
+    if (currentUrl.includes('/login')) {
+      // Ainda está na página de login - login falhou DEFINITIVAMENTE
+      logger.error('❌ Login falhou - ainda está na página de login');
+      logger.error(`📍 URL atual: ${currentUrl}`);
+      
+      // Verificar se há erro de login na página
+      let hasError = false;
+      let errorText = '';
+      try {
+        hasError = await page.evaluate(() => {
+          const bodyText = document.body.innerText.toLowerCase();
+          return bodyText.includes('erro') || 
+                 bodyText.includes('error') || 
+                 bodyText.includes('invalid') ||
+                 bodyText.includes('incorrect') ||
+                 bodyText.includes('credenciais') ||
+                 bodyText.includes('wrong password') ||
+                 bodyText.includes('senha incorreta') ||
+                 bodyText.includes('incorrect password') ||
+                 bodyText.includes('password is incorrect') ||
+                 bodyText.includes('senha está incorreta');
+        });
+        
+        if (hasError) {
+          errorText = await page.evaluate(() => document.body.innerText.substring(0, 500));
+          logger.error(`📝 Erro detectado na página: ${errorText.substring(0, 200)}`);
+        }
+      } catch (e) {
+        // Ignorar erro de evaluate, mas ainda assim lançar erro de login
+        logger.warning('⚠️ Não foi possível verificar erro na página, mas login falhou (ainda em /login)');
+      }
+      
+      // SEMPRE lançar erro se ainda estiver em /login - NÃO continuar
+      throw new Error('Erro ao fazer login: credenciais inválidas ou senha incorreta. URL ainda em /login');
+    }
+    
+    // CRÍTICO: Se ainda está em /login (mesmo com redirect), login FALHOU
+    // Não importa se tem redirect ou não - se a URL contém /login, não logou
+    if (currentUrl.includes('/login')) {
+      logger.error('❌ Login falhou - URL ainda contém /login');
+      logger.error(`📍 URL atual: ${currentUrl}`);
+      
+      // Verificar se há erro de login na página
+      let hasError = false;
+      let errorText = '';
+      try {
+        hasError = await page.evaluate(() => {
+          const bodyText = document.body.innerText.toLowerCase();
+          return bodyText.includes('erro') || 
+                 bodyText.includes('error') || 
+                 bodyText.includes('invalid') ||
+                 bodyText.includes('incorrect') ||
+                 bodyText.includes('credenciais') ||
+                 bodyText.includes('wrong password') ||
+                 bodyText.includes('senha incorreta') ||
+                 bodyText.includes('password is incorrect') ||
+                 bodyText.includes('senha está incorreta');
+        });
+        
+        if (hasError) {
+          errorText = await page.evaluate(() => document.body.innerText.substring(0, 500));
+          logger.error(`📝 Erro detectado na página: ${errorText.substring(0, 200)}`);
+        }
+      } catch (e) {
+        // Ignorar erro de evaluate, mas ainda assim lançar erro de login
+        logger.warning('⚠️ Não foi possível verificar erro na página, mas login falhou (ainda em /login)');
+      }
+      
+      // SEMPRE lançar erro se ainda estiver em /login
+      throw new Error('Erro ao fazer login: credenciais inválidas ou senha incorreta. URL ainda em /login');
+    }
+    
+    // Se não está em /login, verificar se está em uma página válida de login bem-sucedido
+    // IMPORTANTE: /verify-email é uma URL válida após login - significa que login funcionou mas precisa verificar email
+    const isLoggedIn = currentUrl.includes('/dashboard') || 
+                      currentUrl.includes('lovable.dev/dashboard') ||
+                      currentUrl.includes('/onboarding') ||
+                      currentUrl.includes('/quiz') ||
+                      currentUrl.includes('/getting-started') ||
+                      currentUrl.includes('lovable.dev/onboarding') ||
+                      (currentUrl === 'https://lovable.dev/' || currentUrl === 'https://lovable.dev') ||
+                      currentUrl.includes('/editor') ||
+                      currentUrl.includes('/project') ||
+                      currentUrl.includes('/verify-email') ||
+                      currentUrl.includes('verify-email') ||
+                      currentUrl.includes('verifyemail');
+    
+    if (isLoggedIn) {
+      // Se está em /verify-email, login foi bem-sucedido mas precisa verificar email
+      if (currentUrl.includes('/verify-email') || currentUrl.includes('verify-email') || currentUrl.includes('verifyemail')) {
+        logger.success('✅ Login bem-sucedido! Redirecionado para verificação de email');
+        logger.info('📧 Conta precisa verificar email antes de continuar');
+      } else {
+        logger.success('✅ Login bem-sucedido! Redirecionado após login');
+      }
+      
+      return {
+        success: true,
+        executionTime: Date.now() - startTime
+      };
+    } else {
+      // Não está em /login e não está em página válida - situação estranha
+      logger.error('❌ Login falhou - não foi possível confirmar login');
+      logger.error(`📍 URL atual: ${currentUrl}`);
+      logger.error('❌ URL não está em /login mas também não está em página válida após login');
+      throw new Error('Erro ao fazer login: não foi possível confirmar login - URL inválida');
+    }
+  } catch (error) {
+    logger.error(`❌ Erro ao fazer login: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Verifica se a conta tem projeto publicado
+ * @param {Page} page - Página do Playwright (deve estar no dashboard)
+ * @param {boolean} usingProxy - Se está usando proxy
+ * @returns {Promise<Object>} { hasPublishedProject: boolean, projects: Array }
+ */
+export async function checkPublishedProjects(page, usingProxy = false) {
+  logger.info('🔍 Verificando se há projetos publicados...');
+  
+  try {
+    // NÃO navegar se já estiver no quiz - apenas verificar se está no dashboard
+    const currentUrl = page.url();
+    if (currentUrl.includes('/getting-started')) {
+      // Se está no quiz, não verificar projetos - retornar que não tem
+      logger.info('📝 Está no quiz, assumindo que não tem projeto publicado ainda');
+      return {
+        hasPublishedProject: false,
+        publishedCount: 0,
+        totalCount: 0
+      };
+    }
+    
+    // Só navegar para dashboard se não estiver em nenhuma página relevante
+    if (!currentUrl.includes('/dashboard') && !currentUrl.includes('/editor') && !currentUrl.includes('/project')) {
+      await page.goto('https://lovable.dev/dashboard', { 
+        waitUntil: 'domcontentloaded', 
+        timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) 
+      });
+      await page.waitForTimeout(getDelay(2000, usingProxy));
+    }
+    
+    // Procurar por projetos na página
+    const projectsInfo = await page.evaluate(() => {
+      const bodyText = document.body.innerText;
+      const hasProjects = bodyText.includes('project') || 
+                         bodyText.includes('projeto') ||
+                         bodyText.includes('Create') ||
+                         bodyText.includes('Criar');
+      
+      // Procurar por links de projetos
+      const projectLinks = Array.from(document.querySelectorAll('a[href*="/project/"], a[href*="/editor/"]'));
+      const publishedProjects = projectLinks.filter(link => {
+        const text = link.textContent || '';
+        return text.toLowerCase().includes('published') || 
+               text.toLowerCase().includes('publicado') ||
+               link.href.includes('/editor/');
+      });
+      
+      return {
+        hasProjects,
+        projectCount: projectLinks.length,
+        publishedCount: publishedProjects.length,
+        projectLinks: projectLinks.map(link => ({
+          href: link.href,
+          text: link.textContent?.trim() || ''
+        })).slice(0, 10) // Limitar a 10 projetos
+      };
+    });
+    
+    const hasPublishedProject = projectsInfo.publishedCount > 0 || projectsInfo.projectCount > 0;
+    
+    logger.info(`📊 Projetos encontrados: ${projectsInfo.projectCount} (publicados: ${projectsInfo.publishedCount})`);
+    
+    return {
+      hasPublishedProject,
+      projects: projectsInfo.projectLinks,
+      count: projectsInfo.projectCount,
+      publishedCount: projectsInfo.publishedCount
+    };
+  } catch (error) {
+    logger.error(`❌ Erro ao verificar projetos: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Procura pelo banner de créditos no dashboard
+ * @param {Page} page - Página do Playwright (deve estar no dashboard)
+ * @param {boolean} usingProxy - Se está usando proxy
+ * @returns {Promise<Object>} { found: boolean, bannerText: string }
+ */
+export async function findCreditsBanner(page, usingProxy = false) {
+  logger.info('🔍 Procurando banner de créditos...');
+  
+  try {
+    // NÃO navegar se já estiver no quiz - banner pode aparecer no quiz também
+    const currentUrl = page.url();
+    if (currentUrl.includes('/getting-started')) {
+      // Se está no quiz, procurar banner na página atual
+      logger.info('📝 Procurando banner no quiz...');
+    } else if (!currentUrl.includes('/dashboard') && !currentUrl.includes('/editor') && !currentUrl.includes('/project')) {
+      // Só navegar para dashboard se não estiver em nenhuma página relevante
+      await page.goto('https://lovable.dev/dashboard', { 
+        waitUntil: 'domcontentloaded', 
+        timeout: getTimeout(DEFAULT_TIMEOUTS.pageLoad, usingProxy) 
+      });
+      await page.waitForTimeout(getDelay(2000, usingProxy));
+    }
+    
+    // IMPORTANTE: Aguardar 5 segundos para o banner aparecer (pode ser dinâmico)
+    logger.info('⏳ Aguardando 5 segundos para o banner de créditos aparecer...');
+    await page.waitForTimeout(getDelay(5000, usingProxy));
+    
+    // Procurar por banner de créditos
+    const bannerInfo = await page.evaluate(() => {
+      const bodyText = document.body.innerText;
+      
+      // Padrões de banner de créditos
+      const creditPatterns = [
+        /10\s*(credits|créditos)/i,
+        /bonus\s*credits/i,
+        /referral.*credits/i,
+        /referral.*link.*publish/i,
+        /publish.*first.*project.*bonus/i,
+        /\+10.*credits/i
+      ];
+      
+      let foundBanner = false;
+      let bannerText = '';
+      
+      // Procurar em todos os elementos
+      const allElements = document.querySelectorAll('*');
+      for (const element of allElements) {
+        const text = element.textContent || '';
+        if (creditPatterns.some(pattern => pattern.test(text))) {
+          foundBanner = true;
+          bannerText = text.substring(0, 200); // Primeiros 200 caracteres
+          break;
+        }
+      }
+      
+      // Se não encontrou em elementos específicos, procurar no body
+      if (!foundBanner) {
+        if (creditPatterns.some(pattern => pattern.test(bodyText))) {
+          foundBanner = true;
+          bannerText = bodyText.substring(0, 500);
+        }
+      }
+      
+      return {
+        found: foundBanner,
+        bannerText: bannerText.trim()
+      };
+    });
+    
+    if (bannerInfo.found) {
+      logger.success('🎉 Banner de créditos encontrado!');
+      logger.info(`📝 Texto do banner: ${bannerInfo.bannerText.substring(0, 200)}`);
+      
+    } else {
+      logger.warning('⚠️ Banner de créditos não encontrado');
+    }
+    
+    return bannerInfo;
+  } catch (error) {
+    logger.error(`❌ Erro ao procurar banner de créditos: ${error.message}`);
+    throw error;
   }
 }

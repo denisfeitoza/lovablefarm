@@ -1630,7 +1630,7 @@ class App {
 
       // Capturar modo Outlook ANTES de validar domínios
       const useOutlook = document.getElementById('queueUseOutlook').checked;
-      
+
       // Capturar domínios selecionados
       const selectedDomains = [];
       const domainCheckboxes = document.querySelectorAll('#queueDomainSelection input[type="checkbox"]:checked');
@@ -1668,8 +1668,8 @@ class App {
 
       // Capturar opção "buscar créditos a todo custo"
       const forceCredits = document.getElementById('queueForceCredits').checked;
-      // Capturar opção "modo turbo"
-      const turboMode = document.getElementById('queueTurboMode').checked;
+      // Capturar opção "modo turbo" - DESATIVADO TEMPORARIAMENTE (sempre false)
+      const turboMode = false; // DESATIVADO TEMPORARIAMENTE
       // Capturar opção "verificar banner de créditos" (só disponível se turboMode estiver ativo)
       const checkCreditsBannerEl = document.getElementById('queueCheckCreditsBanner');
       const checkCreditsBanner = checkCreditsBannerEl ? (checkCreditsBannerEl.checked && turboMode) : false;
@@ -1764,7 +1764,8 @@ class App {
         document.getElementById('queueUsers').value = '10';
         document.getElementById('queueParallel').value = '3';
         document.getElementById('queueForceCredits').checked = true;
-        document.getElementById('queueTurboMode').checked = true;
+        // Modo turbo desativado temporariamente
+        // document.getElementById('queueTurboMode').checked = true;
         document.getElementById('queueUseOutlook').checked = true;
         const checkCreditsBannerElReset = document.getElementById('queueCheckCreditsBanner');
         if (checkCreditsBannerElReset) {
@@ -1877,16 +1878,37 @@ class App {
         method: 'POST'
       });
 
+      if (!response.ok) {
+        // Se a resposta não for OK, tentar ler como JSON, mas não tratar como erro fatal
+        try {
+          const data = await response.json();
+          if (data.error && !data.error.includes('não está em execução') && !data.error.includes('não encontrada')) {
+            console.error('Erro ao parar fila:', data.error);
+          }
+        } catch (e) {
+          // Ignorar erros de parsing
+        }
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success) {
         console.log('✅ Fila parada:', queueId);
-        this.socket.emit('request:queues');
+        if (this.socket) {
+          this.socket.emit('request:queues');
+        }
       } else {
-        console.error('Erro ao parar fila:', data.error);
+        // Só mostrar erro se não for sobre fila já finalizada
+        if (data.error && !data.error.includes('não está em execução') && !data.error.includes('não encontrada')) {
+          console.error('Erro ao parar fila:', data.error);
+        }
       }
     } catch (error) {
-      console.error('Erro ao parar fila:', error);
+      // Ignorar erros de rede ou outros erros não críticos
+      if (error.message && !error.message.includes('fetch')) {
+        console.error('Erro ao parar fila:', error);
+      }
     }
   }
 
@@ -2093,7 +2115,8 @@ class App {
 
   enableAllOptions() {
     document.getElementById('queueForceCredits').checked = true;
-    document.getElementById('queueTurboMode').checked = true;
+    // Modo turbo desativado temporariamente
+    // document.getElementById('queueTurboMode').checked = true;
     document.getElementById('queueUseOutlook').checked = true;
     // Habilitar e marcar verificação de banner (só funciona com turbo)
     const checkCreditsBanner = document.getElementById('queueCheckCreditsBanner');

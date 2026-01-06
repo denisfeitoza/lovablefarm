@@ -5,6 +5,8 @@ import { historyManager } from './HistoryManager.js';
 import { proxyService } from '../../services/proxyService.js';
 import { csvService } from '../../services/csvService.js';
 import { referralLinkTracker } from '../../services/referralLinkTracker.js';
+import { outlookCredentialsService } from '../../services/outlookCredentialsService.js';
+import { config } from '../../utils/config.js';
 import pLimit from 'p-limit';
 
 /**
@@ -84,7 +86,7 @@ class QueueManager {
       selectedProxies: config.selectedProxies || [], // Proxies selecionados para esta fila
       simulatedErrors: config.simulatedErrors || [], // Erros simulados para testar fallbacks
       forceCredits: config.forceCredits || false, // Buscar créditos a todo custo
-      turboMode: config.turboMode || false, // Modo turbo (pula quiz e seleção de template)
+      turboMode: false, // DESATIVADO TEMPORARIAMENTE - sempre false
       checkCreditsBanner: config.checkCreditsBanner || false, // Verificar banner de créditos no editor (só funciona com turboMode)
       enableConcurrentRequests: config.enableConcurrentRequests || false, // Ativar teste de requisições simultâneas
       concurrentRequests: config.concurrentRequests || 100, // Número de requisições simultâneas (padrão: 100 = 1000 créditos)
@@ -269,6 +271,17 @@ class QueueManager {
       
       this.emit('queue:completed', { queueId, queue: this.serializeQueue(queue) });
       logger.success(`✅ Fila concluída: ${queueId} (${queue.results.success}/${queue.totalUsers} sucessos)`);
+      
+      // Auto-iniciar próxima fila pendente (se houver)
+      // Usar setTimeout para evitar chamadas síncronas que podem causar problemas
+      setTimeout(() => {
+        try {
+          // Emitir evento para o frontend auto-iniciar próxima fila
+          this.emit('queue:auto_start_next', { completedQueueId: queueId });
+        } catch (e) {
+          // Ignorar erros ao tentar auto-iniciar próxima fila
+        }
+      }, 100);
 
     } catch (error) {
       // Parar timer
@@ -332,8 +345,10 @@ class QueueManager {
       throw new Error(`Fila ${queueId} não encontrada`);
     }
 
-    if (queue.status !== 'running') {
-      throw new Error(`Fila ${queueId} não está em execução`);
+    // Não tentar parar se já está finalizada, concluída ou cancelada
+    if (queue.status !== 'running' && queue.status !== 'pending') {
+      // Fila já está finalizada, não precisa parar
+      return queue;
     }
 
     queue.cancelled = true;
@@ -350,6 +365,62 @@ class QueueManager {
     this.emit('queue:updated', { queueId, queue: this.serializeQueue(queue) });
     
     return queue;
+  }
+
+  /**
+   * Reinicia uma fila (reseta estatísticas e permite executar novamente)
+   */
+  restartQueue(queueId) {
+    const queue = this.queues.get(queueId);
+    
+    if (!queue) {
+      throw new Error(`Fila ${queueId} não encontrada`);
+    }
+
+    try {
+      // Se a fila estiver rodando, parar primeiro
+      if (queue.status === 'running' || queue.status === 'finalizing') {
+        queue.cancelled = true;
+        if (queue.timerInterval) {
+          clearInterval(queue.timerInterval);
+          queue.timerInterval = null;
+        }
+      }
+
+      // Resetar estatísticas
+      queue.results = {
+        total: 0,
+        success: 0,
+        failed: 0,
+        credits: 0,
+        target: queue.totalUsers // Meta original
+      };
+      
+      // Resetar timeline
+      queue.timeline = {
+        successes: [],
+        errors: []
+      };
+      
+      // Resetar tempos de execução
+      queue.executionTimes = [];
+      
+      // Resetar status
+      queue.status = 'pending';
+      queue.cancelled = false;
+      queue.startedAt = null;
+      queue.completedAt = null;
+      
+      logger.info(`🔄 Fila reiniciada: ${queueId}`);
+      
+      // Emitir evento
+      this.emit('queue:updated', { queueId, queue: this.serializeQueue(queue) });
+      
+      return queue;
+    } catch (error) {
+      logger.error(`Erro ao reiniciar fila ${queueId}`, error);
+      throw error;
+    }
   }
 
   /**
@@ -421,8 +492,9 @@ class QueueManager {
       }
       
       // Criar promises até atingir o limite de paralelismo OU o número restante
-      // IMPORTANTE: Não criar mais promises que o número restante
-      const remaining = originalTarget - (queue.results.total || 0);
+      // IMPORTANTE: Calcular restante baseado em SUCESSOS, não em total de execuções
+      // Se ainda precisa de sucessos, deve continuar tentando mesmo que já tenha executado muitas vezes
+      const remaining = originalTarget - queue.results.success;
       const maxToCreate = Math.min(queue.parallelExecutions, remaining);
       
       while (activePromises.size < maxToCreate && 
@@ -434,10 +506,27 @@ class QueueManager {
           break;
         }
         
-        // Verificar restante novamente antes de criar
-        const currentRemaining = originalTarget - (queue.results.total || 0);
+        // Verificar restante novamente antes de criar (baseado em sucessos)
+        const currentRemaining = originalTarget - queue.results.success;
         if (currentRemaining <= 0) {
           break;
+        }
+        
+        // Verificar se há credenciais disponíveis (modo Outlook)
+        if (queue.useOutlook) {
+          const stats = outlookCredentialsService.getStats();
+          const hasAvailableCredentials = stats.unused > 0;
+          
+          if (!hasAvailableCredentials) {
+            logger.warning(`⚠️ Nenhuma credencial Outlook disponível. Sucessos: ${queue.results.success}/${originalTarget}`);
+            // Aguardar um pouco e verificar novamente (pode ter sido adicionada nova credencial)
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const statsAfterWait = outlookCredentialsService.getStats();
+            if (statsAfterWait.unused <= 0) {
+              logger.error('❌ Nenhuma credencial disponível após aguardar. Parando execução.');
+              break;
+            }
+          }
         }
         
         const userId = nextUserId++;
@@ -506,9 +595,54 @@ class QueueManager {
         if (queue.cancelled || queue.status === 'finalizing') {
           break;
         }
+        
+        // Se ainda precisa de sucessos e há credenciais disponíveis, continuar o loop para criar nova execução
+        const stillNeedsSuccess = queue.results.success < originalTarget;
+        if (stillNeedsSuccess && queue.useOutlook) {
+          const stats = outlookCredentialsService.getStats();
+          if (stats.unused > 0) {
+            logger.info(`🔄 Ainda precisa de ${originalTarget - queue.results.success} sucesso(s). ${stats.unused} credencial(is) disponível(eis). Continuando...`);
+            // Continuar o loop para criar nova execução
+            continue;
+          } else {
+            logger.warning(`⚠️ Ainda precisa de ${originalTarget - queue.results.success} sucesso(s), mas não há credenciais disponíveis. Aguardando...`);
+            // Aguardar um pouco e verificar novamente
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            const statsAfterWait = outlookCredentialsService.getStats();
+            if (statsAfterWait.unused <= 0) {
+              logger.error('❌ Nenhuma credencial disponível após aguardar. Parando execução.');
+              break;
+            }
+            // Se apareceu credencial, continuar
+            continue;
+          }
+        } else if (stillNeedsSuccess) {
+          // Modo normal (não Outlook) - continuar tentando
+          logger.info(`🔄 Ainda precisa de ${originalTarget - queue.results.success} sucesso(s). Continuando...`);
+          continue;
+        }
       } else {
-        // Se não há promises ativas, parar o loop
-        break;
+        // Se não há promises ativas mas ainda precisa de sucessos, verificar se há credenciais
+        if (queue.results.success < originalTarget) {
+          if (queue.useOutlook) {
+            const stats = outlookCredentialsService.getStats();
+            if (stats.unused > 0) {
+              logger.info(`🔄 Nenhuma execução ativa, mas ainda precisa de ${originalTarget - queue.results.success} sucesso(s). ${stats.unused} credencial(is) disponível(eis). Continuando...`);
+              // Continuar o loop para criar nova execução
+              continue;
+            } else {
+              logger.warning(`⚠️ Nenhuma execução ativa e nenhuma credencial disponível. Parando.`);
+              break;
+            }
+          } else {
+            // Modo normal - continuar tentando
+            logger.info(`🔄 Nenhuma execução ativa, mas ainda precisa de ${originalTarget - queue.results.success} sucesso(s). Continuando...`);
+            continue;
+          }
+        } else {
+          // Não precisa de mais sucessos, parar
+          break;
+        }
       }
     }
     
@@ -563,10 +697,10 @@ class QueueManager {
 
       const executionStartTime = Date.now();
       
-      // Executar fluxo do usuário passando o link de indicação, domínio, proxy, erros simulados, modo turbo, verificação de banner, requisições simultâneas e modo Outlook
+      // Executar fluxo do usuário passando o link de indicação, domínio, proxy, erros simulados, modo turbo, verificação de banner, requisições simultâneas, modo Outlook e modo de teste
       const useOutlookValue = queue.useOutlook === true || queue.useOutlook === 'true' || (queue.useOutlook !== false && queue.useOutlook !== 'false' && queue.useOutlook !== undefined);
       logger.info(`📬 Executando usuário ${userId} com modo Outlook: ${useOutlookValue} (valor na fila: ${queue.useOutlook})`);
-      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || [], queue.turboMode || false, queue.checkCreditsBanner || false, queue.enableConcurrentRequests || false, queue.concurrentRequests || 100, useOutlookValue);
+      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || [], false, false, queue.enableConcurrentRequests || false, queue.concurrentRequests || 100, useOutlookValue); // turboMode e checkCreditsBanner desativados temporariamente
       
       const executionTime = Math.floor((Date.now() - executionStartTime) / 1000); // em segundos
 
@@ -670,6 +804,33 @@ class QueueManager {
           logger.info(`💰 Meta aumentada para ${queue.results.target} (erro no usuário ${userId}, ainda precisa de ${queue.totalUsers - queue.results.success} sucessos)`);
         }
         
+        // IMPORTANTE: Só marcar credencial como usada se foi erro de LOGIN ou se foi SUCESSO
+        // Não marcar como usada em outros erros (banner não encontrado, navegação, etc)
+        const useOutlookValue = queue.useOutlook === true || queue.useOutlook === 'true' || (queue.useOutlook !== false && queue.useOutlook !== 'false' && queue.useOutlook !== undefined);
+        if (queue.forceCredits && useOutlookValue && result.email) {
+          const emailToMark = result.credentials?.email || result.email;
+          if (emailToMark && emailToMark !== 'N/A') {
+            // Verificar se o erro foi de login
+            const isLoginError = result.error && (
+              result.error.includes('credenciais inválidas') ||
+              result.error.includes('senha incorreta') ||
+              result.error.includes('password') ||
+              result.error.includes('invalid') ||
+              result.error.includes('login falhou') ||
+              result.error.includes('Login falhou') ||
+              result.failedStep === 'Cadastro' // Falha no cadastro/login
+            );
+            
+            // Só marcar como usada se foi erro de login
+            if (isLoginError) {
+              outlookCredentialsService.markAsUsed(emailToMark);
+              logger.info(`🔄 Modo Meta: Credencial Outlook ${emailToMark} marcada como usada (erro de login). Próxima execução usará nova conta.`);
+            } else {
+              logger.info(`ℹ️ Credencial Outlook ${emailToMark} NÃO marcada como usada (erro não é de login: ${result.error || result.failedStep})`);
+            }
+          }
+        }
+        
         // Adicionar erro na timeline
         queue.timeline.errors.push({
           timestamp: getRelativeTimestamp(),
@@ -742,7 +903,44 @@ class QueueManager {
       }
 
       // Registrar falha no histórico
-      const email = execution.credentials?.email || 'N/A';
+      // Tentar obter email do result primeiro (se disponível), depois do execution.credentials
+      let email = 'N/A';
+      try {
+        // Se o executeUserFlow retornou algo antes do erro, pode ter o email no result
+        if (execution.result?.email) {
+          email = execution.result.email;
+        } else if (execution.result?.credentials?.email) {
+          email = execution.result.credentials.email;
+        } else if (execution.credentials?.email) {
+          email = execution.credentials.email;
+        }
+      } catch (e) {
+        // Se não conseguir obter, usar 'N/A'
+      }
+      
+      // IMPORTANTE: Só marcar credencial como usada se foi erro de LOGIN
+      // Não marcar como usada em outros erros (exceções durante o fluxo)
+      const useOutlookValue = queue.useOutlook === true || queue.useOutlook === 'true' || (queue.useOutlook !== false && queue.useOutlook !== 'false' && queue.useOutlook !== undefined);
+      if (queue.forceCredits && useOutlookValue && email && email !== 'N/A') {
+        // Verificar se o erro foi de login
+        const isLoginError = error.message && (
+          error.message.includes('credenciais inválidas') ||
+          error.message.includes('senha incorreta') ||
+          error.message.includes('password') ||
+          error.message.includes('invalid') ||
+          error.message.includes('login falhou') ||
+          error.message.includes('Login falhou') ||
+          error.message.includes('ACCOUNT_ALREADY_EXISTS') // Conta já existe = tentou fazer login
+        );
+        
+        // Só marcar como usada se foi erro de login
+        if (isLoginError) {
+          outlookCredentialsService.markAsUsed(email);
+          logger.info(`🔄 Modo Meta: Credencial Outlook ${email} marcada como usada (erro de login). Próxima execução usará nova conta.`);
+        } else {
+          logger.info(`ℹ️ Credencial Outlook ${email} NÃO marcada como usada (erro não é de login: ${error.message})`);
+        }
+      }
       // Determinar domínio usado (pode estar no execution ou na queue)
       const domain = execution.domain || (queue.selectedDomains && queue.selectedDomains.length > 0 ? queue.selectedDomains[0] : null);
       

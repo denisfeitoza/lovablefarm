@@ -319,11 +319,11 @@
           </div>
 
           <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="queueTurboMode" class="checkbox-input" checked onchange="app.onTurboModeChange()">
+            <label class="checkbox-label" style="opacity: 0.5; cursor: not-allowed;">
+              <input type="checkbox" id="queueTurboMode" class="checkbox-input" disabled onchange="app.onTurboModeChange()">
               <span class="checkbox-custom"></span>
               <div class="checkbox-content">
-                <div class="checkbox-title">⚡ Modo Turbo</div>
+                <div class="checkbox-title">⚡ Modo Turbo <span style="color: #ef4444; font-size: 10px;">(DESATIVADO TEMPORARIAMENTE)</span></div>
                 <div class="checkbox-description">
                   Após verificar o email, pula o quiz e a seleção de template, indo direto para o template fallback. Acelera significativamente a execução.
                 </div>

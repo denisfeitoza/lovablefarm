@@ -68,15 +68,6 @@ export async function completeQuiz(page) {
     const executionTime = Date.now() - startTime;
     logger.error('Erro ao completar quiz', error);
 
-    try {
-      await page.screenshot({ 
-        path: `reports/error-quiz-${Date.now()}.png`,
-        fullPage: true 
-      });
-    } catch (e) {
-      // Ignorar erro de screenshot
-    }
-
     return {
       success: false,
       error: error.message,

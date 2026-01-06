@@ -115,15 +115,6 @@ export async function signup(page, email, password) {
     const executionTime = Date.now() - startTime;
     logger.error('Erro no cadastro', error);
     
-    // Tirar screenshot do erro
-    try {
-      await page.screenshot({ 
-        path: `reports/error-signup-${Date.now()}.png`,
-        fullPage: true 
-      });
-    } catch (e) {
-      // Ignorar erro de screenshot
-    }
 
     return {
       success: false,
@@ -227,15 +218,6 @@ export async function verifyEmail(page, verificationLink) {
   } catch (error) {
     const executionTime = Date.now() - startTime;
     logger.error('Erro na verificação de email', error);
-
-    try {
-      await page.screenshot({ 
-        path: `reports/error-verify-${Date.now()}.png`,
-        fullPage: true 
-      });
-    } catch (e) {
-      // Ignorar erro de screenshot
-    }
 
     return {
       success: false,

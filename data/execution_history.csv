@@ -175,3 +175,96 @@ waiting for navigation until ""load""
 2026-01-06T00:44:32.655Z,queue-2,1,failed,denisfeitozadejesus2@outlook.com,0,"Erro no quiz: page.waitForTimeout: Target page, context or browser has been closed. Fallback também falhou: page.goto: Target page, context or browser has been closed",Quiz de Onboarding,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
 2026-01-06T00:57:01.500Z,queue-3,1,success,denisfeitozadejesus3@outlook.com,10,,,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
 2026-01-06T01:15:29.336Z,queue-4,1,success,denisfeitozadejesus4@outlook.com,10,,,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:00:33.566Z,queue-1,1,failed,fideliaalvaerica8@hotmail.com,0,❌ Nenhuma credencial disponível,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:01:25.109Z,queue-2,1,failed,fideliaalvaerica8@hotmail.com,0,❌ Nenhuma credencial disponível,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:03:45.583Z,queue-3,1,failed,fideliaalvaerica8@hotmail.com,0,❌ Nenhuma credencial disponível,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:07:11.119Z,queue-4,1,failed,fideliaalvaerica8@hotmail.com,0,❌ Nenhuma credencial disponível,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:08:10.277Z,queue-5,1,failed,,0,❌ Nenhuma credencial Outlook disponível. Adicione credenciais na interface.,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:09:12.529Z,queue-6,1,failed,fideliaalvaerica8@hotmail.com,0,❌ Nenhuma credencial disponível,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:18:15.577Z,queue-7,1,failed,fideliaalvaerica8@hotmail.com,0,❌ Nenhuma credencial disponível,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:30:27.330Z,queue-1,1,failed,fideliaalvaerica8@hotmail.com,0,"page.waitForSelector: Target page, context or browser has been closed
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:35:34.547Z,queue-2,1,failed,fideliaalvaerica8@hotmail.com,0,"page.waitForSelector: Target page, context or browser has been closed
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:38:27.980Z,queue-3,1,failed,,0,❌ Nenhuma credencial Outlook disponível. Adicione credenciais na interface.,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:40:14.941Z,queue-4,1,failed,fideliaalvaerica8@hotmail.com,0,"locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Use template"")').first()
+    - locator resolved to <button data-state=""closed"" class=""justify-center whitespace-nowrap text-sm font-medium transition-colors duration-100 ease-in-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md px-4 py-2 flex items-center gap-1 w-full"">Use Template</button>
+  - attempting click action
+    - waiting for element to be visible, enabled and stable
+  - element was detached from the DOM, retrying
+",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:44:26.297Z,queue-5,1,failed,fideliaalvaerica8@hotmail.com,0,"page.evaluate: Execution context was destroyed, most likely because of a navigation",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:49:43.714Z,queue-6,1,success,fideliaalvaerica8@hotmail.com,10,,,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:54:25.695Z,queue-7,1,failed,fideliaalvaerica8@hotmail.com,0,"❌ Falha no login do Outlook: page.waitForTimeout: Target page, context or browser has been closed",Verificação de Email,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T04:59:06.472Z,queue-8,1,failed,,0,❌ Nenhuma credencial Outlook disponível. Adicione credenciais na interface.,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:01:07.585Z,queue-9,1,failed,fideliaalvaerica8@hotmail.com,0,Banner de crédito não encontrado na etapa final,Banner de Créditos no Editor,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:03:11.324Z,queue-10,1,failed,denisfeitozadejesus4@outlook.com,0,Banner de crédito não encontrado na etapa final,Banner de Créditos no Editor,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:08:20.031Z,queue-11,1,failed,denisfeitozadejesus3@outlook.com,0,Banner de crédito não encontrado na etapa final,Banner de Créditos no Editor,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:10:28.979Z,queue-12,1,failed,,0,❌ Nenhuma credencial Outlook disponível. Adicione credenciais na interface.,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:11:39.280Z,queue-13,1,failed,raeelisefarah6@hotmail.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:16:16.289Z,queue-14,1,failed,abnervennstephen1@hotmail.com,0,"page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:18:01.085Z,queue-15,1,failed,raeelisefarah6@hotmail.com,0,"page.goto: Target page, context or browser has been closed
+Call log:
+  - navigating to ""https://lovable.dev/dashboard"", waiting until ""domcontentloaded""
+",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:24:20.209Z,queue-16,1,failed,raeelisefarah6@hotmail.com,0,"page.waitForSelector: Target page, context or browser has been closed
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:32:17.220Z,queue-1,1,failed,agnesgiaddaclementina4@hotmail.com,0,"page.goto: net::ERR_ABORTED at https://lovable.dev/dashboard/templates/websites/blog/perspective-lifestyle
+Call log:
+  - navigating to ""https://lovable.dev/dashboard/templates/websites/blog/perspective-lifestyle"", waiting until ""domcontentloaded""
+",Quiz de Onboarding,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:37:24.419Z,queue-2,1,failed,denisfeitozadejesus4@outlook.com,0,"locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('#email') to be visible
+",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:42:57.228Z,queue-3,1,failed,denisfeitozadejesus2@outlook.com,0,"locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('#email') to be visible
+",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:45:48.608Z,queue-4,1,failed,denisfeitozadejesus3@outlook.com,0,"locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('#email') to be visible
+",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:48:00.018Z,queue-5,1,failed,denisfeitozadejesus3@outlook.com,0,"locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('#email') to be visible
+",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:51:12.178Z,queue-1,1,failed,agnesgiaddaclementina4@hotmail.com,0,"page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+",Navegação após Verificação,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:52:14.856Z,queue-1,2,failed,denisfeitozadejesus4@outlook.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Banner de Créditos no Editor,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:53:13.981Z,queue-2,1,failed,raeelisefarah6@hotmail.com,0,❌ Nenhuma credencial disponível,Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T05:58:37.384Z,queue-3,1,failed,denisfeitozadejesus5@outlook.com,0,"page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+    - waiting for"" https://lovable.dev/getting-started?redirect=%2F%3Fshould-refresh-credentials%3D1"" navigation to finish...
+    - navigated to ""https://lovable.dev/getting-started?redirect=%2F%3Fshould-refresh-credentials%3D1""
+",Navegação após Verificação,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T06:06:46.068Z,queue-1,1,failed,denisfeitozadejesus5@outlook.com,0,"page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+",Navegação após Verificação,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T06:06:53.695Z,queue-1,2,failed,denisfeitozadejesus5@outlook.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T06:11:49.667Z,queue-1,1,failed,denisfeitozadejesus5@outlook.com,0,"page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Remix""), button:has-text(""remix"")') to be visible
+",Navegação após Verificação,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T06:11:53.636Z,queue-1,2,failed,denisfeitozadejesus5@outlook.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T06:19:11.297Z,queue-1,1,failed,denisfeitozadejesus5@outlook.com,0,"page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Remix""), button:has-text(""remix"")') to be visible
+",Navegação após Verificação,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T06:19:16.962Z,queue-1,2,failed,denisfeitozadejesus5@outlook.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Cadastro,,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T06:24:21.947Z,queue-1,1,success,denisfeitozadejesus5@outlook.com,10,,,,https://lovable.dev/signup?referral_code=CV10B39

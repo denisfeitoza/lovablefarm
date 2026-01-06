@@ -88,10 +88,6 @@ export async function openTemplateProject(page) {
     logger.error('Erro ao abrir projeto template', error);
 
     try {
-      await page.screenshot({ 
-        path: `reports/error-template-${Date.now()}.png`,
-        fullPage: true 
-      });
     } catch (e) {
       // Ignorar erro de screenshot
     }
@@ -185,15 +181,6 @@ export async function remixProject(page) {
   } catch (error) {
     const executionTime = Date.now() - startTime;
     logger.error('Erro ao remixar projeto', error);
-
-    try {
-      await page.screenshot({ 
-        path: `reports/error-remix-${Date.now()}.png`,
-        fullPage: true 
-      });
-    } catch (e) {
-      // Ignorar erro de screenshot
-    }
 
     return {
       success: false,
@@ -304,15 +291,6 @@ export async function publishProject(page) {
   } catch (error) {
     const executionTime = Date.now() - startTime;
     logger.error('Erro ao publicar projeto', error);
-
-    try {
-      await page.screenshot({ 
-        path: `reports/error-publish-${Date.now()}.png`,
-        fullPage: true 
-      });
-    } catch (e) {
-      // Ignorar erro de screenshot
-    }
 
     return {
       success: false,

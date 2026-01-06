@@ -176,7 +176,88 @@ router.get('/queues', (req, res) => {
 });
 
 /**
+ * POST /api/queues/:id/start - Iniciar execução de fila
+ * IMPORTANTE: Esta rota deve vir ANTES da rota GET /queues/:id para evitar conflitos
+ */
+router.post('/queues/:id/start', async (req, res) => {
+  try {
+    const queueId = req.params.id;
+    
+    // Iniciar fila de forma assíncrona (não bloquear resposta)
+    queueManager.startQueue(queueId).catch(error => {
+      logger.error(`Erro ao executar fila ${queueId}`, error);
+    });
+    
+    res.json({
+      success: true,
+      message: `Fila ${queueId} iniciada`,
+      queueId
+    });
+  } catch (error) {
+    logger.error('Erro ao iniciar fila', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/queues/:id/stop - Parar execução de fila
+ * IMPORTANTE: Esta rota deve vir ANTES da rota GET /queues/:id para evitar conflitos
+ */
+router.post('/queues/:id/stop', (req, res) => {
+  try {
+    const queueId = req.params.id;
+    queueManager.stopQueue(queueId);
+    
+    res.json({
+      success: true,
+      message: `Fila ${queueId} será parada`
+    });
+  } catch (error) {
+    logger.error('Erro ao parar fila', error);
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/queues/:id - Deletar uma fila
+ * IMPORTANTE: Esta rota deve vir ANTES da rota GET /queues/:id para evitar conflitos
+ */
+router.delete('/queues/:id', (req, res) => {
+  try {
+    const queueId = req.params.id;
+    
+    if (!queueId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID da fila é obrigatório'
+      });
+    }
+    
+    queueManager.deleteQueue(queueId);
+    
+    res.json({
+      success: true,
+      message: `Fila ${queueId} deletada`
+    });
+  } catch (error) {
+    logger.error('Erro ao deletar fila', error);
+    const statusCode = error.message && error.message.includes('não encontrada') ? 404 : 400;
+    res.status(statusCode).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * GET /api/queues/:id - Obter fila específica
+ * IMPORTANTE: Esta rota genérica deve vir DEPOIS das rotas específicas
  */
 router.get('/queues/:id', (req, res) => {
   try {
@@ -295,8 +376,8 @@ router.post('/queues', (req, res) => {
       selectedProxies: selectedProxies || [], // Passar selectedProxies
       simulatedErrors: simulatedErrors || [], // Passar erros simulados
       forceCredits: forceCredits === true || forceCredits === 'true', // Passar forceCredits (buscar créditos a todo custo)
-      turboMode: turboMode === true || turboMode === 'true', // Passar turboMode (modo turbo)
-      checkCreditsBanner: (checkCreditsBanner === true || checkCreditsBanner === 'true') && (turboMode === true || turboMode === 'true'), // Só ativo se turboMode estiver ativo
+      turboMode: false, // DESATIVADO TEMPORARIAMENTE - sempre false
+      checkCreditsBanner: false, // DESATIVADO TEMPORARIAMENTE - sempre false (depende do turboMode)
       enableConcurrentRequests: enableConcurrentRequestsBool, // Ativar teste de requisições simultâneas
       concurrentRequests: concurrentRequestsNum, // Número de requisições simultâneas
       useOutlook: useOutlookBool // Usar modo Outlook
@@ -318,82 +399,6 @@ router.post('/queues', (req, res) => {
   }
 });
 
-/**
- * POST /api/queues/:id/start - Iniciar execução de fila
- */
-router.post('/queues/:id/start', async (req, res) => {
-  try {
-    const queueId = req.params.id;
-    
-    // Iniciar fila de forma assíncrona (não bloquear resposta)
-    queueManager.startQueue(queueId).catch(error => {
-      logger.error(`Erro ao executar fila ${queueId}`, error);
-    });
-    
-    res.json({
-      success: true,
-      message: `Fila ${queueId} iniciada`,
-      queueId
-    });
-  } catch (error) {
-    logger.error('Erro ao iniciar fila', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-/**
- * POST /api/queues/:id/stop - Parar execução de fila
- */
-router.post('/queues/:id/stop', (req, res) => {
-  try {
-    const queueId = req.params.id;
-    queueManager.stopQueue(queueId);
-    
-    res.json({
-      success: true,
-      message: `Fila ${queueId} será parada`
-    });
-  } catch (error) {
-    logger.error('Erro ao parar fila', error);
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-/**
- * DELETE /api/queues/:id - Deletar uma fila
- */
-router.delete('/queues/:id', (req, res) => {
-  try {
-    const queueId = req.params.id;
-    
-    if (!queueId) {
-      return res.status(400).json({
-        success: false,
-        error: 'ID da fila é obrigatório'
-      });
-    }
-    
-    queueManager.deleteQueue(queueId);
-    
-    res.json({
-      success: true,
-      message: `Fila ${queueId} deletada`
-    });
-  } catch (error) {
-    logger.error('Erro ao deletar fila', error);
-    const statusCode = error.message.includes('não encontrada') ? 404 : 400;
-    res.status(statusCode).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
 
 /**
  * GET /api/executions - Listar execuções ativas

@@ -1,4 +1,16 @@
 {
-  "links": {},
-  "lastUpdated": "2026-01-06T01:36:56.764Z"
+  "links": {
+    "https://lovable.dev/signup?referral_code=CV10B39": {
+      "link": "https://lovable.dev/signup?referral_code=CV10B39",
+      "originalLink": "https://lovable.dev/signup?referral_code=CV10B39",
+      "usageCount": 2,
+      "firstUsed": "2026-01-06T04:49:43.715Z",
+      "lastUsed": "2026-01-06T06:24:21.948Z",
+      "queues": [
+        "queue-6",
+        "queue-1"
+      ]
+    }
+  },
+  "lastUpdated": "2026-01-06T06:24:21.948Z"
 }
