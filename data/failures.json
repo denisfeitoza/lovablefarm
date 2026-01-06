@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "failure-1767660272656-vtiuhulpc",
+    "email": "denisfeitozadejesus2@outlook.com",
+    "error": "Erro no quiz: page.waitForTimeout: Target page, context or browser has been closed. Fallback também falhou: page.goto: Target page, context or browser has been closed",
+    "failedStep": "Quiz de Onboarding",
+    "userId": 1,
+    "queueId": "queue-2",
+    "domain": "funcionariosartificiais.com",
+    "errorCategory": "other_error",
+    "timestamp": "2026-01-06T00:44:32.656Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "failure-1767659658685-adtj6eeb9",
+    "email": "agnesgiaddaclementina4@hotmail.com",
+    "error": "❌ Todas as credenciais tentadas já possuem conta cadastrada",
+    "failedStep": "Cadastro",
+    "userId": 1,
+    "queueId": "queue-1",
+    "domain": "funcionariosartificiais.com",
+    "errorCategory": "other_error",
+    "timestamp": "2026-01-06T00:34:18.685Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  }
+]

@@ -201,6 +201,15 @@ body {
   background: #059669;
 }
 
+.btn-warning {
+  background: var(--warning);
+  color: white;
+}
+
+.btn-warning:hover {
+  background: #d97706;
+}
+
 .btn-danger {
   background: var(--danger);
   color: white;
@@ -1498,4 +1507,131 @@ body {
 .footer-content strong {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+/* Outlook Credentials Styles */
+.panel-outlook {
+  margin-top: 16px;
+}
+
+.panel-referral-links {
+  margin-top: 16px;
+}
+
+.referral-links-stats {
+  padding: 12px;
+}
+
+.outlook-stats {
+  padding: 12px;
+}
+
+.outlook-stats-inline {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-mini .stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-mini .stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.outlook-stats-box {
+  display: flex;
+  gap: 24px;
+  padding: 16px;
+  background: var(--bg-darker);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-item .stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.stat-item .stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border);
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Outlook Credential Item */
+.outlook-credential-item {
+  transition: all 0.2s;
+}
+
+.outlook-credential-item:hover {
+  border-color: var(--primary);
+  transform: translateX(4px);
+}
+
+.outlook-credential-item.used {
+  opacity: 0.6;
+}
+
+.outlook-credential-item.used .stat-value {
+  color: var(--text-secondary);
 }

@@ -1,22 +1,32 @@
 [
   {
-    "id": "success-1766901603952-ajk9p14w4",
-    "email": "gustavocavalcanti7157@funcionariosdeia.com",
-    "userId": 2,
-    "queueId": "queue-1",
-    "domain": "funcionariosdeia.com",
-    "creditsEarned": 10,
-    "timestamp": "2025-12-28T06:00:03.952Z",
-    "referralLink": "https://lovable.dev/signup?referral_code=2LHWFWG"
-  },
-  {
-    "id": "success-1766901602728-7tssf49eh",
-    "email": "leandro.frei5119@funcionariosartificiais.com",
+    "id": "success-1767662129337-6dupxxa47",
+    "email": "denisfeitozadejesus4@outlook.com",
     "userId": 1,
-    "queueId": "queue-1",
+    "queueId": "queue-4",
     "domain": "funcionariosartificiais.com",
     "creditsEarned": 10,
-    "timestamp": "2025-12-28T06:00:02.728Z",
-    "referralLink": "https://lovable.dev/signup?referral_code=2LHWFWG"
+    "timestamp": "2026-01-06T01:15:29.337Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "success-1767661021501-m5dy286qr",
+    "email": "denisfeitozadejesus3@outlook.com",
+    "userId": 1,
+    "queueId": "queue-3",
+    "domain": "funcionariosartificiais.com",
+    "creditsEarned": 10,
+    "timestamp": "2026-01-06T00:57:01.501Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "success-1767568925527-pab7zmhwo",
+    "email": "marianaaraujo8594@vindia.com.br",
+    "userId": 3,
+    "queueId": "queue-1",
+    "domain": "vindia.com.br",
+    "creditsEarned": 10,
+    "timestamp": "2026-01-04T23:22:05.527Z",
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
   }
 ]

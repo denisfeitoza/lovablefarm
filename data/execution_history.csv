@@ -1,0 +1,177 @@
+timestamp,queueId,userId,status,email,creditsEarned,error,failedStep,domain,referralLink
+2026-01-04T23:05:34.443Z,queue-1,1,failed,bruna9144barbosa@funcionariosartificiais.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.458Z,queue-1,3,failed,leticia7653fernandes@vindia.com.br,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.462Z,queue-1,4,failed,agomes1986@socialmediadebolso.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,socialmediadebolso.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.468Z,queue-1,5,failed,paulo.araujo0143@outlierconsorcios.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,outlierconsorcios.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.477Z,queue-1,6,failed,ricardo.azevedo4002@funcionariosartificiais.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.488Z,queue-1,7,failed,b.pereira9993@funcionariosdeia.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.554Z,queue-1,8,failed,f.fernandes1827@vindia.com.br,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.574Z,queue-1,9,failed,francisco8898@socialmediadebolso.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,socialmediadebolso.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:34.579Z,queue-1,10,failed,f.cardoso8904@outlierconsorcios.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,outlierconsorcios.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:05:36.436Z,queue-1,2,failed,fernando.m2439@funcionariosdeia.com,0,"browserType.launchPersistentContext: Executable doesn't exist at /Users/denisfeitozadejesus/Library/Caches/ms-playwright/chromium-1200/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝",Cadastro,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:09:56.074Z,queue-2,2,failed,vanessa_barbosa7828@funcionariosdeia.com,0,"page.reload: Target page, context or browser has been closed",Banner de Créditos no Editor,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:09:58.820Z,queue-2,1,failed,andre.arau0436@funcionariosartificiais.com,0,"page.reload: Target page, context or browser has been closed",Banner de Créditos no Editor,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:13:17.335Z,queue-3,3,failed,bsouza3143@vindia.com.br,0,Banner de crédito não encontrado na etapa final,Banner de Créditos no Editor,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:14:34.132Z,queue-3,4,failed,francisco.nascimento6763@socialmediadebolso.com,0,Banner de crédito não encontrado na etapa final,Banner de Créditos no Editor,socialmediadebolso.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:14:38.140Z,queue-3,2,failed,martins8377@funcionariosdeia.com,0,"page.reload: Target page, context or browser has been closed",Banner de Créditos no Editor,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:14:47.940Z,queue-3,1,failed,carolina2528@funcionariosartificiais.com,0,"page.reload: Target page, context or browser has been closed",Banner de Créditos no Editor,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:15:47.797Z,queue-3,5,failed,claudiacardoso7572@outlierconsorcios.com,0,"page.evaluate: Target page, context or browser has been closed",Banner de Créditos no Editor,outlierconsorcios.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:15:50.389Z,queue-3,7,failed,jessica.lima4682@funcionariosdeia.com,0,"page.reload: Target page, context or browser has been closed",Banner de Créditos no Editor,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:16:02.915Z,queue-3,6,failed,carvalho8325@funcionariosartificiais.com,0,"page.reload: Target page, context or browser has been closed",Banner de Créditos no Editor,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:16:37.180Z,queue-3,9,failed,almeida3327@socialmediadebolso.com,0,❌ Email de verificação não recebido após 5 tentativas para almeida3327@socialmediadebolso.com. Verifique se o email está correto e se o domínio está configurado no Inbound.new,Verificação de Email,socialmediadebolso.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:16:37.993Z,queue-3,8,failed,francisco.viei5000@vindia.com.br,0,"page.waitForTimeout: Target page, context or browser has been closed",Banner de Créditos no Editor,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:16:41.301Z,queue-4,2,failed,gustavo.ferr8408@funcionariosdeia.com,0,"page.goto: net::ERR_ABORTED; maybe frame was detached?
+Call log:
+  - navigating to ""https://lovable.dev/signup?referral_code=FDKI2B1"", waiting until ""domcontentloaded""
+",Cadastro,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:16:42.432Z,queue-4,4,failed,martins1005@socialmediadebolso.com,0,"page.goto: net::ERR_ABORTED; maybe frame was detached?
+Call log:
+  - navigating to ""https://lovable.dev/signup?referral_code=FDKI2B1"", waiting until ""domcontentloaded""
+",Cadastro,socialmediadebolso.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:16:43.149Z,queue-4,1,failed,carolina_ribeiro8363@funcionariosartificiais.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Cadastro,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:17:32.014Z,queue-4,3,failed,r.costa2522@vindia.com.br,0,❌ Email de verificação não recebido após 5 tentativas para r.costa2522@vindia.com.br. Verifique se o email está correto e se o domínio está configurado no Inbound.new,Verificação de Email,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:17:34.019Z,queue-4,5,failed,vanessa1338lima@outlierconsorcios.com,0,"page.waitForSelector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text(""Use template"")') to be visible
+",Verificação de Email,outlierconsorcios.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:18:02.269Z,queue-5,2,failed,claudia9661lima@funcionariosdeia.com,0,"Erro na verificação: page.goto: Target page, context or browser has been closed. Fallback também falhou: page.goto: Target page, context or browser has been closed",Verificação de Email,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:18:02.856Z,queue-4,6,failed,andre.card2926@funcionariosartificiais.com,0,"Erro no quiz: Banner/popup de créditos não encontrado. Email: andre.card2926@funcionariosartificiais.com. Fallback também falhou: page.waitForTimeout: Target page, context or browser has been closed",Quiz de Onboarding,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:18:26.354Z,queue-5,3,failed,patricia9926freitas@vindia.com.br,0,❌ Email de verificação não recebido após 5 tentativas para patricia9926freitas@vindia.com.br. Verifique se o email está correto e se o domínio está configurado no Inbound.new,Verificação de Email,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:18:52.431Z,queue-5,1,failed,jsouza2826@funcionariosartificiais.com,0,"Erro no quiz: Banner/popup de créditos não encontrado. Email: jsouza2826@funcionariosartificiais.com. Fallback também falhou: locator.click: Target page, context or browser has been closed
+Call log:
+  - waiting for locator('button:has-text(""Remix""), button:has-text(""remix"")').first()
+    - locator resolved to <button disabled class=""inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors duration-100 ease-in-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md px-4 py-2"">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    - waiting for element to be visible, enabled and stable
+    - element is not enabled
+  - retrying click action
+    - waiting 500ms
+    - waiting for element to be visible, enabled and stable
+  - element was detached from the DOM, retrying
+",Quiz de Onboarding,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:22:05.525Z,queue-1,3,success,marianaaraujo8594@vindia.com.br,10,,,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:26:28.257Z,queue-1,2,failed,r.oliveira5411@funcionariosdeia.com,0,"Erro no quiz: Banner/popup de créditos não encontrado. Email: r.oliveira5411@funcionariosdeia.com. Fallback também falhou: page.goto: net::ERR_ABORTED at https://lovable.dev/dashboard/templates/websites/blog/perspective-lifestyle
+Call log:
+  - navigating to ""https://lovable.dev/dashboard/templates/websites/blog/perspective-lifestyle"", waiting until ""domcontentloaded""
+",Quiz de Onboarding,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:26:31.725Z,queue-1,1,failed,beatriz.viei4210@funcionariosartificiais.com,0,Erro no quiz: Banner/popup de créditos não encontrado. Email: beatriz.viei4210@funcionariosartificiais.com. Fallback também falhou: ❌ Erro de conta - Ability to remix is limited for your account. Conta inválida para remix.,Quiz de Onboarding,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:26:44.198Z,queue-1,3,failed,maria_pereira6805@vindia.com.br,0,"Erro ao selecionar template: page.waitForSelector: Target page, context or browser has been closed
+Call log:
+  - waiting for locator('text=""Templates""') to be visible
+. Fallback também falhou: page.goto: Target page, context or browser has been closed",Seleção de Template,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:29:48.490Z,queue-1,3,failed,carolina_costa5495@vindia.com.br,0,❌ Email de verificação não recebido após 5 tentativas para carolina_costa5495@vindia.com.br. Verifique se o email está correto e se o domínio está configurado no Inbound.new,Verificação de Email,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:30:13.657Z,queue-1,1,failed,claudia7796cavalcanti@funcionariosartificiais.com,0,Erro no quiz: Banner/popup de créditos não encontrado. Email: claudia7796cavalcanti@funcionariosartificiais.com. Fallback também falhou: ❌ Erro de conta - Ability to remix is limited for your account. Conta inválida para remix.,Quiz de Onboarding,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:30:14.419Z,queue-1,2,failed,joao_rodrigues3216@funcionariosdeia.com,0,Erro no quiz: Banner/popup de créditos não encontrado. Email: joao_rodrigues3216@funcionariosdeia.com. Fallback também falhou: ❌ Erro de conta - Ability to remix is limited for your account. Conta inválida para remix.,Quiz de Onboarding,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:32:00.241Z,queue-1,1,failed,carlos.campos3487@funcionariosartificiais.com,0,"Erro na verificação: page.waitForURL: Target page, context or browser has been closed
+=========================== logs ===========================
+waiting for navigation until ""load""
+  navigated to ""https://lovable.dev/auth/action?mode=verifyEmail&oobCode=UlqzPLN3ciMDrccJ_fvt0h6oL8qw_nK_Rr4LA_AP6YsAAAGbi1ofng&apiKey=AIzaSyBQNjlw9Vp4tP4VVeANzyPJnqbG2wLbYPw&lang=en""
+============================================================. Fallback também falhou: page.goto: Target page, context or browser has been closed",Verificação de Email,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:32:05.576Z,queue-1,3,failed,felipe_freitas7297@vindia.com.br,0,"Erro na verificação: page.goto: Target page, context or browser has been closed. Fallback também falhou: page.goto: Target page, context or browser has been closed",Verificação de Email,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:32:09.558Z,queue-1,2,failed,leandroazevedo6256@funcionariosdeia.com,0,"Erro na verificação: page.waitForURL: Target page, context or browser has been closed
+=========================== logs ===========================
+waiting for navigation until ""load""
+  navigated to ""https://lovable.dev/auth/action?mode=verifyEmail&oobCode=Kq_0ppebypTfSeLnyBwVH5DdjsVfaOaacgjhTfWj98sAAAGbi1oiSA&apiKey=AIzaSyBQNjlw9Vp4tP4VVeANzyPJnqbG2wLbYPw&lang=en""
+============================================================. Fallback também falhou: page.goto: Target page, context or browser has been closed",Verificação de Email,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:32:22.554Z,queue-1,4,failed,larissa.s3817@socialmediadebolso.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Cadastro,socialmediadebolso.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:32:26.108Z,queue-1,5,failed,monica_cardoso9670@outlierconsorcios.com,0,"page.waitForTimeout: Target page, context or browser has been closed",Cadastro,outlierconsorcios.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:36:58.137Z,queue-1,3,failed,a.carvalho7447@vindia.com.br,0,❌ Email de verificação não recebido após 5 tentativas para a.carvalho7447@vindia.com.br. Verifique se o email está correto e se o domínio está configurado no Inbound.new,Verificação de Email,vindia.com.br,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:37:23.134Z,queue-1,1,failed,bruno.ribeiro3059@funcionariosartificiais.com,0,Erro no quiz: Banner/popup de créditos não encontrado. Email: bruno.ribeiro3059@funcionariosartificiais.com. Fallback também falhou: ❌ Erro de conta - Ability to remix is limited for your account. Conta inválida para remix.,Quiz de Onboarding,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:37:24.866Z,queue-1,2,failed,francisco.n4564@funcionariosdeia.com,0,Erro no quiz: Banner/popup de créditos não encontrado. Email: francisco.n4564@funcionariosdeia.com. Fallback também falhou: ❌ Erro de conta - Ability to remix is limited for your account. Conta inválida para remix.,Quiz de Onboarding,funcionariosdeia.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:37:51.150Z,queue-1,4,failed,gvieira8170@socialmediadebolso.com,0,❌ Email de verificação não recebido após 5 tentativas para gvieira8170@socialmediadebolso.com. Verifique se o email está correto e se o domínio está configurado no Inbound.new,Verificação de Email,socialmediadebolso.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-04T23:38:25.752Z,queue-1,5,failed,v.silva6448@outlierconsorcios.com,0,"Erro no quiz: page.waitForTimeout: Target page, context or browser has been closed. Fallback também falhou: page.goto: Target page, context or browser has been closed",Quiz de Onboarding,outlierconsorcios.com,https://lovable.dev/signup?referral_code=FDKI2B1
+2026-01-06T00:22:46.089Z,queue-1,1,failed,beatriz4532almeida@funcionariosartificiais.com,0,"Erro na verificação: page.goto: Target page, context or browser has been closed. Fallback também falhou: page.goto: Target page, context or browser has been closed",Verificação de Email,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T00:24:45.661Z,queue-2,1,failed,a.ribeiro3896@funcionariosartificiais.com,0,❌ Botão Create/Criar não encontrado ou não foi possível clicar,Cadastro,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T00:26:33.371Z,queue-1,1,failed,agnesgiaddaclementina4@hotmail.com,0,❌ Todas as credenciais tentadas já possuem conta cadastrada,Cadastro,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T00:34:18.683Z,queue-1,1,failed,agnesgiaddaclementina4@hotmail.com,0,❌ Todas as credenciais tentadas já possuem conta cadastrada,Cadastro,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T00:44:32.655Z,queue-2,1,failed,denisfeitozadejesus2@outlook.com,0,"Erro no quiz: page.waitForTimeout: Target page, context or browser has been closed. Fallback também falhou: page.goto: Target page, context or browser has been closed",Quiz de Onboarding,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T00:57:01.500Z,queue-3,1,success,denisfeitozadejesus3@outlook.com,10,,,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39
+2026-01-06T01:15:29.336Z,queue-4,1,success,denisfeitozadejesus4@outlook.com,10,,,funcionariosartificiais.com,https://lovable.dev/signup?referral_code=CV10B39

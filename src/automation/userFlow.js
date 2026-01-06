@@ -3,7 +3,10 @@ import { logger } from '../utils/logger.js';
 import { config } from '../utils/config.js';
 import { emailService } from '../services/emailService.js';
 import { proxyService } from '../services/proxyService.js';
+import { outlookCredentialsService } from '../services/outlookCredentialsService.js';
+import { getTimeout, getDelay } from '../utils/timeouts.js';
 import { signupOnLovable, verifyEmailInSameSession, completeOnboardingQuiz, selectTemplate, useTemplateAndPublish, fallbackToTemplate } from './lovableFlow.js';
+import { loginToOutlook } from './outlookLogin.js';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -19,8 +22,9 @@ import fs from 'fs';
  * @param {boolean} checkCreditsBanner - Se true, verifica banner de créditos no editor antes de publicar (só funciona com turboMode) (opcional)
  * @param {boolean} enableConcurrentRequests - Se true, ativa teste de requisições simultâneas (opcional)
  * @param {number} concurrentRequests - Número de requisições simultâneas a fazer (padrão: 100) (opcional)
+ * @param {boolean} useOutlook - Se true, usa credenciais do Outlook em vez de email temporário (opcional)
  */
-export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false, checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 100) {
+export async function executeUserFlow(userId, referralLink, domain = null, proxyString = null, simulatedErrors = [], turboMode = false, checkCreditsBanner = false, enableConcurrentRequests = false, concurrentRequests = 100, useOutlook = false) {
   const startTime = Date.now();
   const result = {
     userId,
@@ -44,13 +48,48 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
     logger.info(`\n${'='.repeat(60)}`);
     logger.info(`🚀 Iniciando fluxo do usuário ${userId}`);
     if (domain) logger.info(`📧 Usando domínio específico: ${domain}`);
+    logger.info(`📬 Modo Outlook recebido: ${useOutlook} (tipo: ${typeof useOutlook})`);
+    if (useOutlook) {
+      logger.info(`📧 Usando modo Outlook (credenciais reais)`);
+    } else {
+      logger.info(`📧 Usando modo Inbound (email temporário)`);
+    }
     logger.info(`${'='.repeat(60)}\n`);
 
-    // 1. Gerar email temporário único (com domínio específico se fornecido)
-    logger.info('📧 Gerando email temporário...');
-    const emailData = await emailService.generateEmail(userId, domain);
-    result.email = emailData.email;
-    logger.success(`Email gerado: ${emailData.email}`);
+    // 1. Obter email (Outlook ou temporário)
+    let emailData = null;
+    let outlookCredential = null;
+    let outlookEmail = null;
+    let outlookPassword = null;
+    
+    // Verificar explicitamente se useOutlook é true (suporta boolean e string)
+    const shouldUseOutlook = useOutlook === true || useOutlook === 'true' || (useOutlook !== false && useOutlook !== 'false' && useOutlook !== undefined && useOutlook !== null);
+    
+    logger.info(`🔍 Verificação useOutlook: valor=${useOutlook}, tipo=${typeof useOutlook}, shouldUseOutlook=${shouldUseOutlook}`);
+    
+    if (shouldUseOutlook) {
+      // Modo Outlook: obter credencial disponível (o retry será feito durante o cadastro)
+      logger.info('📧 Obtendo credencial Outlook disponível...');
+      outlookCredential = outlookCredentialsService.getNextUnusedCredential();
+      
+      if (!outlookCredential) {
+        throw new Error('❌ Nenhuma credencial Outlook disponível. Adicione credenciais na interface.');
+      }
+      
+      outlookEmail = outlookCredential.email;
+      outlookPassword = outlookCredential.password;
+      
+      emailData = { email: outlookEmail };
+      result.email = outlookEmail;
+      logger.success(`✅ Credencial Outlook obtida: ${outlookEmail}`);
+    } else {
+      // Modo normal: gerar email temporário
+      logger.info('📧 Gerando email temporário...');
+      logger.info(`⚠️ useOutlook é ${useOutlook} (tipo: ${typeof useOutlook}), usando modo Inbound`);
+      emailData = await emailService.generateEmail(userId, domain);
+      result.email = emailData.email;
+      logger.success(`Email gerado: ${emailData.email}`);
+    }
 
     // 2. Configurar proxy (usar proxy específico se fornecido, senão tentar obter um)
     let finalProxyString = proxyString;
@@ -107,92 +146,328 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
     
     logger.info(`✅ Navegador anônimo iniciado (${context.pages().length} página)`);
 
-    // 4. Realizar cadastro na Lovable
+    // 4. Realizar cadastro na Lovable PRIMEIRO (antes do login no Outlook)
     logger.info('\n📝 Etapa 1: Cadastro na Lovable');
     logger.info(`🔗 Usando link de indicação: ${referralLink}`);
-    const password = generateRandomPassword();
+    
+    let password;
+    let signupResult;
+    
+    if (useOutlook) {
+      // Modo Outlook: usar senha do Outlook e fazer retry automático se conta já existir
+      password = outlookPassword;
+      let maxRetries = 5;
+      let retryCount = 0;
+      let cadastroSucesso = false;
+      
+      while (retryCount < maxRetries && !cadastroSucesso) {
+        try {
+          logger.info(`🔄 Tentativa ${retryCount + 1}/${maxRetries} com credencial: ${outlookEmail}`);
+          signupResult = await signupOnLovable(page, emailData.email, password, userId, referralLink, usingProxy);
+          result.steps.signup = signupResult.executionTime;
+          cadastroSucesso = true;
+          logger.success(`✅ Cadastro bem-sucedido com ${outlookEmail}`);
+        } catch (signupError) {
+          // Se a conta já existe, marcar credencial como usada e tentar próxima
+          if (signupError.message === 'ACCOUNT_ALREADY_EXISTS') {
+            outlookCredentialsService.markAsUsed(outlookEmail);
+            logger.warning(`⚠️ Conta ${outlookEmail} já existe - marcada como usada`);
+            retryCount++;
+            
+            // Verificar se ainda há tentativas disponíveis
+            if (retryCount >= maxRetries) {
+              logger.error(`❌ Limite de tentativas (${maxRetries}) atingido`);
+              throw new Error('❌ Todas as credenciais tentadas já possuem conta cadastrada');
+            }
+            
+            // Obter próxima credencial
+            logger.info(`🔍 Buscando próxima credencial disponível...`);
+            const stats = outlookCredentialsService.getStats();
+            logger.info(`📊 Estatísticas: ${stats.unused} disponíveis de ${stats.total} total`);
+            
+            const nextCredential = outlookCredentialsService.getNextUnusedCredential();
+            if (!nextCredential) {
+              logger.error(`❌ Nenhuma credencial disponível encontrada (${stats.unused} disponíveis de ${stats.total} total)`);
+              throw new Error(`❌ Todas as credenciais disponíveis já possuem conta cadastrada. Adicione mais credenciais ou resete o status das existentes.`);
+            }
+            
+            outlookEmail = nextCredential.email;
+            outlookPassword = nextCredential.password;
+            emailData = { email: outlookEmail };
+            result.email = outlookEmail;
+            password = outlookPassword;
+            logger.success(`✅ Nova credencial Outlook obtida: ${outlookEmail}`);
+            
+            // Navegar de volta para a página de cadastro antes de tentar novamente
+            logger.info('🔄 Navegando de volta para página de cadastro...');
+            await page.goto(referralLink, { waitUntil: 'domcontentloaded', timeout: getTimeout(30000, usingProxy) });
+            await page.waitForTimeout(getDelay(2000, usingProxy));
+            logger.info('✅ Página de cadastro recarregada, tentando novamente...');
+            
+            continue; // Tentar novamente com nova credencial
+          }
+          // Se for outro erro, lançar normalmente
+          throw signupError;
+        }
+      }
+      
+      if (!cadastroSucesso) {
+        throw new Error('❌ Todas as credenciais tentadas já possuem conta cadastrada');
+      }
+    } else {
+      // Modo normal: gerar senha aleatória
+      password = generateRandomPassword();
+      signupResult = await signupOnLovable(page, emailData.email, password, userId, referralLink, usingProxy);
+      result.steps.signup = signupResult.executionTime;
+    }
     
     // Salvar credenciais no resultado para o dashboard
     result.credentials = {
       email: emailData.email,
       password: password
     };
-    
-    const signupResult = await signupOnLovable(page, emailData.email, password, userId, referralLink, usingProxy);
-    result.steps.signup = signupResult.executionTime;
 
     // 5. Aguardar email de verificação
     logger.info('\n📬 Etapa 2: Aguardando Email de Verificação');
-    const verificationEmail = await emailService.waitForVerificationEmail(
-      emailData, // Passa o objeto completo com email, proxyId, etc
-      5, // 5 tentativas × 3s = 15s total
-      3000 // 3 segundos entre tentativas
-    );
     
-    // 6. Extrair link de verificação com fallback
-    let verificationLink;
-    try {
-      verificationLink = emailService.extractVerificationLink(verificationEmail);
-    } catch (linkError) {
-      logger.error('❌ Erro ao extrair link de verificação:', linkError.message);
-      // Se não encontrou o link, fazer fallback para template (como se a verificação tivesse falhado)
-      logger.warning('⚠️ Link de verificação não encontrado no email. Fazendo fallback para template...');
-      await fallbackToTemplate(page, userId, usingProxy);
-      result.steps.emailVerification = 0; // Marcado como pulado (fallback usado)
+    let verificationLink = null;
+    
+    if (useOutlook) {
+      // Modo Outlook: fazer login no Outlook e buscar email de verificação
+      logger.info('📧 Fazendo login no Outlook para buscar email de verificação...');
       
-      // Continuar fluxo a partir do template (independente do modo)
-      if (turboMode) {
-        result.steps.onboardingQuiz = 0; // Marcado como pulado
-        result.steps.selectTemplate = 0; // Marcado como pulado
-        logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo - Fallback)');
-        const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
-        result.steps.useTemplateAndPublish = publishResult.executionTime;
-        
-        // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
-        // O projeto foi publicado, mas não encontrou o banner, então é uma falha
-        if (!publishResult.success) {
-          result.success = false;
-          result.error = publishResult.error || 'Erro ao publicar projeto';
-          result.failedStep = 'Banner de Créditos no Editor';
-          logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
-          return result;
+      // Fazer login no Outlook
+      logger.info('\n🔐 Login no Outlook');
+      const outlookLoginResult = await loginToOutlook(page, outlookEmail, outlookPassword, usingProxy);
+      result.steps.outlookLogin = outlookLoginResult.executionTime;
+      
+      if (!outlookLoginResult.success) {
+        // Se o erro é de verificação de segurança, marcar credencial como usada e lançar erro específico
+        if (outlookLoginResult.requiresVerification) {
+          logger.error(`❌ Email ${outlookEmail} requer verificação de segurança`);
+          logger.error('📧 Email cadastrado com email de verificação - não é possível prosseguir');
+          throw new Error(`Email cadastrado com email de verificação: ${outlookEmail}`);
         }
-      } else {
-        // Modo normal: continuar com quiz e depois publicar
-        logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding (Fallback)');
-        const quizResult = await completeOnboardingQuiz(page, userId, emailData.email, usingProxy);
-        result.steps.onboardingQuiz = quizResult.executionTime;
-        
-        logger.info('\n🎨 Etapa 5: Seleção de Template (já no template via fallback)');
-        result.steps.selectTemplate = 0; // Já estamos no template
-        
-        logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Fallback)');
-        const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false);
-        result.steps.useTemplateAndPublish = publishResult.executionTime;
-        
-        // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
-        // O projeto foi publicado, mas não encontrou o banner, então é uma falha
-        if (!publishResult.success) {
-          result.success = false;
-          result.error = publishResult.error || 'Erro ao publicar projeto';
-          result.failedStep = 'Banner de Créditos no Editor';
-          logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
-          return result;
-        }
+        throw new Error(`❌ Falha no login do Outlook: ${outlookLoginResult.error}`);
       }
       
-      // Marcar como sucesso após fallback
-      result.success = true;
-      result.creditsEarned = 10;
-      result.executionTime = Date.now() - startTime;
-      logger.success(`✅ Usuário ${userId} completou via fallback após erro no link!`);
-      return result;
+      logger.success('✅ Login no Outlook concluído');
+      
+      // Navegar para o Outlook e buscar email de verificação
+      logger.info('📧 Navegando para o Outlook e buscando email de verificação...');
+      await page.goto('https://outlook.live.com/mail/0/', { 
+        waitUntil: 'domcontentloaded', 
+        timeout: getTimeout(30000, usingProxy) 
+      });
+      await page.waitForTimeout(getDelay(3000, usingProxy));
+      
+      // Buscar e clicar no email de verificação
+      logger.info('🔍 Procurando email de verificação da Lovable...');
+      await page.waitForTimeout(getDelay(2000, usingProxy));
+      
+      // Clicar no email
+      const emailClicked = await page.evaluate(() => {
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+        
+        let node;
+        const candidates = [];
+        
+        while (node = walker.nextNode()) {
+          const text = node.textContent.toLowerCase().trim();
+          if (text.includes('verify your email') && 
+              (text.includes('lovable.dev') || text.includes('lovable')) &&
+              !text.includes('microsoft')) {
+            let parent = node.parentElement;
+            let depth = 0;
+            while (parent && parent !== document.body && depth < 10) {
+              const style = window.getComputedStyle(parent);
+              const isVisible = parent.offsetParent !== null && 
+                               style.display !== 'none' &&
+                               style.visibility !== 'hidden';
+              
+              if (isVisible) {
+                const tagName = parent.tagName.toLowerCase();
+                const hasClick = parent.onclick !== null || 
+                                parent.getAttribute('onclick') !== null ||
+                                tagName === 'a' ||
+                                tagName === 'button' ||
+                                parent.getAttribute('role') === 'button' ||
+                                parent.getAttribute('tabindex') !== null;
+                
+                if (hasClick || parent.style.cursor === 'pointer') {
+                  candidates.push({ element: parent, depth: depth });
+                }
+              }
+              parent = parent.parentElement;
+              depth++;
+            }
+          }
+        }
+        
+        candidates.sort((a, b) => a.depth - b.depth);
+        
+        for (const candidate of candidates) {
+          try {
+            candidate.element.click();
+            return true;
+          } catch (e) {
+            const clickEvent = new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              button: 0
+            });
+            candidate.element.dispatchEvent(clickEvent);
+            return true;
+          }
+        }
+        return false;
+      });
+      
+      if (!emailClicked) {
+        throw new Error('❌ Não foi possível abrir o email de verificação no Outlook');
+      }
+      
+      logger.success('✅ Email de verificação aberto');
+      await page.waitForTimeout(getDelay(3000, usingProxy));
+      
+      // Extrair link de verificação do email
+      logger.info('🔗 Extraindo link de verificação do email...');
+      verificationLink = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('a[href]'));
+        
+        for (const link of links) {
+          const href = (link.getAttribute('href') || '').toLowerCase();
+          const isVisible = link.offsetParent !== null;
+          
+          if (isVisible && 
+              href.includes('lovable.dev') && 
+              (href.includes('verify') || href.includes('verifyemail') || href.includes('oobcode') || href.includes('action'))) {
+            return link.href;
+          }
+        }
+        
+        // Fallback: procurar qualquer link do lovable.dev
+        for (const link of links) {
+          const href = (link.getAttribute('href') || '').toLowerCase();
+          if (href.includes('lovable.dev')) {
+            return link.href;
+          }
+        }
+        
+        return null;
+      });
+      
+      if (!verificationLink) {
+        throw new Error('❌ Link de verificação não encontrado no email');
+      }
+      
+      logger.success(`✅ Link de verificação encontrado: ${verificationLink.substring(0, 80)}...`);
+      
+      // Navegar para o link de verificação (volta para o Lovable)
+      logger.info('🔗 Navegando para o link de verificação...');
+      await page.goto(verificationLink, { 
+        waitUntil: 'domcontentloaded', 
+        timeout: getTimeout(30000, usingProxy) 
+      });
+      await page.waitForTimeout(getDelay(2000, usingProxy));
+      
+      logger.success('✅ Link de verificação clicado, voltando para o Lovable');
+      
+      // Aguardar redirect completar
+      try {
+        await page.waitForURL(url => {
+          const urlStr = url.toString();
+          return !urlStr.includes('auth/action') && !urlStr.includes('verify-email');
+        }, { timeout: getTimeout(30000, usingProxy) });
+        logger.success('✅ Redirect do link de verificação completado');
+      } catch (e) {
+        logger.warning('⚠️ Timeout aguardando redirect, mas continuando...');
+      }
+      
+      result.steps.emailVerification = Date.now() - startTime;
+    } else {
+      // Modo normal: usar serviço de email temporário
+      const verificationEmail = await emailService.waitForVerificationEmail(
+        emailData, // Passa o objeto completo com email, proxyId, etc
+        5, // 5 tentativas × 3s = 15s total
+        3000 // 3 segundos entre tentativas
+      );
+      
+      // Extrair link de verificação
+      try {
+        verificationLink = emailService.extractVerificationLink(verificationEmail);
+      } catch (linkError) {
+        logger.error('❌ Erro ao extrair link de verificação:', linkError.message);
+        // Se não encontrou o link, fazer fallback para template (como se a verificação tivesse falhado)
+        logger.warning('⚠️ Link de verificação não encontrado no email. Fazendo fallback para template...');
+        await fallbackToTemplate(page, userId, usingProxy);
+        result.steps.emailVerification = 0; // Marcado como pulado (fallback usado)
+        
+        // Continuar fluxo a partir do template (independente do modo)
+        if (turboMode) {
+          result.steps.onboardingQuiz = 0; // Marcado como pulado
+          result.steps.selectTemplate = 0; // Marcado como pulado
+          logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Modo Turbo - Fallback)');
+          const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, checkCreditsBanner);
+          result.steps.useTemplateAndPublish = publishResult.executionTime;
+          
+          // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
+          // O projeto foi publicado, mas não encontrou o banner, então é uma falha
+          if (!publishResult.success) {
+            result.success = false;
+            result.error = publishResult.error || 'Erro ao publicar projeto';
+            result.failedStep = 'Banner de Créditos no Editor';
+            logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
+            return result;
+          }
+        } else {
+          // Modo normal: continuar com quiz e depois publicar
+          logger.info('\n📝 Etapa 4: Completando Quiz de Onboarding (Fallback)');
+          const quizResult = await completeOnboardingQuiz(page, userId, emailData.email, usingProxy);
+          result.steps.onboardingQuiz = quizResult.executionTime;
+          
+          logger.info('\n🎨 Etapa 5: Seleção de Template (já no template via fallback)');
+          result.steps.selectTemplate = 0; // Já estamos no template
+          
+          logger.info('\n🚀 Etapa 6: Usando Template e Publicando (Fallback)');
+          const publishResult = await useTemplateAndPublish(page, userId, usingProxy, simulatedErrors, false);
+          result.steps.useTemplateAndPublish = publishResult.executionTime;
+          
+          // Se a publicação falhou (ex: banner não encontrado), marcar como falha mas não lançar erro
+          // O projeto foi publicado, mas não encontrou o banner, então é uma falha
+          if (!publishResult.success) {
+            result.success = false;
+            result.error = publishResult.error || 'Erro ao publicar projeto';
+            result.failedStep = 'Banner de Créditos no Editor';
+            logger.warning(`⚠️ Publicação concluída, mas marcada como falha: ${result.error}`);
+            return result;
+          }
+        }
+        
+        // Marcar como sucesso após fallback
+        result.success = true;
+        result.creditsEarned = 10;
+        result.executionTime = Date.now() - startTime;
+        logger.success(`✅ Usuário ${userId} completou via fallback após erro no link!`);
+        return result;
+      }
     }
     
-    // 6. Clicar no link de verificação NA MESMA SESSÃO
-    logger.info('\n✅ Etapa 3: Clicando em Link de Verificação (mesma sessão)');
-    const verifyResult = await verifyEmailInSameSession(page, verificationLink, userId, usingProxy);
-    result.steps.emailVerification = verifyResult.executionTime;
+    // 6. Se não estava no modo Outlook, clicar no link de verificação NA MESMA SESSÃO
+    if (!useOutlook) {
+      logger.info('\n✅ Etapa 3: Clicando em Link de Verificação (mesma sessão)');
+      const verifyResult = await verifyEmailInSameSession(page, verificationLink, userId, usingProxy);
+      result.steps.emailVerification = verifyResult.executionTime;
+    } else {
+      // No modo Outlook, já clicamos no link e voltamos para o Lovable
+      logger.info('\n✅ Etapa 3: Link de verificação já foi clicado (modo Outlook)');
+    }
 
     // Se modo turbo está ativo, pular quiz e seleção de template, ir direto para fallback
     if (turboMode) {
@@ -253,6 +528,12 @@ export async function executeUserFlow(userId, referralLink, domain = null, proxy
     logger.success(`💰 Créditos gerados: ${result.creditsEarned}`);
     logger.success(`⏱️  Tempo total: ${result.executionTime}ms`);
     logger.info(`${'='.repeat(60)}\n`);
+    
+    // Marcar credencial Outlook como usada apenas se o fluxo completou com sucesso
+    if (useOutlook && outlookEmail) {
+      outlookCredentialsService.markAsUsed(outlookEmail);
+      logger.info(`✅ Credencial Outlook ${outlookEmail} marcada como usada`);
+    }
 
   } catch (error) {
     result.success = false;

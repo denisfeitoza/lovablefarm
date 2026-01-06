@@ -13,6 +13,10 @@ class App {
     this.history = [];
     this.failures = [];
     this.metrics = null;
+    this.outlookCredentials = [];
+    this.outlookStats = { total: 0, used: 0, unused: 0 };
+    this.referralLinks = [];
+    this.referralLinksStats = { total: 0, exceeded: 0, totalUsages: 0 };
     this.basePath = window.BASE_PATH || '';
     this.timelineZoom = new Map(); // { queueId: zoomLevel }
     this.timelineScroll = new Map(); // { queueId: scrollPosition }
@@ -40,11 +44,13 @@ class App {
       console.log('✅ BASE_PATH atualizado do window:', this.basePath);
     }
     this.connectWebSocket();
-    this.fetchDomains(); // Buscar domínios logo no início
-    this.fetchProxies(); // Buscar proxies logo no início
+    // DESATIVADO TEMPORARIAMENTE: this.fetchDomains(); // Buscar domínios logo no início
+    // DESATIVADO TEMPORARIAMENTE: this.fetchProxies(); // Buscar proxies logo no início
     this.fetchHistory();
     this.fetchFailures(); // Buscar falhas recentes
     this.fetchMetrics(); // Buscar métricas iniciais
+    this.fetchOutlookCredentials(); // Buscar credenciais Outlook
+    this.fetchReferralLinks(); // Buscar links de indicação
     // Iniciar loop de atualização dos timers (apenas para execuções individuais)
     // Os timers das filas são atualizados via WebSocket do backend
     setInterval(() => {
@@ -716,6 +722,7 @@ class App {
     const turboMode = queue.turboMode || false;
     const enableConcurrentRequests = queue.enableConcurrentRequests || false;
     const concurrentRequests = queue.concurrentRequests || 100;
+    const useOutlook = queue.useOutlook !== false; // Padrão: true
     
     // IMPORTANTE: Se forceCredits está ativo, usar sempre totalUsers (meta original)
     // Se não, usar target dinâmico (que pode ser diferente se houver ajustes)
@@ -894,6 +901,11 @@ class App {
             ${turboMode ? `
               <span style="padding: 4px 10px; background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); color: white; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.4);">⚡ Modo Turbo</span>
             ` : ''}
+            ${useOutlook ? `
+              <span style="padding: 4px 10px; background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 2px 4px rgba(14, 165, 233, 0.4);">📬 Modo Outlook</span>
+            ` : `
+              <span style="padding: 4px 10px; background: linear-gradient(135deg, #64748b 0%, #475569 100%); color: white; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 2px 4px rgba(100, 116, 139, 0.4);">📧 Modo Inbound</span>
+            `}
           </div>
           <div style="display: flex; align-items: center; gap: 12px;">
             ${(queue.status === 'running' || queue.status === 'finalizing' || queue.status === 'completed' || queue.status === 'cancelled') && elapsedTime !== undefined ? `
@@ -1674,20 +1686,65 @@ class App {
         }
       }
 
+      // Capturar opção "usar modo Outlook"
+      const useOutlook = document.getElementById('queueUseOutlook').checked;
+
       console.log('🧪 Erros simulados:', simulatedErrors);
       console.log('💰 Buscar créditos a todo custo:', forceCredits);
       console.log('⚡ Modo Turbo:', turboMode);
       console.log('🔍 Verificar Banner de Créditos:', checkCreditsBanner);
       console.log('⚡ Teste de Requisições Simultâneas:', enableConcurrentRequests);
       console.log('📊 Número de Requisições:', concurrentRequests);
+      console.log('📬 Usar Modo Outlook:', useOutlook);
 
       const response = await fetch(this.apiUrl('/api/queues'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner, enableConcurrentRequests, concurrentRequests })
+        body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner, enableConcurrentRequests, concurrentRequests, useOutlook })
       });
 
       const data = await response.json();
+      
+      // Verificar se há aviso sobre uso do link
+      if (data.warning && data.usageCount >= 10) {
+        const message = `${data.message}\n\n` +
+          `📊 Informações do link:\n` +
+          `   • Total de usos: ${data.usageCount}\n` +
+          `   • Primeiro uso: ${data.linkInfo.firstUsed ? new Date(data.linkInfo.firstUsed).toLocaleString('pt-BR') : 'N/A'}\n` +
+          `   • Último uso: ${data.linkInfo.lastUsed ? new Date(data.linkInfo.lastUsed).toLocaleString('pt-BR') : 'N/A'}\n` +
+          `   • Filas que usaram: ${data.linkInfo.queues?.length || 0}\n\n` +
+          `⚠️ Deseja continuar mesmo assim?`;
+        
+        const proceed = confirm(message);
+        if (!proceed) {
+          // Reabilitar botão se cancelar
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+          }
+          return;
+        }
+        
+        // Se confirmar, criar a fila mesmo assim (precisa enviar novamente com flag de confirmação)
+        const confirmResponse = await fetch(this.apiUrl('/api/queues'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referralLink, name, users, parallel, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner, enableConcurrentRequests, concurrentRequests, useOutlook, confirmExceedLimit: true })
+        });
+        
+        const confirmData = await confirmResponse.json();
+        if (!confirmData.success) {
+          alert(`❌ Erro ao criar fila: ${confirmData.error || 'Erro desconhecido'}`);
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+          }
+          return;
+        }
+        
+        // Usar dados confirmados
+        Object.assign(data, confirmData);
+      }
 
       if (data.success) {
         console.log('✅ Fila criada:', data.queueId);
@@ -1705,6 +1762,7 @@ class App {
         document.getElementById('queueParallel').value = '3';
         document.getElementById('queueForceCredits').checked = true;
         document.getElementById('queueTurboMode').checked = true;
+        document.getElementById('queueUseOutlook').checked = true;
         const checkCreditsBannerElReset = document.getElementById('queueCheckCreditsBanner');
         if (checkCreditsBannerElReset) {
           checkCreditsBannerElReset.checked = true;
@@ -2033,6 +2091,7 @@ class App {
   enableAllOptions() {
     document.getElementById('queueForceCredits').checked = true;
     document.getElementById('queueTurboMode').checked = true;
+    document.getElementById('queueUseOutlook').checked = true;
     // Habilitar e marcar verificação de banner (só funciona com turbo)
     const checkCreditsBanner = document.getElementById('queueCheckCreditsBanner');
     if (checkCreditsBanner) {
@@ -2246,6 +2305,444 @@ class App {
         </button>
       </div>
     `).join('');
+  }
+
+  // Outlook Credentials Management
+  async fetchOutlookCredentials() {
+    try {
+      const response = await fetch(this.apiUrl('/api/outlook-credentials'));
+      const data = await response.json();
+      if (data.success) {
+        this.outlookCredentials = data.credentials || [];
+        this.outlookStats = data.stats || { total: 0, used: 0, unused: 0 };
+        console.log('📊 Credenciais atualizadas:', {
+          total: this.outlookStats.total,
+          used: this.outlookStats.used,
+          unused: this.outlookStats.unused,
+          credentials: this.outlookCredentials.length
+        });
+        this.renderOutlookStats();
+      }
+    } catch (error) {
+      console.error('Erro ao buscar credenciais Outlook:', error);
+    }
+  }
+
+  renderOutlookStats() {
+    const container = document.getElementById('outlookStats');
+    if (!container) return;
+    
+    container.innerHTML = `
+      <div class="outlook-stats-inline">
+        <div class="stat-mini">
+          <span class="stat-label">Total:</span>
+          <span class="stat-value">${this.outlookStats.total || 0}</span>
+        </div>
+        <div class="stat-mini">
+          <span class="stat-label">Disponíveis:</span>
+          <span class="stat-value" style="color: var(--success);">${this.outlookStats.unused || 0}</span>
+        </div>
+        <div class="stat-mini">
+          <span class="stat-label">Usadas:</span>
+          <span class="stat-value" style="color: var(--text-secondary);">${this.outlookStats.used || 0}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  async showOutlookModal() {
+    document.getElementById('outlookModal').classList.add('active');
+    await this.fetchOutlookCredentials();
+    this.updateOutlookModalStats();
+    this.switchOutlookTab('import');
+  }
+
+  hideOutlookModal() {
+    document.getElementById('outlookModal').classList.remove('active');
+  }
+
+  switchOutlookTab(tab) {
+    // Remover active de todas as abas e conteúdos
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    // Ativar aba selecionada
+    const tabBtn = document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+    const tabContent = document.getElementById(`tabContent${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+    
+    if (tabBtn) tabBtn.classList.add('active');
+    if (tabContent) {
+      tabContent.classList.add('active');
+      
+      // Se for a aba de lista, atualizar
+      if (tab === 'list') {
+        this.renderOutlookCredentialsList();
+      }
+    }
+  }
+
+  async importOutlookCredentials() {
+    const input = document.getElementById('outlookImportInput');
+    const inputText = input.value.trim();
+    
+    if (!inputText) {
+      alert('⚠️ Por favor, cole sua lista de credenciais');
+      return;
+    }
+    
+    try {
+      const response = await fetch(this.apiUrl('/api/outlook-credentials'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: inputText })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`✅ ${data.added} credencial(is) adicionada(s)${data.duplicates > 0 ? `\n⚠️ ${data.duplicates} duplicada(s) ignorada(s)` : ''}`);
+        input.value = '';
+        // Atualizar dados e renderizar (aguardar para garantir que os dados estão atualizados)
+        await this.fetchOutlookCredentials();
+        this.renderOutlookCredentialsList();
+        this.updateOutlookModalStats();
+        // Atualizar também o painel lateral
+        this.renderOutlookStats();
+      } else {
+        alert(`❌ Erro: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao importar credenciais:', error);
+      alert(`❌ Erro ao importar credenciais: ${error.message}`);
+    }
+  }
+
+  async addOutlookCredential() {
+    const email = document.getElementById('outlookEmail').value.trim();
+    const password = document.getElementById('outlookPassword').value.trim();
+    
+    if (!email || !password) {
+      alert('⚠️ Por favor, preencha email e senha');
+      return;
+    }
+    
+    try {
+      const response = await fetch(this.apiUrl('/api/outlook-credentials'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('✅ Credencial adicionada com sucesso');
+        this.clearOutlookForm();
+        // Atualizar dados e renderizar
+        await this.fetchOutlookCredentials(); // Aguardar buscar dados atualizados
+        this.renderOutlookCredentialsList();
+        this.updateOutlookModalStats();
+        // Atualizar também o painel lateral
+        this.renderOutlookStats();
+      } else {
+        alert(`❌ Erro: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar credencial:', error);
+      alert(`❌ Erro ao adicionar credencial: ${error.message}`);
+    }
+  }
+
+  clearOutlookForm() {
+    document.getElementById('outlookEmail').value = '';
+    document.getElementById('outlookPassword').value = '';
+  }
+
+  async renderOutlookCredentialsList() {
+    const container = document.getElementById('outlookCredentialsList');
+    if (!container) return;
+    
+    try {
+      const response = await fetch(this.apiUrl('/api/outlook-credentials'));
+      const data = await response.json();
+      
+      if (data.success) {
+        this.outlookCredentials = data.credentials || [];
+        
+        if (this.outlookCredentials.length === 0) {
+          container.innerHTML = '<div class="empty-state-small">Nenhuma credencial cadastrada</div>';
+          return;
+        }
+        
+        container.innerHTML = this.outlookCredentials.map(cred => `
+          <div class="outlook-credential-item ${cred.used ? 'used' : ''}" style="padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 6px; background: ${cred.used ? 'rgba(100, 100, 100, 0.1)' : 'var(--bg-card)'};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                  📧 ${cred.email}
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                  🔑 <code style="background: var(--bg-darker); padding: 2px 6px; border-radius: 4px; font-family: monospace;">${cred.password || 'N/A'}</code>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                  ${cred.used ? '✅ Usada' : '⏳ Disponível'} 
+                  ${cred.addedAt ? `• Adicionada em ${new Date(cred.addedAt).toLocaleString('pt-BR')}` : ''}
+                  ${cred.usedAt ? `• Usada em ${new Date(cred.usedAt).toLocaleString('pt-BR')}` : ''}
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+              <button 
+                class="btn ${cred.used ? 'btn-success' : 'btn-warning'} btn-small" 
+                onclick="app.toggleOutlookCredentialStatus('${cred.email}')"
+                title="${cred.used ? 'Marcar como disponível' : 'Marcar como usada'}"
+              >
+                ${cred.used ? '↩️ Disponibilizar' : '✅ Marcar como Usada'}
+              </button>
+              <button 
+                class="btn btn-danger btn-small" 
+                onclick="app.removeOutlookCredential('${cred.email}')"
+                title="Remover credencial"
+              >
+                🗑️ Remover
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+    } catch (error) {
+      console.error('Erro ao renderizar lista de credenciais:', error);
+      container.innerHTML = '<div class="error-text">Erro ao carregar credenciais</div>';
+    }
+  }
+
+  async toggleOutlookCredentialStatus(email) {
+    try {
+      const response = await fetch(this.apiUrl(`/api/outlook-credentials/${encodeURIComponent(email)}/toggle-used`), {
+        method: 'POST'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Atualizar dados e renderizar (aguardar para garantir que os dados estão atualizados)
+        await this.fetchOutlookCredentials();
+        this.renderOutlookCredentialsList();
+        this.updateOutlookModalStats();
+        // Atualizar também o painel lateral
+        this.renderOutlookStats();
+      } else {
+        alert(`❌ Erro ao alternar status: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao alternar status de credencial:', error);
+      alert('❌ Erro ao alternar status. Verifique o console para mais detalhes.');
+    }
+  }
+
+  async removeOutlookCredential(email) {
+    if (!confirm(`Tem certeza que deseja remover a credencial ${email}?`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(this.apiUrl(`/api/outlook-credentials/${encodeURIComponent(email)}`), {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Atualizar dados e renderizar (aguardar para garantir que os dados estão atualizados)
+        await this.fetchOutlookCredentials();
+        this.renderOutlookCredentialsList();
+        this.updateOutlookModalStats();
+        // Atualizar também o painel lateral
+        this.renderOutlookStats();
+      } else {
+        alert(`❌ Erro: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao remover credencial:', error);
+      alert(`❌ Erro ao remover credencial: ${error.message}`);
+    }
+  }
+
+  async clearAllOutlookCredentials() {
+    if (!confirm('⚠️ ATENÇÃO: Isso irá remover TODAS as credenciais Outlook. Deseja continuar?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(this.apiUrl('/api/outlook-credentials'), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearAll: true })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('✅ Todas as credenciais foram removidas');
+        this.fetchOutlookCredentials();
+        this.renderOutlookCredentialsList();
+        this.updateOutlookModalStats();
+      } else {
+        alert(`❌ Erro: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao limpar credenciais:', error);
+      alert(`❌ Erro ao limpar credenciais: ${error.message}`);
+    }
+  }
+
+  updateOutlookModalStats() {
+    document.getElementById('outlookTotal').textContent = this.outlookStats.total || 0;
+    document.getElementById('outlookUsed').textContent = this.outlookStats.used || 0;
+    document.getElementById('outlookUnused').textContent = this.outlookStats.unused || 0;
+  }
+
+  // Referral Links Management
+  async fetchReferralLinks() {
+    try {
+      const response = await fetch(this.apiUrl('/api/referral-links'));
+      const data = await response.json();
+      if (data.success) {
+        this.referralLinks = data.links || [];
+        this.calculateReferralLinksStats();
+        this.renderReferralLinksStats();
+      }
+    } catch (error) {
+      console.error('Erro ao buscar links de indicação:', error);
+    }
+  }
+
+  calculateReferralLinksStats() {
+    const links = this.referralLinks || [];
+    const totalLinks = links.length;
+    const exceededLinks = links.filter(l => l.usageCount >= 10).length;
+    const totalUsages = links.reduce((sum, l) => sum + (l.usageCount || 0), 0);
+    
+    this.referralLinksStats = {
+      total: totalLinks,
+      exceeded: exceededLinks,
+      totalUsages: totalUsages
+    };
+  }
+
+  renderReferralLinksStats() {
+    // Painel lateral
+    const container = document.getElementById('referralLinksStats');
+    if (container) {
+      const stats = this.referralLinksStats || { total: 0, exceeded: 0, totalUsages: 0 };
+      container.innerHTML = `
+        <div class="outlook-stats-inline">
+          <div class="stat-mini">
+            <span class="stat-label">Total:</span>
+            <span class="stat-value">${stats.total || 0}</span>
+          </div>
+          <div class="stat-mini">
+            <span class="stat-label">10+ usos:</span>
+            <span class="stat-value" style="color: ${stats.exceeded > 0 ? 'var(--warning)' : 'var(--success)'};">${stats.exceeded || 0}</span>
+          </div>
+          <div class="stat-mini">
+            <span class="stat-label">Usos:</span>
+            <span class="stat-value">${stats.totalUsages || 0}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Modal
+    const modalTotal = document.getElementById('referralLinksTotal');
+    const modalExceeded = document.getElementById('referralLinksExceeded');
+    const modalTotalUsages = document.getElementById('referralLinksTotalUsages');
+    
+    if (modalTotal) modalTotal.textContent = this.referralLinksStats?.total || 0;
+    if (modalExceeded) modalExceeded.textContent = this.referralLinksStats?.exceeded || 0;
+    if (modalTotalUsages) modalTotalUsages.textContent = this.referralLinksStats?.totalUsages || 0;
+  }
+
+  async showReferralLinksModal() {
+    document.getElementById('referralLinksModal').classList.add('active');
+    await this.fetchReferralLinks();
+    this.renderReferralLinksList();
+  }
+
+  hideReferralLinksModal() {
+    document.getElementById('referralLinksModal').classList.remove('active');
+  }
+
+  async renderReferralLinksList() {
+    const container = document.getElementById('referralLinksList');
+    if (!container) return;
+    
+    try {
+      const links = this.referralLinks || [];
+      
+      if (links.length === 0) {
+        container.innerHTML = '<div class="empty-state-small">Nenhum link rastreado</div>';
+        return;
+      }
+      
+      // Ordenar por uso (mais usado primeiro)
+      const sortedLinks = [...links].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
+      
+      container.innerHTML = sortedLinks.map(link => {
+        const isExceeded = link.usageCount >= 10;
+        const usageColor = isExceeded ? 'var(--warning)' : 'var(--success)';
+        
+        return `
+          <div class="outlook-credential-item ${isExceeded ? 'used' : ''}" style="padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 6px; background: ${isExceeded ? 'rgba(245, 158, 11, 0.1)' : 'var(--bg-card)'};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div style="flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px; word-break: break-all;">
+                  🔗 ${link.link || link.originalLink || 'N/A'}
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">
+                  📊 <strong style="color: ${usageColor};">${link.usageCount || 0} uso(s)</strong>
+                  ${isExceeded ? ' ⚠️ (Limite excedido!)' : ''}
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                  ${link.firstUsed ? `• Primeiro uso: ${new Date(link.firstUsed).toLocaleString('pt-BR')}` : ''}
+                  ${link.lastUsed ? `• Último uso: ${new Date(link.lastUsed).toLocaleString('pt-BR')}` : ''}
+                  ${link.queues?.length > 0 ? `• Filas: ${link.queues.length}` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Erro ao renderizar lista de links:', error);
+      container.innerHTML = '<div class="error-text">Erro ao carregar links</div>';
+    }
+  }
+
+  async clearAllReferralLinks() {
+    if (!confirm('⚠️ ATENÇÃO: Isso irá limpar TODOS os dados de rastreamento de links. Deseja continuar?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(this.apiUrl('/api/referral-links'), {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('✅ Dados de rastreamento limpos com sucesso');
+        await this.fetchReferralLinks();
+        this.renderReferralLinksList();
+        this.renderReferralLinksStats();
+      } else {
+        alert(`❌ Erro: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('Erro ao limpar links:', error);
+      alert(`❌ Erro ao limpar links: ${error.message}`);
+    }
   }
 }
 

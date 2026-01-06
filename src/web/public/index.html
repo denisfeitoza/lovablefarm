@@ -138,7 +138,8 @@
           </div>
         </section>
 
-        <!-- Domains -->
+        <!-- Domains - DESATIVADO TEMPORARIAMENTE -->
+        <!--
         <section class="panel panel-domains">
           <div class="panel-header">
             <h3>📧 Domínios de Email</h3>
@@ -158,6 +159,35 @@
             <p class="info-text">
               <strong>Total:</strong> <span id="totalDomains">0</span>
             </p>
+          </div>
+        </section>
+        -->
+
+        <!-- Outlook Credentials -->
+        <section class="panel panel-outlook">
+          <div class="panel-header">
+            <h3>📬 Credenciais Outlook</h3>
+            <button class="btn btn-small" onclick="app.showOutlookModal()">
+              ⚙️
+            </button>
+          </div>
+          
+          <div class="outlook-stats" id="outlookStats">
+            <div class="loading">Carregando...</div>
+          </div>
+        </section>
+
+        <!-- Referral Links -->
+        <section class="panel panel-referral-links">
+          <div class="panel-header">
+            <h3>🔗 Links de Indicação</h3>
+            <button class="btn btn-small" onclick="app.showReferralLinksModal()">
+              ⚙️
+            </button>
+          </div>
+          
+          <div class="referral-links-stats" id="referralLinksStats">
+            <div class="loading">Carregando...</div>
           </div>
         </section>
       </aside>
@@ -357,6 +387,21 @@
           <h3 class="form-section-title">📧 Configurações de Email</h3>
           
           <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="queueUseOutlook" class="checkbox-input" checked>
+              <span class="checkbox-custom"></span>
+              <div class="checkbox-content">
+                <div class="checkbox-title">📬 Usar Modo Outlook (Padrão)</div>
+                <div class="checkbox-description">
+                  Usa credenciais do Outlook para criar contas. Se desmarcado, usa o método Inbound (ProxiedMail).
+                </div>
+              </div>
+            </label>
+          </div>
+          
+          <!-- Domínios - DESATIVADO TEMPORARIAMENTE -->
+          <!--
+          <div class="form-group">
             <div class="form-group-header">
               <label>Domínios para esta Fila</label>
               <div class="form-group-actions">
@@ -373,7 +418,10 @@
               <!-- Checkboxes serão inseridos via JS -->
             </div>
           </div>
+          -->
 
+          <!-- Proxies - DESATIVADO TEMPORARIAMENTE -->
+          <!--
           <div class="form-group">
             <div class="form-group-header">
               <label>🌐 Proxies para esta Fila <span class="optional-badge">Opcional</span></label>
@@ -393,6 +441,7 @@
               <!-- Checkboxes serão inseridos via JS -->
             </div>
           </div>
+          -->
         </div>
 
         <!-- Seção: Testes -->
@@ -447,7 +496,8 @@
     </div>
   </div>
 
-  <!-- Modal: Manage Domains -->
+  <!-- Modal: Manage Domains - DESATIVADO TEMPORARIAMENTE -->
+  <!--
   <div class="modal" id="domainsModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -487,6 +537,171 @@
           <button type="button" class="btn btn-primary" onclick="app.hideDomainsModal()">
             Fechar
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  -->
+
+  <!-- Modal: Manage Outlook Credentials -->
+  <div class="modal" id="outlookModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>📬 Gerenciar Credenciais Outlook</h2>
+        <button class="modal-close" onclick="app.hideOutlookModal()">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="info-text">
+          Adicione emails e senhas do Outlook que serão usados para criar contas no Lovable.
+          O sistema aceita diferentes formatos de entrada.
+        </p>
+        
+        <!-- Estatísticas -->
+        <div class="outlook-stats-box" id="outlookModalStats">
+          <div class="stat-item">
+            <span class="stat-label">Total:</span>
+            <span class="stat-value" id="outlookTotal">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Usadas:</span>
+            <span class="stat-value" id="outlookUsed">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Disponíveis:</span>
+            <span class="stat-value" id="outlookUnused">0</span>
+          </div>
+        </div>
+
+        <!-- Abas -->
+        <div class="tabs">
+          <button class="tab-btn active" onclick="app.switchOutlookTab('import')" id="tabImport">
+            📥 Importar Lista
+          </button>
+          <button class="tab-btn" onclick="app.switchOutlookTab('manual')" id="tabManual">
+            ✏️ Adicionar Manual
+          </button>
+          <button class="tab-btn" onclick="app.switchOutlookTab('list')" id="tabList">
+            📋 Lista de Credenciais
+          </button>
+        </div>
+
+        <!-- Aba: Importar Lista -->
+        <div class="tab-content active" id="tabContentImport">
+          <div class="form-group">
+            <label for="outlookImportInput">Cole sua lista de emails e senhas:</label>
+            <textarea 
+              id="outlookImportInput" 
+              rows="10" 
+              placeholder="Exemplos de formatos aceitos:&#10;&#10;Email: raymondmerlinneala1@hotmail.com&#10;Senha: WeQxv9A8N3&#10;&#10;Email: raeelisefarah6@hotmail.com&#10;Senha: 9j5UcWGi3R&#10;&#10;Ou:&#10;email@hotmail.com,senha123&#10;email2@hotmail.com|senha456"
+              style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 13px; background: var(--bg-darker); color: var(--text-primary); resize: vertical;"
+            ></textarea>
+            <small style="display: block; margin-top: 8px; color: var(--text-secondary);">
+              💡 O sistema detecta automaticamente diferentes formatos: "Email: ... Senha: ...", CSV, pipe (|), ou linhas separadas.
+            </small>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" onclick="app.importOutlookCredentials()">
+              📥 Importar Credenciais
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('outlookImportInput').value = ''">
+              🗑️ Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Aba: Adicionar Manual -->
+        <div class="tab-content" id="tabContentManual">
+          <div class="form-group">
+            <label for="outlookEmail">Email:</label>
+            <input 
+              type="email" 
+              id="outlookEmail" 
+              placeholder="usuario@hotmail.com"
+              style="width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 6px; background: var(--bg-darker); color: var(--text-primary);"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="outlookPassword">Senha:</label>
+            <input 
+              type="password" 
+              id="outlookPassword" 
+              placeholder="Senha da conta"
+              style="width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 6px; background: var(--bg-darker); color: var(--text-primary);"
+            >
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" onclick="app.addOutlookCredential()">
+              ➕ Adicionar
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="app.clearOutlookForm()">
+              🗑️ Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Aba: Lista de Credenciais -->
+        <div class="tab-content" id="tabContentList">
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <label>Credenciais Cadastradas:</label>
+              <button type="button" class="btn btn-danger btn-small" onclick="app.clearAllOutlookCredentials()">
+                🗑️ Limpar Todas
+              </button>
+            </div>
+            <div id="outlookCredentialsList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--bg-darker);">
+              <div class="loading">Carregando...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Referral Links -->
+  <div class="modal" id="referralLinksModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>🔗 Gerenciar Links de Indicação</h2>
+        <button class="modal-close" onclick="app.hideReferralLinksModal()">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="info-text">
+          Visualize todos os links de indicação que foram usados no sistema. 
+          O limite recomendado é de no máximo 10 usos por link.
+        </p>
+        
+        <!-- Estatísticas -->
+        <div class="outlook-stats-box" id="referralLinksModalStats">
+          <div class="stat-item">
+            <span class="stat-label">Total de Links:</span>
+            <span class="stat-value" id="referralLinksTotal">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Links com 10+ usos:</span>
+            <span class="stat-value" id="referralLinksExceeded" style="color: var(--warning);">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Total de Usos:</span>
+            <span class="stat-value" id="referralLinksTotalUsages">0</span>
+          </div>
+        </div>
+
+        <!-- Lista de Links -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <label>Links Cadastrados:</label>
+            <button type="button" class="btn btn-danger btn-small" onclick="app.clearAllReferralLinks()">
+              🗑️ Limpar Todos
+            </button>
+          </div>
+          <div id="referralLinksList" style="max-height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--bg-darker);">
+            <div class="loading">Carregando...</div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,485 @@
 [
   {
+    "id": "queue-4",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2026-01-06T01:11:24.060Z",
+    "completedAt": "2026-01-06T01:15:29.341Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 1,
+      "failed": 0,
+      "target": 1,
+      "credits": 10
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "queue-3",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2026-01-06T00:52:39.612Z",
+    "completedAt": "2026-01-06T00:57:01.506Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 1,
+      "failed": 0,
+      "target": 1,
+      "credits": 10
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "queue-2",
+    "name": "1",
+    "status": "completed",
+    "startedAt": "2026-01-06T00:41:23.020Z",
+    "completedAt": "2026-01-06T00:44:32.663Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "target": 1,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "completed",
+    "startedAt": "2026-01-06T00:33:35.297Z",
+    "completedAt": "2026-01-06T00:34:18.688Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "target": 1,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "completed",
+    "startedAt": "2026-01-06T00:26:25.442Z",
+    "completedAt": "2026-01-06T00:26:33.378Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "target": 1,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "queue-2",
+    "name": "1",
+    "status": "completed",
+    "startedAt": "2026-01-06T00:24:36.408Z",
+    "completedAt": "2026-01-06T00:24:45.664Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "target": 2,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2026-01-06T00:22:14.559Z",
+    "completedAt": "2026-01-06T00:22:46.093Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 0,
+      "failed": 1,
+      "target": 1,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=CV10B39"
+  },
+  {
+    "id": "queue-1",
+    "name": "2",
+    "status": "completed",
+    "startedAt": "2026-01-04T23:36:01.894Z",
+    "completedAt": "2026-01-04T23:37:24.866Z",
+    "totalUsers": 5,
+    "results": {
+      "total": 3,
+      "success": 0,
+      "failed": 3,
+      "target": 5,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "completed",
+    "startedAt": "2026-01-04T23:31:22.037Z",
+    "completedAt": "2026-01-04T23:32:09.561Z",
+    "totalUsers": 5,
+    "results": {
+      "total": 3,
+      "success": 0,
+      "failed": 3,
+      "target": 5,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-1",
+    "name": "5",
+    "status": "cancelled",
+    "startedAt": "2026-01-04T23:28:52.203Z",
+    "completedAt": "2026-01-04T23:30:14.421Z",
+    "totalUsers": 5,
+    "results": {
+      "total": 3,
+      "success": 0,
+      "failed": 3,
+      "target": 5,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-1",
+    "name": "23",
+    "status": "cancelled",
+    "startedAt": "2026-01-04T23:25:12.559Z",
+    "completedAt": "2026-01-04T23:26:44.205Z",
+    "totalUsers": 5,
+    "results": {
+      "total": 3,
+      "success": 0,
+      "failed": 3,
+      "target": 5,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-5",
+    "name": "2",
+    "status": "cancelled",
+    "startedAt": "2026-01-04T23:17:32.571Z",
+    "completedAt": "2026-01-04T23:18:52.434Z",
+    "totalUsers": 10,
+    "results": {
+      "total": 3,
+      "success": 0,
+      "failed": 3,
+      "target": 10,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-4",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2026-01-04T23:16:38.518Z",
+    "completedAt": "2026-01-04T23:17:32.021Z",
+    "totalUsers": 10,
+    "results": {
+      "total": 6,
+      "success": 0,
+      "failed": 6,
+      "target": 10,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-3",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2026-01-04T23:11:57.910Z",
+    "completedAt": "2026-01-04T23:16:37.995Z",
+    "totalUsers": 10,
+    "results": {
+      "total": 9,
+      "success": 0,
+      "failed": 9,
+      "target": 19,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-2",
+    "name": "10",
+    "status": "cancelled",
+    "startedAt": "2026-01-04T23:07:13.502Z",
+    "completedAt": "2026-01-04T23:09:58.821Z",
+    "totalUsers": 10,
+    "results": {
+      "total": 2,
+      "success": 0,
+      "failed": 2,
+      "target": 12,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-1",
+    "name": "10",
+    "status": "completed",
+    "startedAt": "2026-01-04T23:05:34.418Z",
+    "completedAt": "2026-01-04T23:05:36.440Z",
+    "totalUsers": 10,
+    "results": {
+      "total": 10,
+      "success": 0,
+      "failed": 10,
+      "target": 20,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=FDKI2B1"
+  },
+  {
+    "id": "queue-4",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:49:08.791Z",
+    "completedAt": "2025-12-31T03:51:14.178Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 1,
+      "failed": 0,
+      "target": 1,
+      "credits": 10
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=KL5GDTH"
+  },
+  {
+    "id": "queue-3",
+    "name": "marcelo",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:45:44.197Z",
+    "completedAt": "2025-12-31T03:50:38.466Z",
+    "totalUsers": 9,
+    "results": {
+      "total": 11,
+      "success": 11,
+      "failed": 0,
+      "target": 9,
+      "credits": 110
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=KL5GDTH"
+  },
+  {
+    "id": "queue-2",
+    "name": "teste 4",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:42:11.090Z",
+    "completedAt": "2025-12-31T03:43:39.749Z",
+    "totalUsers": 4,
+    "results": {
+      "total": 14,
+      "success": 4,
+      "failed": 10,
+      "target": 11,
+      "credits": 40
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:38:55.453Z",
+    "completedAt": "2025-12-31T03:40:34.294Z",
+    "totalUsers": 2,
+    "results": {
+      "total": 3,
+      "success": 2,
+      "failed": 1,
+      "target": 2,
+      "credits": 20
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:35:01.065Z",
+    "completedAt": "2025-12-31T03:37:14.711Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 1,
+      "failed": 0,
+      "target": 1,
+      "credits": 10
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:23:48.229Z",
+    "completedAt": "2025-12-31T03:26:50.930Z",
+    "totalUsers": 2,
+    "results": {
+      "total": 3,
+      "success": 3,
+      "failed": 0,
+      "target": 2,
+      "credits": 30
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "test",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:12:48.558Z",
+    "completedAt": "2025-12-31T03:16:02.853Z",
+    "totalUsers": 1,
+    "results": {
+      "total": 1,
+      "success": 1,
+      "failed": 0,
+      "target": 1,
+      "credits": 10
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "tes2",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T03:07:19.772Z",
+    "completedAt": "2025-12-31T03:10:26.659Z",
+    "totalUsers": 2,
+    "results": {
+      "total": 3,
+      "success": 3,
+      "failed": 0,
+      "target": 2,
+      "credits": 30
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "teste",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T02:59:03.959Z",
+    "completedAt": "2025-12-31T03:01:48.572Z",
+    "totalUsers": 400,
+    "results": {
+      "total": 4,
+      "success": 0,
+      "failed": 4,
+      "target": 404,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "teste 1",
+    "status": "cancelled",
+    "startedAt": "2025-12-31T02:46:23.880Z",
+    "completedAt": "2025-12-31T02:51:05.796Z",
+    "totalUsers": 4,
+    "results": {
+      "total": 5,
+      "success": 5,
+      "failed": 0,
+      "target": 4,
+      "credits": 50
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=7KOHN6H"
+  },
+  {
+    "id": "queue-1",
+    "name": "ian",
+    "status": "cancelled",
+    "startedAt": "2025-12-29T21:14:25.370Z",
+    "completedAt": "2025-12-29T21:25:11.860Z",
+    "totalUsers": 1000,
+    "results": {
+      "total": 11,
+      "success": 0,
+      "failed": 11,
+      "target": 1011,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=lovable"
+  },
+  {
+    "id": "queue-3",
+    "name": "1",
+    "status": "cancelled",
+    "startedAt": "2025-12-29T17:38:17.157Z",
+    "completedAt": "2025-12-29T17:42:41.048Z",
+    "totalUsers": 1000,
+    "results": {
+      "total": 6,
+      "success": 4,
+      "failed": 2,
+      "target": 1002,
+      "credits": 40
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=lovable"
+  },
+  {
+    "id": "queue-2",
+    "name": "a",
+    "status": "cancelled",
+    "startedAt": "2025-12-29T17:35:58.861Z",
+    "completedAt": "2025-12-29T17:37:46.708Z",
+    "totalUsers": 1000,
+    "results": {
+      "total": 5,
+      "success": 0,
+      "failed": 5,
+      "target": 1005,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=lovable"
+  },
+  {
+    "id": "queue-1",
+    "name": "ian",
+    "status": "cancelled",
+    "startedAt": "2025-12-29T17:33:21.545Z",
+    "completedAt": "2025-12-29T17:35:59.059Z",
+    "totalUsers": 1000,
+    "results": {
+      "total": 8,
+      "success": 0,
+      "failed": 8,
+      "target": 1008,
+      "credits": 0
+    },
+    "referralLink": "https://lovable.dev/signup?referral_code=lovable"
+  },
+  {
     "id": "queue-1",
     "name": "n8n",
     "status": "cancelled",

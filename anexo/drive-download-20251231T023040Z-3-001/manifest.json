@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "@vidall7x Credits Multiplier",
+  "version": "2.0",
+  "description": "Multiplicador automático de créditos Lovable - By @vidall7x",
+  "permissions": [
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://api.lovable.dev/*",
+    "https://lovable.dev/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { logStream } from '../../utils/logStream.js';
 import { historyManager } from './HistoryManager.js';
 import { proxyService } from '../../services/proxyService.js';
 import { csvService } from '../../services/csvService.js';
+import { referralLinkTracker } from '../../services/referralLinkTracker.js';
 import pLimit from 'p-limit';
 
 /**
@@ -71,6 +72,10 @@ class QueueManager {
     // Log dos domínios selecionados
     logger.info(`📧 Domínios selecionados para a fila: ${JSON.stringify(config.selectedDomains || [])}`);
     
+    // Normalizar useOutlook: garantir que seja boolean
+    const useOutlookValue = config.useOutlook === true || config.useOutlook === 'true' || (config.useOutlook !== false && config.useOutlook !== 'false' && config.useOutlook !== undefined);
+    logger.info(`📬 Modo Outlook configurado para a fila: ${useOutlookValue} (valor recebido: ${config.useOutlook})`);
+    
     const queue = {
       id: queueId,
       name: config.name || `Fila ${queueId}`,
@@ -83,6 +88,7 @@ class QueueManager {
       checkCreditsBanner: config.checkCreditsBanner || false, // Verificar banner de créditos no editor (só funciona com turboMode)
       enableConcurrentRequests: config.enableConcurrentRequests || false, // Ativar teste de requisições simultâneas
       concurrentRequests: config.concurrentRequests || 100, // Número de requisições simultâneas (padrão: 100 = 1000 créditos)
+      useOutlook: useOutlookValue, // Usar modo Outlook
       totalUsers: config.users,
       parallelExecutions: config.parallel || 1,
       status: 'pending', // pending, running, completed, failed
@@ -105,6 +111,9 @@ class QueueManager {
     };
 
     this.queues.set(queueId, queue);
+    
+    // NÃO registrar uso do link aqui - só registrar quando houver sucesso
+    // referralLinkTracker.recordUsage(config.referralLink, queueId, config.users);
     
     this.emit('queue:created', { queueId, queue: this.serializeQueue(queue) });
     logger.info(`📋 Fila criada: ${queueId} (${config.users} usuários, ${queue.parallelExecutions} paralelo)`);
@@ -586,8 +595,10 @@ class QueueManager {
 
       const executionStartTime = Date.now();
       
-      // Executar fluxo do usuário passando o link de indicação, domínio, proxy, erros simulados, modo turbo, verificação de banner e requisições simultâneas
-      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || [], queue.turboMode || false, queue.checkCreditsBanner || false, queue.enableConcurrentRequests || false, queue.concurrentRequests || 100);
+      // Executar fluxo do usuário passando o link de indicação, domínio, proxy, erros simulados, modo turbo, verificação de banner, requisições simultâneas e modo Outlook
+      const useOutlookValue = queue.useOutlook === true || queue.useOutlook === 'true' || (queue.useOutlook !== false && queue.useOutlook !== 'false' && queue.useOutlook !== undefined);
+      logger.info(`📬 Executando usuário ${userId} com modo Outlook: ${useOutlookValue} (valor na fila: ${queue.useOutlook})`);
+      const result = await executeUserFlow(userId, queue.referralLink, domain, proxyString, queue.simulatedErrors || [], queue.turboMode || false, queue.checkCreditsBanner || false, queue.enableConcurrentRequests || false, queue.concurrentRequests || 100, useOutlookValue);
       
       const executionTime = Math.floor((Date.now() - executionStartTime) / 1000); // em segundos
 
@@ -676,6 +687,9 @@ class QueueManager {
           creditsEarned: result.creditsEarned || 0,
           referralLink: queue.referralLink
         });
+        
+        // Registrar uso do link de indicação APENAS quando houver sucesso
+        referralLinkTracker.recordUsage(queue.referralLink, queueId, 1);
       } else {
         queue.results.failed++;
         execution.error = result.error;

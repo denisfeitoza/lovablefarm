@@ -3,7 +3,10 @@ import { queueManager } from '../queue/QueueManager.js';
 import { domainManager } from '../queue/DomainManager.js';
 import { historyManager } from '../queue/HistoryManager.js';
 import { proxyService } from '../../services/proxyService.js';
+import { outlookCredentialsService } from '../../services/outlookCredentialsService.js';
+import { parseCredentialsInput } from '../../utils/outlookCredentialsParser.js';
 import { normalizeReferralLink } from '../../utils/referralLink.js';
+import { referralLinkTracker } from '../../services/referralLinkTracker.js';
 import { logger } from '../../utils/logger.js';
 import path from 'path';
 import fs from 'fs';
@@ -204,7 +207,7 @@ router.get('/queues/:id', (req, res) => {
  */
 router.post('/queues', (req, res) => {
   try {
-    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner, enableConcurrentRequests, concurrentRequests } = req.body; // Capturar todas as opções
+    const { name, users, parallel, referralLink, selectedDomains, selectedProxies, simulatedErrors, forceCredits, turboMode, checkCreditsBanner, enableConcurrentRequests, concurrentRequests, useOutlook, confirmExceedLimit } = req.body; // Capturar todas as opções
     
     // Validar link de indicação
     if (!referralLink) {
@@ -256,6 +259,33 @@ router.post('/queues', (req, res) => {
       });
     }
     
+    // Verificar uso do link de indicação
+    const linkInfo = referralLinkTracker.getLinkInfo(normalizedLink);
+    const usageCount = linkInfo.usageCount || 0;
+    
+    logger.info(`📊 Link de indicação já foi usado ${usageCount} vez(es)`);
+    
+    // Retornar informações sobre o uso do link (o frontend vai decidir se quer continuar)
+    if (usageCount >= 10 && !confirmExceedLimit) {
+      return res.json({
+        success: false,
+        warning: true,
+        message: `⚠️ ATENÇÃO: Este link de indicação já foi usado ${usageCount} vezes. O limite recomendado é de no máximo 10 usos.`,
+        usageCount: usageCount,
+        linkInfo: linkInfo,
+        canProceed: false // Frontend precisa confirmar
+      });
+    }
+    
+    // Se confirmou que quer continuar mesmo excedendo o limite, logar aviso
+    if (usageCount >= 10 && confirmExceedLimit) {
+      logger.warning(`⚠️ Link de indicação usado ${usageCount} vezes - usuário confirmou que quer continuar mesmo assim`);
+    }
+    
+    // Normalizar useOutlook: se for true, 'true', ou undefined/null (padrão), usar true
+    const useOutlookBool = useOutlook === true || useOutlook === 'true' || (useOutlook !== false && useOutlook !== 'false' && useOutlook !== undefined);
+    logger.info(`📬 Modo Outlook solicitado: ${useOutlook} → ${useOutlookBool}`);
+    
     const config = {
       name: name || `Fila ${Date.now()}`,
       users: usersNum,
@@ -268,7 +298,8 @@ router.post('/queues', (req, res) => {
       turboMode: turboMode === true || turboMode === 'true', // Passar turboMode (modo turbo)
       checkCreditsBanner: (checkCreditsBanner === true || checkCreditsBanner === 'true') && (turboMode === true || turboMode === 'true'), // Só ativo se turboMode estiver ativo
       enableConcurrentRequests: enableConcurrentRequestsBool, // Ativar teste de requisições simultâneas
-      concurrentRequests: concurrentRequestsNum // Número de requisições simultâneas
+      concurrentRequests: concurrentRequestsNum, // Número de requisições simultâneas
+      useOutlook: useOutlookBool // Usar modo Outlook
     };
     
     const queue = queueManager.createQueue(config); // Agora retorna o objeto completo
@@ -385,9 +416,18 @@ router.get('/executions', (req, res) => {
 });
 
 /**
- * GET /api/domains - Listar domínios
+ * GET /api/domains - Listar domínios (DESATIVADO TEMPORARIAMENTE)
  */
 router.get('/domains', (req, res) => {
+  // DESATIVADO TEMPORARIAMENTE - Retornar vazio
+  res.json({
+    success: true,
+    domains: [],
+    currentIndex: 0
+  });
+  return;
+  
+  /* CÓDIGO ORIGINAL DESATIVADO
   try {
     const domains = domainManager.listDomains();
     
@@ -402,6 +442,7 @@ router.get('/domains', (req, res) => {
       error: error.message
     });
   }
+  */
 });
 
 /**
@@ -492,9 +533,17 @@ router.post('/domains/reset', (req, res) => {
 });
 
 /**
- * GET /api/proxies - Listar proxies disponíveis
+ * GET /api/proxies - Listar proxies disponíveis (DESATIVADO TEMPORARIAMENTE)
  */
 router.get('/proxies', async (req, res) => {
+  // DESATIVADO TEMPORARIAMENTE - Retornar vazio
+  res.json({
+    success: true,
+    proxies: []
+  });
+  return;
+  
+  /* CÓDIGO ORIGINAL DESATIVADO
   try {
     // Garantir que proxies estão inicializados
     await proxyService.initialize();
@@ -541,6 +590,7 @@ router.get('/proxies', async (req, res) => {
       error: error.message
     });
   }
+  */
 });
 
 /**
@@ -630,6 +680,277 @@ router.get('/csv/executions', (req, res) => {
     res.send(fileContent);
   } catch (error) {
     logger.error('Erro ao baixar CSV de execuções', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/outlook-credentials - Listar credenciais Outlook
+ */
+router.get('/outlook-credentials', (req, res) => {
+  try {
+    const credentials = outlookCredentialsService.loadCredentials();
+    const stats = outlookCredentialsService.getStats();
+    
+    res.json({
+      success: true,
+      credentials,
+      stats
+    });
+  } catch (error) {
+    logger.error('Erro ao listar credenciais Outlook', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/outlook-credentials - Adicionar credenciais Outlook
+ */
+router.post('/outlook-credentials', (req, res) => {
+  try {
+    const { email, password, input } = req.body;
+    
+    // Se forneceu input (texto para parsear)
+    if (input) {
+      const parseResult = parseCredentialsInput(input);
+      
+      if (!parseResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: parseResult.error || 'Erro ao parsear credenciais'
+        });
+      }
+      
+      const addResult = outlookCredentialsService.addCredentials(parseResult.credentials);
+      
+      return res.json({
+        success: addResult.success,
+        added: addResult.added,
+        duplicates: addResult.duplicates,
+        duplicatesList: addResult.duplicatesList,
+        message: `${addResult.added} credenciais adicionadas${addResult.duplicates > 0 ? `, ${addResult.duplicates} duplicadas ignoradas` : ''}`
+      });
+    }
+    
+    // Se forneceu email e senha individual
+    if (email && password) {
+      const result = outlookCredentialsService.addCredential(email, password);
+      
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      
+      return res.json({
+        success: true,
+        credential: result.credential,
+        message: 'Credencial adicionada com sucesso'
+      });
+    }
+    
+    return res.status(400).json({
+      success: false,
+      error: 'Forneça email e senha, ou input para parsear'
+    });
+  } catch (error) {
+    logger.error('Erro ao adicionar credenciais Outlook', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/outlook-credentials/:email/toggle-used - Alterna status "used" de uma credencial
+ * IMPORTANTE: Esta rota deve vir ANTES da rota DELETE para evitar conflito
+ */
+router.post('/outlook-credentials/:email/toggle-used', (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email);
+    const result = outlookCredentialsService.toggleUsedStatus(email);
+    
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        error: result.error || 'Credencial não encontrada'
+      });
+    }
+    
+    res.json({
+      success: true,
+      used: result.used,
+      message: `Credencial ${result.used ? 'marcada como usada' : 'marcada como disponível'}`
+    });
+  } catch (error) {
+    logger.error('Erro ao alternar status de credencial', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/outlook-credentials/:email - Remover credencial Outlook
+ */
+router.delete('/outlook-credentials/:email', (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email);
+    const result = outlookCredentialsService.removeCredential(email);
+    
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Credencial removida com sucesso'
+    });
+  } catch (error) {
+    logger.error('Erro ao remover credencial Outlook', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/outlook-credentials - Remover múltiplas credenciais
+ */
+router.delete('/outlook-credentials', (req, res) => {
+  try {
+    const { emails, clearAll } = req.body;
+    
+    if (clearAll === true) {
+      const result = outlookCredentialsService.clearAll();
+      return res.json({
+        success: result.success,
+        message: 'Todas as credenciais foram removidas'
+      });
+    }
+    
+    if (!emails || !Array.isArray(emails)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Forneça array de emails ou clearAll: true'
+      });
+    }
+    
+    const result = outlookCredentialsService.removeCredentials(emails);
+    
+    res.json({
+      success: result.success,
+      removed: result.removed,
+      message: `${result.removed} credenciais removidas`
+    });
+  } catch (error) {
+    logger.error('Erro ao remover credenciais Outlook', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/outlook-credentials/stats - Obter estatísticas
+ */
+router.get('/outlook-credentials/stats', (req, res) => {
+  try {
+    const stats = outlookCredentialsService.getStats();
+    
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    logger.error('Erro ao obter estatísticas de credenciais Outlook', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/outlook-credentials/reset-used - Resetar status "used" de todas as credenciais
+ */
+router.post('/outlook-credentials/reset-used', (req, res) => {
+  try {
+    const result = outlookCredentialsService.resetUsedStatus();
+    
+    res.json({
+      success: true,
+      message: `${result.reset} credenciais resetadas`,
+      reset: result.reset
+    });
+  } catch (error) {
+    logger.error('Erro ao resetar credenciais', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/referral-links - Obter informações sobre links de indicação
+ */
+router.get('/referral-links', (req, res) => {
+  try {
+    const links = referralLinkTracker.getAllLinks();
+    res.json({
+      success: true,
+      links: links
+    });
+  } catch (error) {
+    logger.error('Erro ao obter links de indicação', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/referral-links/:link - Obter informações sobre um link específico
+ */
+router.get('/referral-links/:link', (req, res) => {
+  try {
+    const link = decodeURIComponent(req.params.link);
+    const linkInfo = referralLinkTracker.getLinkInfo(link);
+    res.json({
+      success: true,
+      linkInfo: linkInfo
+    });
+  } catch (error) {
+    logger.error('Erro ao obter informações do link', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/referral-links - Limpar todos os dados de rastreamento
+ */
+router.delete('/referral-links', (req, res) => {
+  try {
+    const result = referralLinkTracker.clearAll();
+    res.json({
+      success: result.success,
+      message: 'Dados de rastreamento limpos'
+    });
+  } catch (error) {
+    logger.error('Erro ao limpar dados de rastreamento', error);
     res.status(500).json({
       success: false,
       error: error.message

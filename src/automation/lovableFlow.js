@@ -20,6 +20,57 @@ async function waitForUseTemplateButtonWithRefresh(page, usingProxy, context = '
   }
 }
 
+/**
+ * Helper para verificar banner de erro após clicar em Remix
+ * Lança erro se encontrar "Ability to remix is limited for your account"
+ */
+async function checkRemixErrorBanner(page, usingProxy, context = '') {
+  logger.info(`🔍 Verificando banner de erro de remix${context ? ` (${context})` : ''}...`);
+  await page.waitForTimeout(getDelay(2000, usingProxy)); // Aguardar banner aparecer
+  
+  const hasRemixError = await page.evaluate(() => {
+    const bodyText = document.body.innerText;
+    
+    // Padrões de erro de remix
+    const remixErrorPatterns = [
+      'ability to remix is limited for your account',
+      'ability to remix is limited',
+      'remix is limited',
+      'remix.*limited',
+      'conta.*não.*pode.*remixar',
+      'não.*pode.*remixar',
+      'limite.*remix'
+    ];
+    
+    return remixErrorPatterns.some(pattern => {
+      const regex = new RegExp(pattern, 'i');
+      return regex.test(bodyText);
+    });
+  });
+  
+  if (hasRemixError) {
+    const errorText = await page.evaluate(() => {
+      const allText = document.body.innerText;
+      const lines = allText.split('\n');
+      
+      const errorLine = lines.find(line => {
+        const lowerLine = line.toLowerCase();
+        return lowerLine.includes('remix') && lowerLine.includes('limited');
+      });
+      
+      return errorLine || allText.substring(0, 300);
+    });
+    
+    logger.error('❌ BANNER DE ERRO DE REMIX DETECTADO!');
+    logger.error(`📝 Texto do erro: ${errorText.substring(0, 500)}`);
+    
+    // Lançar erro para invalidar a sessão
+    throw new Error(`❌ Erro de conta - Ability to remix is limited for your account. Conta inválida para remix.`);
+  }
+  
+  logger.success(`✅ Nenhum banner de erro de remix detectado${context ? ` (${context})` : ''}`);
+}
+
 export async function fallbackToTemplate(page, userId, usingProxy) {
   const fallbackTemplateUrl = config.templateProjectUrl;
   logger.warning('⚠️ Fazendo fallback para template específico...');
@@ -48,6 +99,9 @@ export async function fallbackToTemplate(page, userId, usingProxy) {
   await remixButton.click();
   logger.success('✅ Clicou em "Remix" (fallback)');
   
+  // 🔍 VERIFICAR BANNER DE ERRO DE REMIX
+  await checkRemixErrorBanner(page, usingProxy, 'fallback');
+  
   // Aguardar editor começar a carregar
   logger.info('⏳ Aguardando editor abrir (fallback)...');
   await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
@@ -75,6 +129,20 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await page.goto(referralLink, { waitUntil: 'domcontentloaded', timeout: pageLoadTimeout });
     await page.waitForTimeout(getDelay(2000, usingProxy));
     logger.success('✅ Página carregada');
+    
+    // Verificar se apareceu tela de Login (conta já existe)
+    const isLoginPage = await page.evaluate(() => {
+      const bodyText = document.body.innerText || '';
+      const url = window.location.href;
+      return bodyText.includes('Login') && 
+             (bodyText.includes('Continuar com Google') || bodyText.includes('Continuar com GitHub')) &&
+             (url.includes('/login') || bodyText.includes('Não tem uma conta?'));
+    });
+    
+    if (isLoginPage) {
+      logger.warning('⚠️ Tela de Login detectada - conta já existe!');
+      throw new Error('ACCOUNT_ALREADY_EXISTS');
+    }
 
     // DIRETO para #email - usar locator para ser mais resiliente
     const emailInputLocator = page.locator('#email');
@@ -113,6 +181,13 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     
     // Aguardar transição: pode mudar URL ou aparecer campo de senha
     await page.waitForTimeout(getDelay(2000, usingProxy));
+    
+    // Verificar se foi redirecionado para /login (conta já existe)
+    const currentUrl = page.url();
+    if (currentUrl.includes('/login') || currentUrl.includes('lovable.dev/login')) {
+      logger.warning('⚠️ Redirecionado para /login - conta já existe!');
+      throw new Error('ACCOUNT_ALREADY_EXISTS');
+    }
     
     // Verificar se há erros na página antes de continuar
     const hasError = await page.evaluate(() => {
@@ -232,69 +307,269 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
     await passwordInputLocator.fill(password);
     await page.waitForTimeout(getDelay(400, usingProxy));
     logger.success('✅ Senha preenchida');
-
-    // Procurar botão Create/Criar
-    logger.info('Procurando botão Create/Criar...');
     
-    const createSelectors = [
-      'button:has-text("Create")',
-      'button:has-text("Criar")',
-      'button:has-text("Criar sua conta")',
-      'button:has-text("Create account")',
-      'button:has-text("Sign up")',
-      'button[type="submit"]'
-    ];
+    // Procurar botão "Criar sua conta" - aguardar aparecer após preencher senha
+    logger.info('Procurando botão "Criar sua conta"...');
+    await page.waitForTimeout(getDelay(1000, usingProxy)); // Aguardar página estabilizar após preencher senha
     
-    // Usar abordagem mais robusta: clicar via JavaScript ou usar locator
     let createButtonClicked = false;
-    for (const selector of createSelectors) {
-      try {
-        // Tentar com locator primeiro (mais resiliente)
-        const buttonLocator = page.locator(selector).first();
-        await buttonLocator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
-        logger.info(`✅ Botão encontrado com seletor: ${selector}`);
+    
+    // Estratégia 1: Buscar botão por texto exato "Criar sua conta" via JavaScript
+    const buttonInfo = await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'));
+      const btn = buttons.find(b => {
+        const text = b.textContent.trim();
+        return text === 'Criar sua conta' || text === 'Create account';
+      });
+      
+      if (btn) {
+        return {
+          found: true,
+          text: btn.textContent.trim(),
+          disabled: btn.disabled,
+          hasDisabledClass: btn.classList.contains('disabled') || btn.hasAttribute('disabled'),
+          visible: btn.offsetParent !== null,
+          inViewport: btn.getBoundingClientRect().top >= 0 && btn.getBoundingClientRect().bottom <= window.innerHeight
+        };
+      }
+      return { found: false };
+    });
+    
+    if (buttonInfo.found) {
+      logger.info(`✅ Botão encontrado: "${buttonInfo.text}"`);
+      logger.info(`   - Disabled: ${buttonInfo.disabled || buttonInfo.hasDisabledClass}`);
+      logger.info(`   - Visible: ${buttonInfo.visible}`);
+      logger.info(`   - In Viewport: ${buttonInfo.inViewport}`);
+      
+      // Se o botão estiver desabilitado, aguardar um pouco (pode estar validando senha)
+      if (buttonInfo.disabled || buttonInfo.hasDisabledClass) {
+        logger.info('⏳ Botão está desabilitado, aguardando habilitação...');
+        await page.waitForTimeout(getDelay(2000, usingProxy));
         
-        // Tentar clicar com locator (mais resiliente a mudanças no DOM)
-        try {
-          await buttonLocator.click({ timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
-          createButtonClicked = true;
-          logger.success('✅ Clicou em Create (via locator)');
-          break;
-        } catch (clickError) {
-          // Se falhar, tentar via JavaScript
-          logger.warning('⚠️ Clique via locator falhou, tentando JavaScript...');
-          const jsClicked = await page.evaluate((sel) => {
+        // Verificar novamente
+        const buttonStillDisabled = await page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          const btn = buttons.find(b => {
+            const text = b.textContent.trim();
+            return text === 'Criar sua conta' || text === 'Create account';
+          });
+          return btn ? (btn.disabled || btn.classList.contains('disabled')) : true;
+        });
+        
+        if (buttonStillDisabled) {
+          logger.warning('⚠️ Botão ainda está desabilitado após aguardar');
+        }
+      }
+      
+      // Tentar clicar usando múltiplas abordagens
+      try {
+        // Abordagem 1: Locator com texto exato
+        logger.info('Tentando clicar via locator...');
+        const buttonLocator = page.locator('button:has-text("Criar sua conta"), button:has-text("Create account")').first();
+        await buttonLocator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
+        await buttonLocator.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(getDelay(500, usingProxy));
+        
+        // Verificar se está habilitado antes de clicar
+        const isEnabled = await buttonLocator.isEnabled();
+        if (!isEnabled) {
+          logger.warning('⚠️ Botão está desabilitado, forçando clique via JavaScript...');
+          // Forçar clique via JavaScript mesmo se desabilitado
+          await page.evaluate(() => {
             const buttons = Array.from(document.querySelectorAll('button'));
             const btn = buttons.find(b => {
               const text = b.textContent.trim();
-              return text === 'Create' || 
-                     text === 'Criar' || 
-                     text === 'Criar sua conta' || 
-                     text === 'Create account' ||
-                     text === 'Sign up' ||
-                     b.type === 'submit';
+              return text === 'Criar sua conta' || text === 'Create account';
             });
             if (btn) {
+              btn.removeAttribute('disabled');
+              btn.classList.remove('disabled');
               btn.click();
-              return true;
             }
-            return false;
+          });
+          createButtonClicked = true;
+          logger.success('✅ Clicou em "Criar sua conta" (via JavaScript forçado)');
+        } else {
+          await buttonLocator.click({ timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
+          createButtonClicked = true;
+          logger.success('✅ Clicou em "Criar sua conta" (via locator)');
+        }
+      } catch (locatorError) {
+        logger.warning('⚠️ Clique via locator falhou, tentando JavaScript direto...');
+        
+        // Abordagem 2: JavaScript direto (mais confiável)
+        const jsClicked = await page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          const btn = buttons.find(b => {
+            const text = b.textContent.trim();
+            return text === 'Criar sua conta' || text === 'Create account';
           });
           
-          if (jsClicked) {
-            createButtonClicked = true;
-            logger.success('✅ Clicou em Create (via JavaScript)');
-            break;
+          if (btn) {
+            // Remover atributos de desabilitado se existirem
+            btn.removeAttribute('disabled');
+            btn.classList.remove('disabled');
+            
+            // Scroll para o botão
+            btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Aguardar um pouco e clicar
+            setTimeout(() => {
+              btn.click();
+            }, 200);
+            return true;
           }
+          return false;
+        });
+        
+        if (jsClicked) {
+          await page.waitForTimeout(getDelay(800, usingProxy));
+          createButtonClicked = true;
+          logger.success('✅ Clicou em "Criar sua conta" (via JavaScript)');
         }
-      } catch (e) {
-        continue;
+      }
+    }
+    
+    // Estratégia 2: Se não encontrou, tentar seletores genéricos
+    if (!createButtonClicked) {
+      logger.warning('⚠️ Botão não encontrado por texto, tentando seletores genéricos...');
+      const genericSelectors = [
+        'button.w-full:has-text("Criar")',
+        'button[type="submit"]',
+        'button.bg-primary',
+        'button:has-text("Criar")',
+        'button:has-text("Create")'
+      ];
+      
+      for (const selector of genericSelectors) {
+        try {
+          const buttonLocator = page.locator(selector).first();
+          await buttonLocator.waitFor({ state: 'visible', timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
+          await buttonLocator.scrollIntoViewIfNeeded();
+          await page.waitForTimeout(getDelay(500, usingProxy));
+          await buttonLocator.click({ timeout: getTimeout(DEFAULT_TIMEOUTS.elementWait, usingProxy) });
+          createButtonClicked = true;
+          logger.success(`✅ Clicou em botão (via seletor: ${selector})`);
+          break;
+        } catch (e) {
+          continue;
+        }
       }
     }
     
     if (!createButtonClicked) {
-      throw new Error('❌ Botão Create/Criar não encontrado ou não foi possível clicar');
+      // Debug: mostrar informações dos botões na página
+      const pageButtons = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        return buttons.map(b => ({
+          text: b.textContent.trim(),
+          disabled: b.disabled,
+          hasDisabledClass: b.classList.contains('disabled'),
+          visible: b.offsetParent !== null,
+          type: b.type,
+          classes: Array.from(b.classList).join(' ')
+        }));
+      });
+      logger.error('❌ Botão "Criar sua conta" não encontrado ou não foi possível clicar');
+      logger.error(`📝 Botões encontrados na página: ${JSON.stringify(pageButtons, null, 2)}`);
+      throw new Error('❌ Botão "Criar sua conta" não encontrado ou não foi possível clicar');
     }
+
+    // 🔍 VERIFICAR NOTIFICAÇÃO DE DOMÍNIO CANSADO IMEDIATAMENTE APÓS CLICAR EM CREATE
+    // O banner pode aparecer logo após clicar, antes mesmo da URL mudar
+    // Isso indica que o domínio está cansado/bloqueado
+    logger.info('🔍 Verificando se há notificação de domínio não elegível (após Create)...');
+    await page.waitForTimeout(getDelay(2000, usingProxy)); // Aguardar notificação aparecer
+    
+    const hasIneligibleNotification = await page.evaluate(() => {
+      // PRIMEIRO: Tentar encontrar o elemento toast específico (mais preciso)
+      const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
+      if (toastElement) {
+        const toastText = toastElement.innerText || toastElement.textContent || '';
+        if (toastText.toLowerCase().includes('not eligible') || 
+            toastText.toLowerCase().includes('referral program') ||
+            toastText.toLowerCase().includes('sign-up will proceed without')) {
+          return true;
+        }
+      }
+      
+      // SEGUNDO: Tentar encontrar o div específico com a descrição
+      const descriptionDiv = document.querySelector('div[data-description].group-\\[\\.toast\\]\\:text-muted-foreground');
+      if (descriptionDiv) {
+        const descText = descriptionDiv.innerText || descriptionDiv.textContent || '';
+        if (descText.toLowerCase().includes('sign-up will proceed without the referral bonus') ||
+            descText.toLowerCase().includes('sign-up will proceed without')) {
+          return true;
+        }
+      }
+      
+      // TERCEIRO: Tentar encontrar qualquer elemento que contenha o texto chave
+      const allElements = document.querySelectorAll('*');
+      for (const element of allElements) {
+        const text = element.innerText || element.textContent || '';
+        if (text.includes('Email address not eligible for referral program') ||
+            text.includes('Your sign-up will proceed without the referral bonus') ||
+            (text.includes('not eligible') && text.includes('referral program'))) {
+          return true;
+        }
+      }
+      
+      // QUARTO: Verificar texto no body (fallback)
+      const bodyText = document.body.innerText;
+      // Procurar pela mensagem exata ou variações
+      const ineligiblePatterns = [
+        'Email address not eligible for referral program',
+        'not eligible for referral program',
+        'email address not eligible',
+        'referral program',
+        'sign-up will proceed without the referral bonus',
+        'Your sign-up will proceed without the referral bonus',
+        'email.*not eligible',
+        'domínio.*não.*elegível',
+        'não.*elegível.*programa'
+      ];
+      
+      return ineligiblePatterns.some(pattern => {
+        const regex = new RegExp(pattern, 'i');
+        return regex.test(bodyText);
+      });
+    });
+    
+    if (hasIneligibleNotification) {
+      const notificationText = await page.evaluate(() => {
+        // PRIMEIRO: Tentar pegar o texto do elemento toast específico
+        const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
+        if (toastElement) {
+          const toastText = toastElement.innerText || toastElement.textContent || '';
+          if (toastText.toLowerCase().includes('not eligible') || 
+              toastText.toLowerCase().includes('referral program')) {
+            return toastText.trim();
+          }
+        }
+        
+        // FALLBACK: Tentar encontrar o texto no body
+        const allText = document.body.innerText;
+        const lines = allText.split('\n');
+        const notificationLine = lines.find(line => 
+          line.toLowerCase().includes('not eligible') || 
+          line.toLowerCase().includes('referral program') ||
+          line.toLowerCase().includes('não elegível')
+        );
+        return notificationLine || 'Notificação de domínio não elegível detectada';
+      });
+      
+      logger.error('❌ DOMÍNIO CANSADO DETECTADO (após Create)!');
+      logger.error(`📝 Notificação: ${notificationText}`);
+      logger.error(`📧 Email usado: ${email}`);
+      
+      // Extrair domínio do email para incluir no erro
+      const emailDomain = email.split('@')[1] || 'unknown';
+      
+      // Lançar erro que será categorizado como email_error (contém "email" e "domínio")
+      throw new Error(`❌ Erro de email - Domínio não elegível para programa de indicação detectado. Email: ${email} | Domínio: ${emailDomain}`);
+    }
+    
+    logger.success('✅ Nenhuma notificação de domínio não elegível detectada (após Create)');
 
     // 🔥 AGUARDAR URL MUDAR (sinal de que aceitou)
     logger.info('⏳ Aguardando página mudar após cadastro...');
@@ -318,42 +593,91 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       logger.warning('⚠️ URL não mudou, mas sem erro detectado - continuando...');
     }
 
-    // 🔍 VERIFICAR NOTIFICAÇÃO DE DOMÍNIO CANSADO
-    // Após clicar em Create e ir para página de aguardar confirmação,
-    // pode aparecer notificação "Email address not eligible for referral program"
+    // 🔍 VERIFICAR NOVAMENTE NOTIFICAÇÃO DE DOMÍNIO CANSADO (caso apareça depois)
+    // Após a URL mudar, pode aparecer notificação "Email address not eligible for referral program"
     // Isso indica que o domínio está cansado/bloqueado
-    logger.info('🔍 Verificando se há notificação de domínio não elegível...');
+    logger.info('🔍 Verificando novamente se há notificação de domínio não elegível (após URL mudar)...');
     await page.waitForTimeout(getDelay(2000, usingProxy)); // Aguardar notificação aparecer
     
-    const hasIneligibleNotification = await page.evaluate(() => {
+    const hasIneligibleNotificationAfter = await page.evaluate(() => {
+      // PRIMEIRO: Tentar encontrar o elemento toast específico (mais preciso)
+      const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
+      if (toastElement) {
+        const toastText = toastElement.innerText || toastElement.textContent || '';
+        if (toastText.toLowerCase().includes('not eligible') || 
+            toastText.toLowerCase().includes('referral program') ||
+            toastText.toLowerCase().includes('sign-up will proceed without')) {
+          return true;
+        }
+      }
+      
+      // SEGUNDO: Tentar encontrar o div específico com data-description (texto chave: "Your sign-up will proceed without")
+      const allDivsWithDescription = document.querySelectorAll('div[data-description]');
+      for (const div of allDivsWithDescription) {
+        const descText = div.innerText || div.textContent || '';
+        if (descText.includes('Your sign-up will proceed without the referral bonus') ||
+            descText.includes('sign-up will proceed without the referral bonus') ||
+            descText.includes('sign-up will proceed without')) {
+          return true;
+        }
+      }
+      
+      // TERCEIRO: Tentar encontrar qualquer elemento que contenha o texto chave
+      const allElements = document.querySelectorAll('*');
+      for (const element of allElements) {
+        const text = element.innerText || element.textContent || '';
+        if (text.includes('Email address not eligible for referral program') ||
+            text.includes('Your sign-up will proceed without the referral bonus') ||
+            (text.includes('not eligible') && text.includes('referral program'))) {
+          return true;
+        }
+      }
+      
+      // QUARTO: Verificar texto no body (fallback)
       const bodyText = document.body.innerText;
-      // Procurar pela mensagem exata ou variações
+      // Procurar pela mensagem exata ou variações (usando regex para melhor detecção)
       const ineligiblePatterns = [
         'Email address not eligible for referral program',
         'not eligible for referral program',
         'email address not eligible',
         'referral program',
-        'sign-up will proceed without the referral bonus'
+        'sign-up will proceed without the referral bonus',
+        'Your sign-up will proceed without the referral bonus',
+        'email.*not eligible',
+        'domínio.*não.*elegível',
+        'não.*elegível.*programa'
       ];
       
-      return ineligiblePatterns.some(pattern => 
-        bodyText.toLowerCase().includes(pattern.toLowerCase())
-      );
+      return ineligiblePatterns.some(pattern => {
+        const regex = new RegExp(pattern, 'i');
+        return regex.test(bodyText);
+      });
     });
     
-    if (hasIneligibleNotification) {
+    if (hasIneligibleNotificationAfter) {
       const notificationText = await page.evaluate(() => {
-        // Tentar encontrar o texto exato da notificação
+        // PRIMEIRO: Tentar pegar o texto do elemento toast específico
+        const toastElement = document.querySelector('li[data-type="error"][data-sonner-toast]');
+        if (toastElement) {
+          const toastText = toastElement.innerText || toastElement.textContent || '';
+          if (toastText.toLowerCase().includes('not eligible') || 
+              toastText.toLowerCase().includes('referral program')) {
+            return toastText.trim();
+          }
+        }
+        
+        // FALLBACK: Tentar encontrar o texto no body
         const allText = document.body.innerText;
         const lines = allText.split('\n');
         const notificationLine = lines.find(line => 
           line.toLowerCase().includes('not eligible') || 
-          line.toLowerCase().includes('referral program')
+          line.toLowerCase().includes('referral program') ||
+          line.toLowerCase().includes('não elegível')
         );
         return notificationLine || 'Notificação de domínio não elegível detectada';
       });
       
-      logger.error('❌ DOMÍNIO CANSADO DETECTADO!');
+      logger.error('❌ DOMÍNIO CANSADO DETECTADO (após URL mudar)!');
       logger.error(`📝 Notificação: ${notificationText}`);
       logger.error(`📧 Email usado: ${email}`);
       
@@ -364,7 +688,78 @@ export async function signupOnLovable(page, email, password, userId = 1, referra
       throw new Error(`❌ Erro de email - Domínio não elegível para programa de indicação detectado. Email: ${email} | Domínio: ${emailDomain}`);
     }
     
-    logger.success('✅ Nenhuma notificação de domínio não elegível detectada');
+    logger.success('✅ Nenhuma notificação de domínio não elegível detectada (após URL mudar)');
+
+    // 🔍 VERIFICAR BANNERS DE ERRO NA PÁGINA DE VERIFICAÇÃO DE EMAIL
+    // Após o cadastro, quando a página muda para "Verifique sua caixa de entrada",
+    // pode aparecer banners de erro sobre código de referência ou email inválido
+    logger.info('🔍 Verificando banners de erro na página de verificação...');
+    await page.waitForTimeout(getDelay(3000, usingProxy)); // Aguardar mais tempo para banners aparecerem
+    
+    const hasErrorBanner = await page.evaluate(() => {
+      const bodyText = document.body.innerText;
+      
+      // Padrões de erro a procurar
+      const errorPatterns = [
+        // Código de referência atingiu limite
+        'referral code has reached its usage limit',
+        'referral code.*reached.*usage limit',
+        'código de referência.*atingiu.*limite',
+        'código.*atingiu.*limite de uso',
+        // Email inválido
+        'email.*invalid',
+        'email.*inválido',
+        'invalid email',
+        'email inválido',
+        'this email.*not valid',
+        'este email.*não.*válido'
+      ];
+      
+      return errorPatterns.some(pattern => {
+        const regex = new RegExp(pattern, 'i');
+        return regex.test(bodyText);
+      });
+    });
+    
+    if (hasErrorBanner) {
+      const errorText = await page.evaluate(() => {
+        // Tentar encontrar o texto exato do banner de erro
+        const allText = document.body.innerText;
+        const lines = allText.split('\n');
+        
+        // Procurar linha que contenha erro de referência ou email
+        const errorLine = lines.find(line => {
+          const lowerLine = line.toLowerCase();
+          return lowerLine.includes('referral code') && lowerLine.includes('limit') ||
+                 lowerLine.includes('email') && (lowerLine.includes('invalid') || lowerLine.includes('inválido')) ||
+                 lowerLine.includes('not valid') || lowerLine.includes('não.*válido');
+        });
+        
+        return errorLine || allText.substring(0, 300);
+      });
+      
+      logger.error('❌ BANNER DE ERRO DETECTADO NA PÁGINA DE VERIFICAÇÃO!');
+      logger.error(`📝 Texto do erro: ${errorText.substring(0, 500)}`);
+      logger.error(`📧 Email usado: ${email}`);
+      
+      // Extrair tipo de erro
+      const errorTextLower = errorText.toLowerCase();
+      let errorType = 'EMAIL_INVALID';
+      let errorMessage = 'Email inválido ou código de referência atingiu limite de uso';
+      
+      if (errorTextLower.includes('referral code') && errorTextLower.includes('limit')) {
+        errorType = 'REFERRAL_CODE_LIMIT';
+        errorMessage = 'Código de referência atingiu limite de uso';
+      } else if (errorTextLower.includes('email') && (errorTextLower.includes('invalid') || errorTextLower.includes('inválido'))) {
+        errorType = 'EMAIL_INVALID';
+        errorMessage = 'Email inválido detectado';
+      }
+      
+      // Lançar erro para invalidar a sessão
+      throw new Error(`❌ Erro de email - ${errorMessage}. Email: ${email} | Tipo: ${errorType}`);
+    }
+    
+    logger.success('✅ Nenhum banner de erro detectado na página de verificação');
 
     const executionTime = Date.now() - startTime;
     logger.success(`✅ Cadastro concluído em ${executionTime}ms`);
@@ -837,6 +1232,9 @@ export async function selectTemplate(page, userId = 1, usingProxy = false, simul
           await remixButton.click();
           logger.success('✅ Clicou em "Remix"');
           
+          // 🔍 VERIFICAR BANNER DE ERRO DE REMIX
+          await checkRemixErrorBanner(page, usingProxy);
+          
           // Aguardar editor começar a carregar
           logger.info('⏳ Aguardando editor abrir...');
           await page.waitForTimeout(getDelay(DEFAULT_TIMEOUTS.longDelay, usingProxy));
@@ -878,6 +1276,9 @@ export async function selectTemplate(page, userId = 1, usingProxy = false, simul
     const remixButton = await page.locator('button:has-text("Remix"), button:has-text("remix")').first();
     await remixButton.click();
     logger.success('✅ Clicou em "Remix"');
+    
+    // 🔍 VERIFICAR BANNER DE ERRO DE REMIX
+    await checkRemixErrorBanner(page, usingProxy);
     
     // Aguardar editor começar a carregar
     logger.info('⏳ Aguardando editor abrir...');
@@ -1134,6 +1535,9 @@ export async function useTemplateAndPublish(page, userId = 1, usingProxy = false
       const remixButton = await page.locator('button:has-text("Remix"), button:has-text("remix")').first();
       await remixButton.click();
       logger.success('✅ Clicou em "Remix"');
+      
+      // 🔍 VERIFICAR BANNER DE ERRO DE REMIX
+      await checkRemixErrorBanner(page, usingProxy, 'useTemplateAndPublish');
       
       // Aguardar editor começar a carregar
       logger.info('⏳ Aguardando editor abrir...');
